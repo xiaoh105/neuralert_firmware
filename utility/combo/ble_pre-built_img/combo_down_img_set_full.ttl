@@ -1,0 +1,43 @@
+sendln "reset"
+mpause 700
+
+boot_img = "DA16600_FBOOT-GEN01-01-14128-000000_W25Q32JW"
+rtos_img = "DA16600_FRTOS-GEN01-01-14145-000000.img"
+ble_img  = "da14531_multi_part_proxr.img"
+
+:download_DA16xxx_ueboot
+    getdir srcfile
+    strconcat srcfile '\\'
+    strconcat srcfile boot_img
+    send "loady 0 1000" #13#10
+    waitln "Load Y-Modem"
+    mpause 400
+    ymodemsend srcfile
+    mpause 4000
+    send  #13#10
+    waitln "[MROM]"
+:download_DA16xxx_RTOS
+    getdir srcfile
+    strconcat srcfile '\\'
+    strconcat srcfile rtos_img
+    send "loady 23000 1000" #13#10
+    waitln "Load Y-Modem"
+    mpause 400
+    ymodemsend srcfile
+    mpause 4000
+    send  #13#10
+    waitln "[MROM]"
+	
+:download_ble_fw
+    getdir srcfile
+    strconcat srcfile '\\'
+    strconcat srcfile ble_img
+    send "loady 3ad000 1000 bin" #13#10
+    waitln "Load Y-Modem"
+    mpause 400
+    ymodemsend srcfile
+    mpause 4000
+    send  #13#10
+    waitln "[MROM]"
+	
+sendln "boot"

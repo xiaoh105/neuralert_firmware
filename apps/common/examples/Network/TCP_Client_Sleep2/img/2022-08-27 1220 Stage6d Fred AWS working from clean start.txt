@@ -1,0 +1,213 @@
+[ ~ 0.000 sec ] Start RTOS main
+[ ~ 0.000 sec ] Start sys_launcher
+[ ~ 0.000 sec ] Init crypto
+[ ~ 0.000 sec ] Init WDT Console
+[ ~ 0.010 sec ] load_rlib
+[ ~ 0.010 sec ] load_ptim
+ê*¹jjj±¥        ?µjR´´jÿ[ ~ 0.020 sec ] Init system post
+
+  boot_scenario: Wakeup source is 0x4
+[dpm_init_retmemory] DPM INIT CONFIGURATION(1)
+
+
+        ******************************************************
+        *             DA16200 SDK Information
+        * ---------------------------------------------------
+        *
+        * - CPU Type        : Cortex-M4 (120MHz)
+        * - OS Type         : FreeRTOS 10.4.3
+        * - Serial Flash    : 4 MB
+        * - SDK Version     : V3.2.2.0 GEN
+        * - F/W Version     : FRTOS-GEN01-01-07bc5ab6e-002784
+        * - F/W Build Time  : Aug 25 2022 15:08:47
+        * - Boot Index      : 0
+        *
+        ******************************************************
+
+[ ~ 0.030 sec ] Start user_main
+
+**Neuralert: In user_main()
+>>Neuralert: In system_start()
+====>>>Configuring external wakeup but not enabling
+
+**Neuralert: user_retmem_init()
+
+**Neuralert: user_retmem_init() initializing retmem
+User RETMEM initialized.
+
+**Neuralert: util_api:regist_wifi_notify_cb()
+>>Neuralert: system_start() calling wlaninit
+[ ~ 0.030 sec ] Start wlaninit
+
+**Neuralert: init_umac:wlaninit()
+
+
+**Neuralert: Timezone: -18000)
+
+System Mode : Station Only (0)
+>>> Start DA16X Supplicant ...
+>>> DA16x Supp Ver2.7 - 2020_07
+>>> MAC address (sta0) : d4:3d:39:eb:34:5a
+>>> sta0 interface add OK
+>>> Start STA mode...
+[ ~ 0.110 sec ]  return from wlaninit
+**Neuralert: regist_user_apps_to_DPM_manager()
+**Neuralert: run_sys_apps()
+
+**Neuralert: sample_apps:register_sample_cb()
+**Neuralert: In sample_preconfig()
+**Neuralert: run_sys_apps() creating network independent sys apps
+**Neuralert: create_sys_apps()
+
+**Neuralert: In create_sample_apps()
+
+
+===========>Starting tcp_client_sleep2_sample
+ User application version:    Version 6c
+ User application build time: Aug 25 2022 15:08:46
+===========>NVRam runFlag: [runFlag=0]
+
+
+**Neuralert: tcp_client_sleep2_sample ******** Waiting for run flag to be set ********
+
+  [create_new_app] Creating task TCPC_SLP2
+  Creating task TCPC_SLP2
+**Neuralert: create_sys_apps(): sample apps started
+**Neuralert: run_sys_apps() done creating network independent sys apps
+**Neuralert: run_sys_apps() creating network independent user apps
+>>Neuralert: create_user_apps
+**Neuralert: create_user_apps(): 0 tasks started
+**Neuralert: run_sys_apps() done creating network independent user apps
+**Neuralert: run_sys_apps() station only mode
+
+**Neuralert: about to wait on IP status
+[ ~ 0.150 sec ] Start IP wait
+
+>>> Network Interface (wlan0) : UP
+>>> Associated with 3c:bd:c5:96:33:d1
+
+Connection COMPLETE to 3c:bd:c5:96:33:d1
+
+**Neuralert: util_api:wifi_conn_cb()
+
+-- DHCP Client WLAN0: SEL(6)
+-- DHCP Client WLAN0: REQ(1)
+-- DHCP Client WLAN0: CHK(8)
+-- DHCP Client WLAN0: BOUND(10)
+         Assigned addr   : 192.168.1.69
+               netmask   : 255.255.255.0
+               gateway   : 192.168.1.1
+               DNS addr  : 192.168.1.1
+
+         DHCP Server IP  : 192.168.1.1
+         Lease Time      : 23h 28m 35s
+         Renewal Time    : 11h 44m 17s
+
+[ ~ 2.480 sec ] End IP wait
+**Neuralert: done wait on IP status
+**Neuralert: sys_apps:checking network init
+**Neuralert: sys_apps:done checking network init
+[ ~ 2.480 sec ] START network applications
+**Neuralert: create_sys_apps()
+  [create_new_app] Creating task mqtt_sub
+[create_sys_apps] Created Task: mqtt_sub
+
+**Neuralert: skipping task start sleepmode12
+[create_sys_apps] Not created Task: sleepmode12
+
+**Neuralert: In create_sample_apps()
+**Neuralert: create_sys_apps(): sample apps started
+>>Neuralert: create_user_apps
+**Neuralert: create_user_apps(): 0 tasks started
+>>> SNTP Server: pool.ntp.org (52.148.114.188)
+
+>>> SNTP Time sync : 2022.08.27 - 11:19:56
+net
+    Command-List is changed, "NET"
+[/DA16200/NET] # mqtt_config status
+
+
+**Neuralert: In cmd_mqtt_client()
+MQTT Client Information:
+  - MQTT Status  : Not Running
+  - Broker IP          : a1ptdgcq5ud5fc-ats.iot.us-west-2.amazonaws.com
+  - Port               : 8883
+  - Pub. Topic         : Neuralert-fred2
+  - Sub. Topic         : Neuralert-fred1
+  - QoS Level          : 1
+  - TLS                : Enable
+  - Ping Period        : 600
+  - TLS Incoming buf   : 16384(bytes)
+  - TLS Outgoing buf   : 16384(bytes)
+  - TLS Auth mode      : 1
+  - User name          : (None)
+  - Password           : (None)
+  - Client ID          : Stage6_thing1
+  - MQTT VER           : 3.1
+[/DA16200/NET] # mqtt_client start
+
+
+**Neuralert: In cmd_mqtt_client()
+[mqtt_client_generate_port] Generated port: 35639
+[/DA16200/NET] #  [mqtt_client_check_broker_addr] Set Host ip configure a1ptdgcq5ud5fc-ats.iot.us-west-2.amazonaws.com->34.213.52.24 .
+mqtt_client dpm regi with 35639
+[mqtt_subscriber_main] SUB-Start(subRetryCount:0, restartCount:0).
+ [mqtt_subscriber_main] Done newing mosq_sub
+ [mqtt_subscriber_main] Done set opts
+ [mqtt_client_cb_set_disconn] Set callback func(mqtt_disconn_user_cb)
+ [client_connect] Bind info---host:34.213.52.24 port:8883 keepalive:600(s) (Sub)
+[_mosquitto_try_connect] SUB Binding (my_port:35639)
+[_mosquitto_try_connect] SUB Connecting (ip:34.213.52.24 port:8883)
+[_mosquitto_try_connect] SUB Connected !
+[_mosquitto_try_connect] SUB Connected !
+[_mosquitto_socket_connect_step3] _mosquitto_tls_init (done)
+[_mosquitto_socket_connect_step3] _mosquitto_tls_set (done)
+[mosquitto__socket_connect_tls] mbedtls_ssl_handshake (success)
+[mosquitto__socket_connect_tls] mosquitto__socket_connect_tls_verify (OK)
+[_mosquitto_socket_connect_step3] mosquitto__socket_connect_tls (SUCCESS)
+ [_mosquitto_send_connect] Client Stage6_thing1 sending CONNECT
+ [_mosquitto_packet_queue] sema(out_packet_mutex)+
+ [_mosquitto_packet_queue] sema(out_packet_mutex)-
+ [_mosquitto_packet_write] sema(current_out_packet_mutex)+
+ [_mosquitto_packet_write] sema(out_packet_mutex)+
+ [_mosquitto_packet_write] sema(out_packet_mutex)-
+ [_mosquitto_packet_write] sema(out_packet_mutex)+
+ [_mosquitto_packet_write] sema(out_packet_mutex)-
+ [_mosquitto_packet_write] sema(msgtime_mutex)+
+ [_mosquitto_packet_write] sema(msgtime_mutex)-
+ [_mosquitto_packet_write] sema(current_out_packet_mutex)-
+[mqtt_subscriber_main] client_connect OK.
+[mosquitto_loop_read] max_packets=1
+[_mosquitto_packet_read(cmd)] read_length(1), errno(115)
+[_mosquitto_packet_read] cmd=0x20
+[_mosquitto_packet_read(len)] read_length(1), errno(115)
+[_mosquitto_packet_read(payload)] to_process(2), read_length(2), errno(115)
+[_mosquitto_packet_read] all data for this packet is read
+ [_mosquitto_handle_connack] Client Stage6_thing1 received CONNACK
+ [_mosquitto_send_subscribe] Client Stage6_thing1 sending SUBSCRIBE (Mid: 1, Topic: Neuralert-fred1, QoS: 1)
+ [_mosquitto_packet_queue] sema(out_packet_mutex)+
+ [_mosquitto_packet_queue] sema(out_packet_mutex)-
+ [_mosquitto_packet_write] sema(current_out_packet_mutex)+
+ [_mosquitto_packet_write] sema(out_packet_mutex)+
+ [_mosquitto_packet_write] sema(out_packet_mutex)-
+ [_mosquitto_packet_write] sema(out_packet_mutex)+
+ [_mosquitto_packet_write] sema(out_packet_mutex)-
+ [_mosquitto_packet_write] sema(msgtime_mutex)+
+ [_mosquitto_packet_write] sema(msgtime_mutex)-
+ [_mosquitto_packet_write] sema(current_out_packet_mutex)-
+[_mosquitto_packet_read:960] rc=0
+[_mosquitto_packet_read] sema(msgtime_mutex)+
+[_mosquitto_packet_read] sema(msgtime_mutex)-
+[mosquitto_loop_read]: rc(0)
+[mosquitto_loop_read] max_packets=1
+[_mosquitto_packet_read(cmd)] read_length(1), errno(115)
+[_mosquitto_packet_read] cmd=0x90
+[_mosquitto_packet_read(len)] read_length(1), errno(115)
+[_mosquitto_packet_read(payload)] to_process(3), read_length(3), errno(115)
+[_mosquitto_packet_read] all data for this packet is read
+>>> MQTT Client connection OK (Stage6_thing1)
+[_mosquitto_packet_read:960] rc=0
+[_mosquitto_packet_read] sema(msgtime_mutex)+
+[_mosquitto_packet_read] sema(msgtime_mutex)-
+[mosquitto_loop_read]: rc(0)
+

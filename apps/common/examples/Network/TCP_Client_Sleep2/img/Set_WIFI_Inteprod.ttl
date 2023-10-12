@@ -1,0 +1,48 @@
+sendln "setup"
+mpause 250
+
+sendln "y"
+mpause 250
+
+sendln "US"
+mpause 250
+
+sendln "1"
+mpause 250
+
+inputbox 'Select Employee WIFI network' 'Choose WIFI access point'
+sendln inputstr
+mpause 250
+
+;inputbox 'Enter network password' 'Enter password'
+sendln "Tuesday#99"
+mpause 250
+
+sendln "n"
+mpause 250
+
+;inputbox 'Everything ok' 'Check configuration'
+;sendln inputstr
+sendln "y"
+mpause 250
+
+; automatic IP
+sendln "a"
+mpause 250
+
+; confirm IP
+sendln "y"
+mpause 250
+
+; sntp enable
+sendln "n"
+mpause 250
+
+; dpm enable
+sendln "n"
+mpause 250
+
+; fast connect 1/2 mode
+sendln "y"
+mpause 250
+

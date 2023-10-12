@@ -1,0 +1,54 @@
+sendln "net"
+mpause 100
+
+sendln "mqtt_config broker a1ptdgcq5ud5fc-ats.iot.us-west-2.amazonaws.com"
+mpause 100
+
+sendln "mqtt_config port 8883"
+mpause 100
+
+sendln "mqtt_config pub_topic Neuralert-fred2"
+mpause 100
+
+sendln "mqtt_config sub_topic 1 Neuralert-fred1"
+mpause 100
+
+sendln "mqtt_config qos 1"
+mpause 100
+
+sendln "mqtt_config tls 1"
+mpause 100
+
+;sendln "mqtt_config tls_incoming 16384"
+;mpause 100
+
+;sendln "mqtt_config tls_outgoing 16384"
+;mpause 100
+
+sendln "mqtt_config client_id Stage6_thing1"
+mpause 100
+
+;sendln "mqtt_config auto 1"
+mpause 100
+
+sendln "mqtt_config status"
+mpause 100
+
+sendln "sntp enable"
+mpause 100
+
+sendln "nvram"
+mpause 200
+
+sendln "setenv MQTT_TLS_INCOMING 16384"
+mpause 100
+
+sendln "setenv MQTT_TLS_OUTGOING 16384"
+mpause 100
+
+sendln "getenv"
+mpause 100
+
+
+:END
+

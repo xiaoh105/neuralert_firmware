@@ -1,0 +1,2 @@
+#define SDK_VERSION "6.0.14.1114.2"
+#define SDK_VERSION_DATE "2021-02-05 13:31 "

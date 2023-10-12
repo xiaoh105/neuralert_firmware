@@ -1,0 +1,21 @@
+var searchData=
+[
+  ['ota_5fupdate_5fcalcu_5fmcu_5ffw_5fcrc_0',['ota_update_calcu_mcu_fw_crc',['../ota__update_8h.html#ad33e71272bc18eda7cff61fc304e56d4',1,'ota_update.h']]],
+  ['ota_5fupdate_5fcmd_5fparse_1',['ota_update_cmd_parse',['../ota__update_8h.html#a9fa00de6697a45fe7c13770130cf7862',1,'ota_update.h']]],
+  ['ota_5fupdate_5fcopy_5fflash_2',['ota_update_copy_flash',['../ota__update_8h.html#a3ff6a028506a73c92a1a59e105a7d0c0',1,'ota_update.h']]],
+  ['ota_5fupdate_5ferase_5fflash_3',['ota_update_erase_flash',['../ota__update_8h.html#a804d8e1a5ea4aa7f51cf17b1f866d457',1,'ota_update.h']]],
+  ['ota_5fupdate_5ferase_5fmcu_5ffw_4',['ota_update_erase_mcu_fw',['../ota__update_8h.html#ac7fd3ef0389ac2a2ca0e433da6d73a1d',1,'ota_update.h']]],
+  ['ota_5fupdate_5fget_5fmcu_5ffw_5finfo_5',['ota_update_get_mcu_fw_info',['../ota__update_8h.html#aaab0ccf2e619a3b3a259af1796df7da3',1,'ota_update.h']]],
+  ['ota_5fupdate_5fget_5fmcu_5ffw_5fname_6',['ota_update_get_mcu_fw_name',['../ota__update_8h.html#adbdababecad39ca30c33c58119379994',1,'ota_update.h']]],
+  ['ota_5fupdate_5fget_5fnew_5fsflash_5faddr_7',['ota_update_get_new_sflash_addr',['../ota__update_8h.html#a17c1bd6f059504b4b02cb330c9898576',1,'ota_update.h']]],
+  ['ota_5fupdate_5fget_5fprogress_8',['ota_update_get_progress',['../ota__update_8h.html#af0b703a561cfe01ba10d0af396d98b2f',1,'ota_update.h']]],
+  ['ota_5fupdate_5fread_5fflash_9',['ota_update_read_flash',['../ota__update_8h.html#a7fa4540e2c5fad827e9921370b8f584b',1,'ota_update.h']]],
+  ['ota_5fupdate_5fset_5fmcu_5ffw_5fname_10',['ota_update_set_mcu_fw_name',['../ota__update_8h.html#a91ecd7a9f6c9413c75ac3cdeb19d928d',1,'ota_update.h']]],
+  ['ota_5fupdate_5fset_5ftls_5fauth_5fmode_5fnvram_11',['ota_update_set_tls_auth_mode_nvram',['../ota__update_8h.html#a1d2df40ef132db88eb8958aada4b694c',1,'ota_update.h']]],
+  ['ota_5fupdate_5fstart_5fdownload_12',['ota_update_start_download',['../ota__update_8h.html#a3a9796e9b6478c6b1d8718f79f7d1292',1,'ota_update.h']]],
+  ['ota_5fupdate_5fstart_5frenew_13',['ota_update_start_renew',['../ota__update_8h.html#ab94e4903354ddea768e3728ebeced1e3',1,'ota_update.h']]],
+  ['ota_5fupdate_5fstop_5fdownload_14',['ota_update_stop_download',['../ota__update_8h.html#a4e51f591171e9ce687d9a3801935defa',1,'ota_update.h']]],
+  ['ota_5fupdate_5fuart_5finit_15',['ota_update_uart_init',['../ota__update_8h.html#a2074d3c3929c29296005b0189f0ff774',1,'ota_update.h']]],
+  ['ota_5fupdate_5fuart_5fread_5fmcu_5ffw_16',['ota_update_uart_read_mcu_fw',['../ota__update_8h.html#a22e175d3c005659870bbc06672084520',1,'ota_update.h']]],
+  ['ota_5fupdate_5fuart_5ftrans_5fmcu_5ffw_17',['ota_update_uart_trans_mcu_fw',['../ota__update_8h.html#aef0478b600367ca756d21dc612776cca',1,'ota_update.h']]]
+];

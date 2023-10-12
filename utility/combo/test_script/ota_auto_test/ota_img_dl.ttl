@@ -1,0 +1,105 @@
+; Confirm that ``__include_goto_label`` is defined and is a string.
+ifdefined __include_goto_label
+if result == 3 then
+	; Confirm that ``__include_goto_label`` is not an empty string.
+	strlen __include_goto_label
+	if result then
+		; Confirm that ``__include_goto_label`` is an actual label.
+		sprintf2 __execstr 'ifdefined %s' __include_goto_label
+		execcmnd __execstr
+		if result == 4 then
+			; The label exists. Call the subroutine and return.
+			sprintf2 __execstr 'call %s' __include_goto_label
+			execcmnd __execstr
+			result = 0
+			exit
+		endif
+		result = GOTO_LABEL_NOT_DEFINED
+		exit
+	endif
+endif
+; This is the default subroutine to call. Change the name if desired.
+call default
+exit
+
+;====================================================================
+; functions
+;====================================================================
+
+;###################################################################
+; download firmwares
+;###################################################################
+
+:oid_fn_download_img
+	sendln "reset"
+	mpause 700
+	sendln ' '
+	mpause 700
+	sendln ' '
+	
+	oid_img_name = oid_sub_dir
+	call oid_fn_download_ueboot
+
+	strlen oid_rtos_img
+	if result>0 then
+		oid_img_name = oid_sub_dir
+		call oid_fn_download_rtos
+	endif
+
+	strlen oid_ble_img
+	if result>0 then
+		oid_img_name = oid_sub_dir
+		call oid_fn_download_ble
+	endif
+	
+	sendln "boot"
+return
+
+;====================================================================
+; helper functions
+;====================================================================
+
+;###################################################################
+; download UEBOOT
+;###################################################################
+:oid_fn_download_ueboot
+    strconcat oid_img_name oid_boot_img
+    send "loady 0 1000" #13#10
+    waitln "Load Y-Modem"
+    mpause 400
+    ymodemsend oid_img_name
+    mpause 4000
+    send  #13#10
+    waitln "[MROM]"
+return
+
+;###################################################################
+; download RTOS
+;###################################################################
+:oid_fn_download_rtos
+    strconcat oid_img_name oid_rtos_img
+    send "loady 23000 1000" #13#10
+    waitln "Load Y-Modem"
+    mpause 400
+    ymodemsend oid_img_name
+    mpause 4000
+    send  #13#10
+    waitln "[MROM]"
+return
+
+;###################################################################
+; download BLE
+;###################################################################
+:oid_fn_download_ble
+    strconcat oid_img_name oid_ble_img
+    send "loady 3ad000 1000 bin" #13#10
+    waitln "Load Y-Modem"
+    mpause 400
+    ymodemsend oid_img_name
+    mpause 4000
+    send  #13#10
+    waitln "[MROM]"
+return
+
+:default
+return

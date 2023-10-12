@@ -1,0 +1,7 @@
+si 1
+speed auto
+r
+h
+eoe 1
+loadbin BLE.bin,   0x103AD000
+exit

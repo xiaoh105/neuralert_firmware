@@ -1,0 +1,99 @@
+ble_img  = "da14531_multi_part_proxr.img"
+
+:find_boot_image
+strdim msg 2
+msg[0] = 'W25Q32JW' 
+msg[1] = 'AT25SL321' 
+listbox 'Select the flash memory of the target device.' 'Confirm' msg
+if result == -1 then
+	exit
+endif
+
+sprintf2 extpat "DA16600_FBOOT-*_%s.img" msg[result]
+findfirst dh extpat filename
+if result=0 then
+	findclose dh
+	messagebox 'The BOOT image could not be found. ' 'Error'
+	exit
+else
+	boot_img = filename
+endif
+findclose dh
+
+:find_rtos_image
+extpat='DA16600_FRTOS-*.img'
+findfirst dh extpat filename
+if result=0 then
+	findclose dh
+	messagebox 'The RTOS image could not be found. ' 'Error'
+	exit
+else
+	rtos_img = filename
+endif
+findclose dh
+
+sendln "reset"
+mpause 700
+
+:OTP_protection
+sendln 'lwr 40120000 38000000'
+wait '[BOOT]' '[MROM]'
+
+:RETRY
+sendln 'lrd 40103ffc'
+wait '[0x40103FFC] : '
+recvln
+
+strcopy inputstr 25 1 substr
+strcompare substr '1'
+
+if result=0 then 
+	goto END
+else  
+	messagebox 'secure regien lock' "confirm"
+	sendln 'lwr 40120000 34000000'
+	wait '[BOOT]' '[MROM]'
+	sendln 'lwr 40103ffc 04000000'
+	wait '[BOOT]' '[MROM]'
+	sendln 'lwr 40120000 38000000'
+	wait '[BOOT]' '[MROM]'
+	goto RETRY
+goto END
+endif
+:END 
+
+:download_DA16xxx_ueboot
+    getdir srcfile
+    strconcat srcfile '\\'
+    strconcat srcfile boot_img
+    send "loady 0 1000" #13#10
+    waitln "Load Y-Modem"
+    mpause 400
+    ymodemsend srcfile
+    mpause 4000
+    send  #13#10
+    waitln "[MROM]"
+:download_DA16xxx_RTOS
+    getdir srcfile
+    strconcat srcfile '\\'
+    strconcat srcfile rtos_img
+    send "loady 23000 1000" #13#10
+    waitln "Load Y-Modem"
+    mpause 400
+    ymodemsend srcfile
+    mpause 4000
+    send  #13#10
+    waitln "[MROM]"
+:download_ble_fw
+    getdir srcfile
+    strconcat srcfile '\\DA14531_1\\'
+    strconcat srcfile ble_img
+    send "loady 3ad000 1000 bin" #13#10
+    waitln "Load Y-Modem"
+    mpause 400
+    ymodemsend srcfile
+    mpause 4000
+    send  #13#10
+    waitln "[MROM]"
+	
+sendln "boot"

@@ -1,0 +1,9 @@
+Address	Size	Type	RW or RO	Shortname	Description	Group	Default	Number of options
+10080000	2208	String	RW	Reserved for future use	<html>Reserved for future use</html>	Customer Application Area
+100808A0	32	String	RW	Signature Keys Area - Index	<html>Signature Keys Area - Index</html>	Signature Keys Area - Index
+100808C0	256	String	RW	Signature Keys Area - Payload	<html>Signature Keys Area - Payload</html>	Signature Keys Area - Payload
+100809C0	32	String	RW	User Data Encryption Keys - Index	<html>User Data Encryption Keys - Index</html>	User Data Encryption Keys - Index
+100809E0	32	String	RW	QSPI FW Decryption Keys Area - Index	<html>QSPI FW Decryption Keys Area - Index</html>	QSPI FW Decryption Keys Area - Index
+10080A00	256	String	RW	User Data Encryption Keys - Payload	<html>Write/Read protected when secure mode enabled in CS.<br>Secure mode connects those (8 * 256-bits) keys to AES engine</html>	User Data Encryption Keys - Payload
+10080B00	256	String	RW	QSPI FW Decryption Keys Area - Payload	<html>write/read protected when secure mode enabled in CS.<br>Secure mode connects those (8 * 256-bits) keys to QSPI Controller</html>	QSPI FW Decryption Keys Area - Payload
+10080C00	1024	String_Rev	RO	Configuration Script	<html>Configuration Script</html>	Configuration Script

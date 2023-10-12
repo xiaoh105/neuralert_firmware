@@ -1,0 +1,22 @@
+:download_DA16xxx_ueboot
+    getdir srcfile
+    strconcat srcfile '\\'
+    strconcat srcfile "DA16xxx_ueboot_AT25SF321B.img"
+    send "loady 0 1000" #13#10
+    waitln "Load Y-Modem"
+    mpause 400
+    ymodemsend srcfile
+    mpause 4000
+    send  #13#10
+    waitln "[MROM]"
+:download_DA16xxx_RTOS
+    getdir srcfile
+    strconcat srcfile '\\'
+    strconcat srcfile "DA16xxx_RTOS.img"
+    send "loady 23000 1000" #13#10
+    waitln "Load Y-Modem"
+    mpause 400
+    ymodemsend srcfile
+    mpause 4000
+    send  #13#10
+    waitln "[MROM]"

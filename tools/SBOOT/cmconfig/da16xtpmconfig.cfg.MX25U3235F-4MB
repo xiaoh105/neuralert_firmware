@@ -1,0 +1,121 @@
+[FC9K-MAN-CONFIG]
+rule = Green  Boot
+own = DM
+step = G.B5
+image = ../image
+role = ALL
+
+[FC9K-TPM-CONFIG]
+lcs = lcs SECURE
+hbk-id = hbk-id 1, DM
+nvcount = 0
+sdebug = 3 Level SD
+sboot = 3 Level SB
+combined = Combined Image
+bootmodel = Cache Boot
+
+[UEBOOT]
+TITLE = UE-BOOT
+SFDP = MX25U3235F
+KEYLOAD = LOAD_AND_VERIFY
+KEYENC = NO_IMAGE_ENC
+FLASHADDR = 0x00000000
+RETMEM = 0
+CRCON = ON
+DBGCERT = OFF
+COMP1 = DA16xxx_ueboot
+COMP2 = 
+COMP3 = 
+IMAGE = DA16xxx_ueboot
+COMP1ADDR = 0x0008B800 0x00001600 0x00100000 0x00000000
+COMP2ADDR = 
+COMP3ADDR = 
+TAGDATE = OFF
+SBOX = 0x00000000
+
+[RTOS.cache]
+TITLE = RTOS Cache Boot
+SFDP = No-SFDP
+KEYLOAD = VERIFY_ONLY_IN_MEM
+KEYENC = NO_IMAGE_ENC
+FLASHADDR = 0x00023000
+RETMEM = 0
+CRCON = ON
+DBGCERT = OFF
+COMP1 = DA16xxx_RTOS
+COMP2 = 
+COMP3 = 
+IMAGE = DA16xxx_RTOS
+COMP1ADDR = 0x00101400 0xffffffff 0x001BF000 0x00000000
+COMP2ADDR = 
+COMP3ADDR = 
+TAGDATE = OFF
+SBOX = 0x00000000
+
+[RTOS.sram]
+TITLE = RTOS SRAM Boot
+SFDP = MX25U3235F
+KEYLOAD = LOAD_AND_VERIFY
+KEYENC = NO_IMAGE_ENC
+FLASHADDR = 0x00000000
+RETMEM = 0
+CRCON = ON
+DBGCERT = OFF
+COMP1 = Dior_main_libndk
+COMP2 = 
+COMP3 = 
+IMAGE = fc9k_sboot_sram
+COMP1ADDR = 0x0008B800 0x00001600 0x00100000 0x00000000
+COMP2ADDR = 
+COMP3ADDR = 
+TAGDATE = OFF
+SBOX = 0x00000000
+
+[RMA]
+TITLE = RMA-Image
+SFDP = No-SFDP
+KEYLOAD = LOAD_AND_VERIFY
+KEYENC = NO_IMAGE_ENC
+FLASHADDR = 0x001F2000
+RETMEM = 0
+CRCON = ON
+DBGCERT = RMA
+COMP1 = 
+COMP2 = 
+COMP3 = 
+IMAGE = DA16xxx_rma
+COMP1ADDR = 0x00000000 0x00000000 0x00000000 0x00000000
+COMP2ADDR = 
+COMP3ADDR = 
+TAGDATE = OFF
+SBOX = 0x00000000
+
+[ENABLER]
+debug-mask[0-31] = 0xffffffff
+debug-mask[32-63] = 0xffffffff
+debug-mask[64-95] = 0xffffffff
+debug-mask[96-127] = 0xffffffff
+debug-lock[0-31] = 0xffffffff
+debug-lock[32-63] = 0xffffffff
+debug-lock[64-95] = 0xffffffff
+debug-lock[96-127] = 0xffffffff
+
+[ENABLER-RMA]
+debug-lock[0-31] = 0xffffffff
+debug-lock[32-63] = 0xffffffff
+debug-lock[64-95] = 0xffffffff
+debug-lock[96-127] = 0xffffffff
+hbk-id = hbk-id 1, DM
+
+[DEVELOPER]
+debug-mask[0-31] = 0xffffffff
+debug-mask[32-63] = 0xffffffff
+debug-mask[64-95] = 0xffffffff
+debug-mask[96-127] = 0xffffffff
+
+[DEVELOPER-RMA]
+debug-mask[0-31] = 0xffffffff
+debug-mask[32-63] = 0xffffffff
+debug-mask[64-95] = 0xffffffff
+debug-mask[96-127] = 0xffffffff
+

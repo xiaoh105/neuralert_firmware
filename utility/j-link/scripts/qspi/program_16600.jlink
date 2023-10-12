@@ -1,0 +1,12 @@
+si 1
+speed auto
+r
+h
+eoe 1
+loadbin FBOOT.bin, 0x10000000
+loadbin FRTOS.bin, 0x10023000
+loadbin BLE.bin,   0x103AD000
+h
+exec EnableEraseAllFlashBanks
+erase 0x10022000 0x10022FFF noreset
+exit

@@ -1,0 +1,30 @@
+Size	Type	Optional	RW_or_RO	Title	Description	Default_Option_Index	Option_i_String[Value]	Option_i+1_String[Value]
+Section_type	1	FW Image
+Section_type	2	Image Header
+2	Flag	false	RO	Image Identifier	<html>Should contain "Qq" if Fw image is present</html>	0	Fw image not present[0xFFFF]	Fw image present[0x5171]
+4	Integer	false	RO	Size	<html>Total size of image including the header<html>
+4	String	false	RO	CRC	<html>CRC field</html>
+16	String	false	RO	Version String	<html>Version number of FW</html>
+4	String	false	RO	Timestamp	<html>Seconds elapsed since epoch 1/1/1970</html>
+4	Integer	false	RO	Pointer to IVT	<html>Address to start of IVT, relative<br>to the start address of the image.</html>
+Section_type	3	Security
+2	Flag	false	RO	Type Security section	<html>Should contain 0xAA22 to<br>signal the booter that a valid<br>flash configuration is present,<br>even if size is 0</html>	0	Invalid Flash Configuration[0xFFFF]	Valid Flash Configuration[0xAA22]
+2	Integer	false	RO	Length of security section	<html>Length of security section. Can<br>be 0 because following fields<br>are all optional, <b>but the order<br>is fixed</b></html>
+1	Integer	[7]	RO	Index to ECC key	<html>Index to the ECC key used by<br>this FW image</html>
+1	Integer	[7]	RO	Index to Sym.Key	<html>Index to the symmetrical key<br>used by this FW image</html>
+8	String	[7]	RO	NONCE	<html>NONCE field</html>
+2	Flag	[7]	RO	Type Signature section	<html>Should contain 0xAA33 to<br>signal the booter that a valid<br>signature is present</html>	0	Invalid signature present[0xFFFF]	Valid signature present[0xAA33]
+2	Integer	[7]	RO	Length of Signature section	<html>Length of the signature in bytes</html>
+[12]	String	[7],[12]	RO	Signature	<html>Actual signature</html>
+Section_type	3	Device Administration (TLV Format)
+2	Flag	false	RO	Type Device Administration Section	<html>Should contain 0xAA44 to<br>signal the booter that a valid<br>Device administration section is<br>present, even if size is 0</html>	0	Invalid Device administration section present[0xFFFF]	Valid Device administration section present[0xAA44]
+2	Integer	false	RO	Length of Device Administration Section	<html>Length of Device Administration<br>section. Can be 0 because<br>following fields are all optional, <b>but the order is fixed</b></html>
+2	Flag	[15]	RO	Type Key revocation record	<html>Should contain 0XAA55 to<br>signal the booter that valid key<br>revocation records are available</html>	0	Invalid key revocation records[0xFFFF]	Valid key revocation records[0xAA55]
+2	Integer	[15]	RO	Length of Key revocation record	<html>Length of key revocation record in bytes</html>
+Section_type	REPEAT_2
+1	Flag	[15],[17]	RO	Key type	<html>Type of key to revoke:<br>0xA1 = signature key<br>0xA2 = decryption Key<br>0xA3 = user data key</html>	0	Signature key[0xA1]	Decrytpion key[0xA2]	User data key[0xA3]
+1	Integer	[15],[17]	RO	Key index	<html>Index of key to revoke (0-7)</html>
+ALIGN_1024	Align	false	RO	Reserved	<html></html>
+Section_type	2	Image Data
+SIZEOF_VALUE	String	false	RO	IVT	<html></html>
+SIZEOF_VALUE	String	false	RO	Executable	<html></html>

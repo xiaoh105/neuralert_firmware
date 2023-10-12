@@ -1,0 +1,332 @@
+; Confirm that ``__include_goto_label`` is defined and is a string.
+ifdefined __include_goto_label
+if result == 3 then
+	; Confirm that ``__include_goto_label`` is not an empty string.
+	strlen __include_goto_label
+	if result then
+		; Confirm that ``__include_goto_label`` is an actual label.
+		sprintf2 __execstr 'ifdefined %s' __include_goto_label
+		execcmnd __execstr
+		if result == 4 then
+			; The label exists. Call the subroutine and return.
+			sprintf2 __execstr 'call %s' __include_goto_label
+			execcmnd __execstr
+			result = 0
+			exit
+		endif
+		result = GOTO_LABEL_NOT_DEFINED
+		exit
+	endif
+endif
+; This is the default subroutine to call. Change the name if desired.
+call default
+exit
+
+;====================================================================
+; functions
+;====================================================================
+
+;###################################################################
+; test type_1 w/ multi checkpoints
+; 	type: firmware is replaced and reboot
+;         check multiple pre- and post-check-items
+;###################################################################
+:otc_fn_tc_run_multi
+	call otc_fn_tc_init
+	pause 5
+	sendln "reboot"
+
+:RETRY1
+	call otc_fn_tc_chk_pre_cond_multi
+	pause 5
+	call otc_fn_tc_run_test_cmd
+
+	wait otc_str_success otc_str_failure
+	if result = 1 then
+		timeout=30
+		otc_is_timeout_happened = 0
+		call otc_fn_chk_post_cond_multi_timeout
+		if otc_is_timeout_happened =1 then
+			; fw update done and rebooted, but post check failed.
+			; as it affects the next TC, stop the test case
+			filewriteln otc_file_handle otc_str_test_terminated
+			end
+		endif
+		otc_is_timeout_happened = 0
+		timeout=0
+		sendln ' '
+		sendln otc_str_success_result
+		filewriteln otc_file_handle otc_str_success_result
+	elseif result = 2 then
+		if otc_retry_count = 0 then
+			sendln ' '
+			sendln otc_str_failure_cause_max_tried
+			sendln otc_str_failure_result
+			filewriteln otc_file_handle otc_str_failure_result
+			end
+		endif
+		otc_retry_count = otc_retry_count-1
+		sendln "reboot"
+		goto RETRY1
+	endif
+return
+
+;###################################################################
+; test type_2 w/ multi checkpoints
+; 	type: firmware is not replaced due to error (no-reboot)
+;   multiple number of pre- and post- check-items
+;###################################################################
+:otc_fn_tc_run_2_multi
+	call otc_fn_tc_init
+	pause 5
+	sendln "reboot"
+	
+:RETRY2	
+	call otc_fn_tc_chk_pre_cond_multi
+	pause 5
+	call otc_fn_tc_run_test_cmd
+
+	timeout=120
+	otc_is_timeout_happened = 0
+	call otc_fn_chk_post_cond_multi_timeout
+	if otc_is_timeout_happened =1 then
+		if otc_retry_count = 0 then
+			sendln ' '
+			sendln otc_str_failure_cause_max_tried
+			sendln otc_str_failure_result
+			filewriteln otc_file_handle otc_str_failure_result
+			end
+		endif
+		otc_retry_count = otc_retry_count-1
+		timeout=0
+		sendln "reboot"
+		goto RETRY2
+	endif
+	timeout=0
+	otc_is_timeout_happened = 0
+		
+	wait otc_str_failure otc_str_success
+	if result = 1 then
+		sendln ' '
+		sendln otc_str_success_result
+		filewriteln otc_file_handle otc_str_success_result
+	elseif result = 2 then
+		; reboot happened, should not happen, stop test script !!!!
+		sendln ' '
+		sendln otc_str_failure_result
+		filewriteln otc_file_handle otc_str_failure_result
+		filewriteln otc_file_handle otc_str_test_terminated2
+		end
+	endif
+	timeout=0
+return
+
+;====================================================================
+; helper functions
+;====================================================================
+
+;###################################################################
+; init PASS FAIL string using TC name
+;###################################################################
+:otc_fn_tc_init
+
+	otc_retry_count = otc_retry_count_max
+
+	otc_str_temp = ""
+	otc_str_success_result = ""
+	otc_str_failure_result = ""
+
+	strconcat otc_str_temp otc_tc_name
+	strconcat otc_str_temp ' PASS'
+	otc_str_success_result = otc_str_temp
+
+	otc_str_temp = ""
+
+	strconcat otc_str_temp otc_tc_name
+	strconcat otc_str_temp ' FAIL'
+	otc_str_failure_result = otc_str_temp
+return
+
+;###################################################################
+; check pre-conditions 1
+;###################################################################
+:otc_fn_tc_chk_pre_cond
+	wait otc_str_pre_chk_item
+;	wait otc_str_bef_cmd
+return
+
+;###################################################################
+; check pre-conditions multi
+;###################################################################
+:otc_fn_tc_chk_pre_cond_multi
+
+	strlen otc_str_pre_chk_item
+	if result>0 then
+		wait otc_str_pre_chk_item
+	endif
+	
+	strlen otc_str_pre_chk_item_2
+	if result>0 then
+		wait otc_str_pre_chk_item_2
+	endif
+
+	strlen otc_str_pre_chk_item_3
+	if result>0 then
+		wait otc_str_pre_chk_item_3
+	endif
+
+	strlen otc_str_pre_chk_item_4
+	if result>0 then
+		wait otc_str_pre_chk_item_4
+	endif
+
+	strlen otc_str_pre_chk_item_5
+	if result>0 then
+		wait otc_str_pre_chk_item_5
+	endif
+
+	strlen otc_str_pre_chk_item_6
+	if result>0 then
+		wait otc_str_pre_chk_item_6
+	endif
+
+	strlen otc_str_pre_chk_item_7
+	if result>0 then
+		wait otc_str_pre_chk_item_7
+	endif
+	
+;	strlen otc_str_bef_cmd
+;	if result>0 then
+;		wait otc_str_bef_cmd
+;	endif
+return
+
+;###################################################################
+; check post-conditions multi
+;###################################################################
+
+:otc_fn_chk_post_cond_multi
+	strlen otc_str_post_chk_item
+	if result>0 then
+		wait otc_str_post_chk_item
+	endif
+
+	strlen otc_str_post_chk_item_2
+	if result>0 then
+		wait otc_str_post_chk_item_2
+	endif
+	
+	strlen otc_str_post_chk_item_3
+	if result>0 then
+		wait otc_str_post_chk_item_3
+	endif
+	
+	strlen otc_str_post_chk_item_4
+	if result>0 then
+		wait otc_str_post_chk_item_4
+	endif
+	
+	strlen otc_str_post_chk_item_5
+	if result>0 then
+		wait otc_str_post_chk_item_5
+	endif
+	
+	strlen otc_str_post_chk_item_6
+	if result>0 then
+		wait otc_str_post_chk_item_6
+	endif
+
+	strlen otc_str_post_chk_item_7
+	if result>0 then
+		wait otc_str_post_chk_item_7
+	endif
+return
+
+;###################################################################
+; check post-condition multi w/ timeout
+;###################################################################
+
+:otc_fn_chk_post_cond_multi_timeout
+	strlen otc_str_post_chk_item
+	if result>0 then
+		wait otc_str_post_chk_item
+		if result=0 then
+			otc_is_timeout_happened=1
+			return
+		endif
+	endif
+
+	strlen otc_str_post_chk_item_2
+	if result>0 then
+		wait otc_str_post_chk_item_2
+		if result=0 then
+			otc_is_timeout_happened=1
+			return
+		endif
+	endif
+	
+	strlen otc_str_post_chk_item_3
+	if result>0 then
+		wait otc_str_post_chk_item_3
+		if result=0 then
+			otc_is_timeout_happened=1
+			return
+		endif
+	endif
+	
+	strlen otc_str_post_chk_item_4
+	if result>0 then
+		wait otc_str_post_chk_item_4
+		if result=0 then
+			otc_is_timeout_happened=1
+			return
+		endif
+	endif
+	
+	strlen otc_str_post_chk_item_5
+	if result>0 then
+		wait otc_str_post_chk_item_5
+		if result=0 then
+			otc_is_timeout_happened=1
+			return
+		endif
+	endif
+	
+	strlen otc_str_post_chk_item_6
+	if result>0 then
+		wait otc_str_post_chk_item_6
+		if result=0 then
+			otc_is_timeout_happened=1
+			return
+		endif
+	endif
+
+	strlen otc_str_post_chk_item_7
+	if result>0 then
+		wait otc_str_post_chk_item_7
+		if result=0 then
+			otc_is_timeout_happened=1
+			return
+		endif
+	endif
+return
+
+
+;###################################################################
+; set nvram and run test cmd
+;###################################################################
+:otc_fn_tc_run_test_cmd
+	sendln ' '
+	sendln ' '
+	sendln otc_cmd_set_uri_rtos
+	pause 1
+
+	sendln otc_cmd_set_uri_ble
+	pause 1
+
+	sendln otc_cmd_ble_ota_start
+return
+
+
+:default
+return

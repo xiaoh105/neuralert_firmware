@@ -1,0 +1,1073 @@
+include 'ota_img_dl.ttl'
+include 'ota_tc.ttl'
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;#####################################################################
+; TC COMMON
+;#####################################################################
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+otc_retry_count_max = 10
+otc_retry_count = otc_retry_count_max
+
+otc_str_success = "Succeeded to download."
+otc_str_failure = "Failed to download."
+otc_str_failure_cause_max_tried = "maximum number of trials reached!"
+
+otc_str_test_terminated = "1. test terminated, pls check !!!"
+otc_str_test_terminated2 = "2. test terminated, pls check !!!"
+
+otc_cmd_ble_ota_start = "ble.ota_test"
+
+otc_is_timeout_happened = 0
+
+fileopen fhandle 'ota_test_result.txt' 1
+otc_file_handle = fhandle
+
+otc_str_pre_chk_item   = ""
+otc_str_pre_chk_item_2 = ""
+otc_str_pre_chk_item_3 = ""
+otc_str_pre_chk_item_4 = ""
+otc_str_pre_chk_item_5 = ""
+otc_str_pre_chk_item_6 = ""
+otc_str_pre_chk_item_7 = ""
+
+otc_str_post_chk_item      = ""
+otc_str_post_chk_item_2    = ""
+otc_str_post_chk_item_3    = ""
+otc_str_post_chk_item_4    = ""
+otc_str_post_chk_item_5    = ""
+otc_str_post_chk_item_6    = ""
+otc_str_post_chk_item_7    = ""
+
+;####################################################################
+;####################################################################
+;goto MIKE_START
+;####################################################################
+;####################################################################
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;#####################################################################
+; OTA BLE Only: TC 1.3.2.1 ~ TC 1.3.2.18 (START)
+;#####################################################################
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; download img_set_1
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+oid_boot_img = "DA16600_FBOOT-GEN01-01-922f1e27d_W25Q32JW.img"
+oid_rtos_img = "DA16600_FRTOS-GEN01-01-acfbc6be6-005006.img"
+;oid_rtos_img = ""
+oid_ble_img  = "da14531_multi_part_proxr.img"
+
+getdir oid_sub_dir
+strconcat oid_sub_dir '\\img_set_1\'
+;strconcat oid_sub_dir '\\'
+
+; Call the ``oid_fn_download_img`` subroutine.
+callsub = 'ota_img_dl:oid_fn_download_img'
+include 'subroutine.ttl'
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; make sure boot_idx is 0
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+timeout = 10
+wait 'Boot Index      : 0'
+if result=0 then
+	timeout = 0
+	sendln "boot_idx 0"
+	pause 1
+	sendln "reboot"
+endif
+timeout = 0
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; TC 1.3.2.1
+; New FW  in bank2
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+wait 'Advertising...'
+pause 1
+
+; init per TC variables ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+otc_tc_name = "TC 1.3.2.1"
+otc_str_pre_chk_item   = 'v_6.0.14.1114.2 (id=1) at bank_1'
+otc_str_pre_chk_item_2 = 'Advertising...'
+otc_str_pre_chk_item_3 = ""
+otc_str_pre_chk_item_4 = ""
+otc_str_pre_chk_item_5 = ""
+otc_str_pre_chk_item_6 = ""
+otc_str_pre_chk_item_7 = ""
+
+otc_str_post_chk_item      = 'v_6.0.14.1114.3 (id=2) at bank_2'
+otc_str_post_chk_item_2    = 'Advertising...'
+otc_str_post_chk_item_3    = ""
+otc_str_post_chk_item_4    = ""
+otc_str_post_chk_item_5    = ""
+otc_str_post_chk_item_6    = ""
+otc_str_post_chk_item_7    = ""
+otc_cmd_set_uri_rtos = "nvram.unsetenv URI_RTOS"
+otc_cmd_set_uri_ble  = "nvram.setenv URI_BLE http://192.168.0.230/pxr_sr_coex_ext_531_6_0_14_1114_3_single.img"
+
+; Call the ``otc_fn_tc_run_multi`` subroutine.
+callsub = 'ota_tc:otc_fn_tc_run_multi'
+include 'subroutine.ttl'
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; TC 1.3.2.2
+; New FW  in bank1
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; init per TC variables ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+otc_tc_name = "TC 1.3.2.2"
+otc_str_pre_chk_item = 'v_6.0.14.1114.3 (id=2) at bank_2'
+otc_str_pre_chk_item_2 = 'Advertising...'
+otc_str_pre_chk_item_3 = ""
+otc_str_pre_chk_item_4 = ""
+otc_str_pre_chk_item_5 = ""
+otc_str_pre_chk_item_6 = ""
+otc_str_pre_chk_item_7 = ""
+
+otc_str_post_chk_item    = 'v_6.0.14.1114.1 (id=3) at bank_1'
+otc_str_post_chk_item_2    = 'Advertising...'
+otc_str_post_chk_item_3    = ""
+otc_str_post_chk_item_4    = ""
+otc_str_post_chk_item_5    = ""
+otc_str_post_chk_item_6    = ""
+otc_str_post_chk_item_7    = ""
+otc_cmd_set_uri_rtos = "nvram.unsetenv URI_RTOS"
+otc_cmd_set_uri_ble  = "nvram.setenv URI_BLE http://192.168.0.230/pxr_sr_coex_ext_531_6_0_14_1114_1_single.img"
+
+; Call the ``otc_fn_tc_run_multi`` subroutine.
+callsub = 'ota_tc:otc_fn_tc_run_multi'
+include 'subroutine.ttl'
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; TC 1.3.2.3
+; New FW is same version as active BLE FW in bank1
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; init per TC variables ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+otc_tc_name = "TC 1.3.2.3"
+otc_str_pre_chk_item = 'v_6.0.14.1114.1 (id=3) at bank_1'
+otc_str_pre_chk_item_2 = 'Advertising...'
+otc_str_pre_chk_item_3 = ""
+otc_str_pre_chk_item_4 = ""
+otc_str_pre_chk_item_5 = ""
+otc_str_pre_chk_item_6 = ""
+otc_str_pre_chk_item_7 = ""
+
+otc_str_post_chk_item    = 'v_6.0.14.1114.1 (id=4) at bank_2'
+otc_str_post_chk_item_2    = 'Advertising...'
+otc_str_post_chk_item_3    = ""
+otc_str_post_chk_item_4    = ""
+otc_str_post_chk_item_5    = ""
+otc_str_post_chk_item_6    = ""
+otc_str_post_chk_item_7    = ""
+otc_cmd_set_uri_rtos = "nvram.unsetenv URI_RTOS"
+otc_cmd_set_uri_ble  = "nvram.setenv URI_BLE http://192.168.0.230/pxr_sr_coex_ext_531_6_0_14_1114_1_single.img"
+
+; Call the ``otc_fn_tc_run_multi`` subroutine.
+callsub = 'ota_tc:otc_fn_tc_run_multi'
+include 'subroutine.ttl'
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; TC 1.3.2.4
+; New FW  in bank1
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; init per TC variables ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+otc_tc_name = "TC 1.3.2.4"
+otc_str_pre_chk_item = 'v_6.0.14.1114.1 (id=4) at bank_2'
+otc_str_pre_chk_item_2 = 'Advertising...'
+otc_str_pre_chk_item_3 = ""
+otc_str_pre_chk_item_4 = ""
+otc_str_pre_chk_item_5 = ""
+otc_str_pre_chk_item_6 = ""
+otc_str_pre_chk_item_7 = ""
+
+otc_str_post_chk_item    = 'v_6.0.14.1114.2 (id=5) at bank_1'
+otc_str_post_chk_item_2    = 'Advertising...'
+otc_str_post_chk_item_3    = ""
+otc_str_post_chk_item_4    = ""
+otc_str_post_chk_item_5    = ""
+otc_str_post_chk_item_6    = ""
+otc_str_post_chk_item_7    = ""
+otc_cmd_set_uri_rtos = "nvram.unsetenv URI_RTOS"
+otc_cmd_set_uri_ble  = "nvram.setenv URI_BLE http://192.168.0.230/pxr_sr_coex_ext_531_6_0_14_1114_2_single.img"
+
+; Call the ``otc_fn_tc_run_multi`` subroutine.
+callsub = 'ota_tc:otc_fn_tc_run_multi'
+include 'subroutine.ttl'
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; TC 1.3.2.5
+; New FW is same version as inactive BLE FW in bank_2
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; init per TC variables ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+otc_tc_name = "TC 1.3.2.5"
+otc_str_pre_chk_item = 'v_6.0.14.1114.2 (id=5) at bank_1'
+otc_str_pre_chk_item_2 = 'Advertising...'
+otc_str_pre_chk_item_3 = ""
+otc_str_pre_chk_item_4 = ""
+otc_str_pre_chk_item_5 = ""
+otc_str_pre_chk_item_6 = ""
+otc_str_pre_chk_item_7 = ""
+
+otc_str_post_chk_item    = 'v_6.0.14.1114.1 (id=6) at bank_2'
+otc_str_post_chk_item_2    = 'Advertising...'
+otc_str_post_chk_item_3    = ""
+otc_str_post_chk_item_4    = ""
+otc_str_post_chk_item_5    = ""
+otc_str_post_chk_item_6    = ""
+otc_str_post_chk_item_7    = ""
+otc_cmd_set_uri_rtos = "nvram.unsetenv URI_RTOS"
+otc_cmd_set_uri_ble  = "nvram.setenv URI_BLE http://192.168.0.230/pxr_sr_coex_ext_531_6_0_14_1114_1_single.img"
+
+; Call the ``otc_fn_tc_run_multi`` subroutine.
+callsub = 'ota_tc:otc_fn_tc_run_multi'
+include 'subroutine.ttl'
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; TC 1.3.2.6
+; New FW is same version as active BLE FW in bank2
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; init per TC variables ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+otc_tc_name = "TC 1.3.2.6"
+otc_str_pre_chk_item = 'v_6.0.14.1114.1 (id=6) at bank_2'
+otc_str_pre_chk_item_2 = 'Advertising...'
+otc_str_pre_chk_item_3 = ""
+otc_str_pre_chk_item_4 = ""
+otc_str_pre_chk_item_5 = ""
+otc_str_pre_chk_item_6 = ""
+otc_str_pre_chk_item_7 = ""
+
+otc_str_post_chk_item    = 'v_6.0.14.1114.1 (id=7) at bank_1'
+otc_str_post_chk_item_2    = 'Advertising...'
+otc_str_post_chk_item_3    = ""
+otc_str_post_chk_item_4    = ""
+otc_str_post_chk_item_5    = ""
+otc_str_post_chk_item_6    = ""
+otc_str_post_chk_item_7    = ""
+otc_cmd_set_uri_rtos = "nvram.unsetenv URI_RTOS"
+otc_cmd_set_uri_ble  = "nvram.setenv URI_BLE http://192.168.0.230/pxr_sr_coex_ext_531_6_0_14_1114_1_single.img"
+
+; Call the ``otc_fn_tc_run_multi`` subroutine.
+callsub = 'ota_tc:otc_fn_tc_run_multi'
+include 'subroutine.ttl'
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; TC 1.3.2.7
+; New FW  in bank2
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; init per TC variables ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+otc_tc_name = "TC 1.3.2.7"
+otc_str_pre_chk_item = 'v_6.0.14.1114.1 (id=7) at bank_1'
+otc_str_pre_chk_item_2 = 'Advertising...'
+otc_str_pre_chk_item_3 = ""
+otc_str_pre_chk_item_4 = ""
+otc_str_pre_chk_item_5 = ""
+otc_str_pre_chk_item_6 = ""
+otc_str_pre_chk_item_7 = ""
+
+otc_str_post_chk_item    = 'v_6.0.14.1114.3 (id=8) at bank_2'
+otc_str_post_chk_item_2    = 'Advertising...'
+otc_str_post_chk_item_3    = ""
+otc_str_post_chk_item_4    = ""
+otc_str_post_chk_item_5    = ""
+otc_str_post_chk_item_6    = ""
+otc_str_post_chk_item_7    = ""
+otc_cmd_set_uri_rtos = "nvram.unsetenv URI_RTOS"
+otc_cmd_set_uri_ble  = "nvram.setenv URI_BLE http://192.168.0.230/pxr_sr_coex_ext_531_6_0_14_1114_3_single.img"
+
+; Call the ``otc_fn_tc_run_multi`` subroutine.
+callsub = 'ota_tc:otc_fn_tc_run_multi'
+include 'subroutine.ttl'
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; TC 1.3.2.8
+; New FW is same version as inactive BLE FW in bank_1
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; init per TC variables ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+otc_tc_name = "TC 1.3.2.8"
+otc_str_pre_chk_item = 'v_6.0.14.1114.3 (id=8) at bank_2'
+otc_str_pre_chk_item_2 = 'Advertising...'
+otc_str_pre_chk_item_3 = ""
+otc_str_pre_chk_item_4 = ""
+otc_str_pre_chk_item_5 = ""
+otc_str_pre_chk_item_6 = ""
+otc_str_pre_chk_item_7 = ""
+
+otc_str_post_chk_item    = 'v_6.0.14.1114.1 (id=9) at bank_1'
+otc_str_post_chk_item_2    = 'Advertising...'
+otc_str_post_chk_item_3    = ""
+otc_str_post_chk_item_4    = ""
+otc_str_post_chk_item_5    = ""
+otc_str_post_chk_item_6    = ""
+otc_str_post_chk_item_7    = ""
+otc_cmd_set_uri_rtos = "nvram.unsetenv URI_RTOS"
+otc_cmd_set_uri_ble  = "nvram.setenv URI_BLE http://192.168.0.230/pxr_sr_coex_ext_531_6_0_14_1114_1_single.img"
+
+; Call the ``otc_fn_tc_run_multi`` subroutine.
+callsub = 'ota_tc:otc_fn_tc_run_multi'
+include 'subroutine.ttl'
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; TC 1.3.2.9
+; New FW has a wrong signature in image header
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; download img_set_1 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+oid_boot_img = "DA16600_FBOOT-GEN01-01-922f1e27d_W25Q32JW.img"
+oid_rtos_img = "DA16600_FRTOS-GEN01-01-acfbc6be6-005006.img"
+;oid_rtos_img = ""
+oid_ble_img  = "da14531_multi_part_proxr.img"
+
+getdir oid_sub_dir
+strconcat oid_sub_dir '\\img_set_1\'
+;strconcat oid_sub_dir '\\'
+
+; Call the ``oid_fn_download_img`` subroutine.
+callsub = 'ota_img_dl:oid_fn_download_img'
+include 'subroutine.ttl'
+
+
+; init per TC variables ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+otc_tc_name = "TC 1.3.2.9"
+
+otc_str_pre_chk_item   = 'v_6.0.14.1114.2 (id=1) at bank_1'
+otc_str_pre_chk_item_2 = 'Advertising...'
+otc_str_pre_chk_item_3 = ""
+otc_str_pre_chk_item_4 = ""
+otc_str_pre_chk_item_5 = ""
+otc_str_pre_chk_item_6 = ""
+otc_str_pre_chk_item_7 = ""
+
+otc_str_post_chk_item      = ""
+otc_str_post_chk_item_2    = ""
+otc_str_post_chk_item_3    = ""
+otc_str_post_chk_item_4    = ""
+otc_str_post_chk_item_5    = ""
+otc_str_post_chk_item_6    = ""
+otc_str_post_chk_item_7    = ""
+
+otc_cmd_set_uri_rtos = "nvram.unsetenv URI_RTOS"
+otc_cmd_set_uri_ble  = "nvram.setenv URI_BLE http://192.168.0.230/pxr_sr_coex_ext_531_6_0_14_1114_3_single_wsig.img"
+
+; Call the ``otc_fn_tc_run_2_multi`` subroutine.
+callsub = 'ota_tc:otc_fn_tc_run_2_multi'
+include 'subroutine.ttl'
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; TC 1.3.2.10
+; New FW size exceeds bank boundary.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; init per TC variables ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+otc_tc_name = "TC 1.3.2.10"
+
+otc_str_pre_chk_item   = 'v_6.0.14.1114.2 (id=1) at bank_1'
+otc_str_pre_chk_item_2 = 'Advertising...'
+otc_str_pre_chk_item_3 = ""
+otc_str_pre_chk_item_4 = ""
+otc_str_pre_chk_item_5 = ""
+otc_str_pre_chk_item_6 = ""
+otc_str_pre_chk_item_7 = ""
+
+otc_str_post_chk_item      = ""
+otc_str_post_chk_item_2    = ""
+otc_str_post_chk_item_3    = ""
+otc_str_post_chk_item_4    = ""
+otc_str_post_chk_item_5    = ""
+otc_str_post_chk_item_6    = ""
+otc_str_post_chk_item_7    = ""
+
+otc_cmd_set_uri_rtos = "nvram.unsetenv URI_RTOS"
+otc_cmd_set_uri_ble  = "nvram.setenv URI_BLE http://192.168.0.230/pxr_sr_coex_ext_531_6_0_14_1114_3_single_bsize.img"
+
+; Call the ``otc_fn_tc_run_2_multi`` subroutine.
+callsub = 'ota_tc:otc_fn_tc_run_2_multi'
+include 'subroutine.ttl'
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; TC 1.3.2.11
+; New FW update when the current image has a max imageid
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; download da14531_multi_part_proxr_A.img ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+oid_boot_img = "DA16600_FBOOT-GEN01-01-922f1e27d_W25Q32JW.img"
+oid_rtos_img = ""
+oid_ble_img  = "da14531_multi_part_proxr_A.img"
+
+getdir oid_sub_dir
+;strconcat oid_sub_dir '\\img_set_1\'
+strconcat oid_sub_dir '\\'
+
+; Call the ``oid_fn_download_img`` subroutine.
+callsub = 'ota_img_dl:oid_fn_download_img'
+include 'subroutine.ttl'
+
+; init per TC variables ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+otc_tc_name = "TC 1.3.2.11"
+otc_str_pre_chk_item = 'v_6.0.14.1114.2 (id=255) at bank_1'
+otc_str_pre_chk_item_2 = 'Advertising...'
+otc_str_pre_chk_item_3 = ""
+otc_str_pre_chk_item_4 = ""
+otc_str_pre_chk_item_5 = ""
+otc_str_pre_chk_item_6 = ""
+otc_str_pre_chk_item_7 = ""
+
+otc_str_post_chk_item    = 'v_6.0.14.1114.3 (id=0) at bank_2'
+otc_str_post_chk_item_2    = 'Advertising...'
+otc_str_post_chk_item_3    = ""
+otc_str_post_chk_item_4    = ""
+otc_str_post_chk_item_5    = ""
+otc_str_post_chk_item_6    = ""
+otc_str_post_chk_item_7    = ""
+otc_cmd_set_uri_rtos = "nvram.unsetenv URI_RTOS"
+otc_cmd_set_uri_ble  = "nvram.setenv URI_BLE http://192.168.0.230/pxr_sr_coex_ext_531_6_0_14_1114_3_single.img"
+
+; Call the ``otc_fn_tc_run_multi`` subroutine.
+callsub = 'ota_tc:otc_fn_tc_run_multi'
+include 'subroutine.ttl'
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; TC 1.3.2.12
+; New FW update after imageid restart
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; init per TC variables ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+otc_tc_name = "TC 1.3.2.12"
+otc_str_pre_chk_item = 'v_6.0.14.1114.3 (id=0) at bank_2'
+otc_str_pre_chk_item_2 = 'Advertising...'
+otc_str_pre_chk_item_3 = ""
+otc_str_pre_chk_item_4 = ""
+otc_str_pre_chk_item_5 = ""
+otc_str_pre_chk_item_6 = ""
+otc_str_pre_chk_item_7 = ""
+
+otc_str_post_chk_item    = 'v_6.0.14.1114.1 (id=1) at bank_1'
+otc_str_post_chk_item_2    = 'Advertising...'
+otc_str_post_chk_item_3    = ""
+otc_str_post_chk_item_4    = ""
+otc_str_post_chk_item_5    = ""
+otc_str_post_chk_item_6    = ""
+otc_str_post_chk_item_7    = ""
+otc_cmd_set_uri_rtos = "nvram.unsetenv URI_RTOS"
+otc_cmd_set_uri_ble  = "nvram.setenv URI_BLE http://192.168.0.230/pxr_sr_coex_ext_531_6_0_14_1114_1_single.img"
+
+; Call the ``otc_fn_tc_run_multi`` subroutine.
+callsub = 'ota_tc:otc_fn_tc_run_multi'
+include 'subroutine.ttl'
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; TC 1.3.2.13
+; New FW update when bank_2 img is invalid
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; download da14531_multi_part_proxr_B.img ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+oid_boot_img = "DA16600_FBOOT-GEN01-01-922f1e27d_W25Q32JW.img"
+oid_rtos_img = ""
+oid_ble_img  = "da14531_multi_part_proxr_B.img"
+
+getdir oid_sub_dir
+;strconcat oid_sub_dir '\\img_set_1\'
+strconcat oid_sub_dir '\\'
+
+; Call the ``oid_fn_download_img`` subroutine.
+callsub = 'ota_img_dl:oid_fn_download_img'
+include 'subroutine.ttl'
+
+; init per TC variables ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+otc_tc_name = "TC 1.3.2.13"
+otc_str_pre_chk_item = 'v_6.0.14.1114.2 (id=1) at bank_1'
+otc_str_pre_chk_item_2 = 'Advertising...'
+otc_str_pre_chk_item_3 = ""
+otc_str_pre_chk_item_4 = ""
+otc_str_pre_chk_item_5 = ""
+otc_str_pre_chk_item_6 = ""
+otc_str_pre_chk_item_7 = ""
+
+otc_str_post_chk_item    = 'v_6.0.14.1114.3 (id=2) at bank_2'
+otc_str_post_chk_item_2    = 'Advertising...'
+otc_str_post_chk_item_3    = ""
+otc_str_post_chk_item_4    = ""
+otc_str_post_chk_item_5    = ""
+otc_str_post_chk_item_6    = ""
+otc_str_post_chk_item_7    = ""
+otc_cmd_set_uri_rtos = "nvram.unsetenv URI_RTOS"
+otc_cmd_set_uri_ble  = "nvram.setenv URI_BLE http://192.168.0.230/pxr_sr_coex_ext_531_6_0_14_1114_3_single.img"
+
+; Call the ``otc_fn_tc_run_multi`` subroutine.
+callsub = 'ota_tc:otc_fn_tc_run_multi'
+include 'subroutine.ttl'
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; TC 1.3.2.14
+; New FW update when bank_2 img is invalid (new fw is same version as the active image)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; download da14531_multi_part_proxr_B.img ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+oid_boot_img = "DA16600_FBOOT-GEN01-01-922f1e27d_W25Q32JW.img"
+oid_rtos_img = ""
+oid_ble_img  = "da14531_multi_part_proxr_B.img"
+
+getdir oid_sub_dir
+;strconcat oid_sub_dir '\\img_set_1\'
+strconcat oid_sub_dir '\\'
+
+; Call the ``oid_fn_download_img`` subroutine.
+callsub = 'ota_img_dl:oid_fn_download_img'
+include 'subroutine.ttl'
+
+; init per TC variables ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+otc_tc_name = "TC 1.3.2.14"
+otc_str_pre_chk_item = 'v_6.0.14.1114.2 (id=1) at bank_1'
+otc_str_pre_chk_item_2 = 'Advertising...'
+otc_str_pre_chk_item_3 = ""
+otc_str_pre_chk_item_4 = ""
+otc_str_pre_chk_item_5 = ""
+otc_str_pre_chk_item_6 = ""
+otc_str_pre_chk_item_7 = ""
+
+otc_str_post_chk_item    = 'v_6.0.14.1114.2 (id=2) at bank_2'
+otc_str_post_chk_item_2    = 'Advertising...'
+otc_str_post_chk_item_3    = ""
+otc_str_post_chk_item_4    = ""
+otc_str_post_chk_item_5    = ""
+otc_str_post_chk_item_6    = ""
+otc_str_post_chk_item_7    = ""
+otc_cmd_set_uri_rtos = "nvram.unsetenv URI_RTOS"
+otc_cmd_set_uri_ble  = "nvram.setenv URI_BLE http://192.168.0.230/pxr_sr_coex_ext_531_6_0_14_1114_2_single.img"
+
+; Call the ``otc_fn_tc_run_multi`` subroutine.
+callsub = 'ota_tc:otc_fn_tc_run_multi'
+include 'subroutine.ttl'
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; TC 1.3.2.15
+; New FW update when bank_2 img is invalid (new fw is same version as the inactive invalid image)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; download da14531_multi_part_proxr_B.img ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+oid_boot_img = "DA16600_FBOOT-GEN01-01-922f1e27d_W25Q32JW.img"
+oid_rtos_img = ""
+oid_ble_img  = "da14531_multi_part_proxr_B.img"
+
+getdir oid_sub_dir
+;strconcat oid_sub_dir '\\img_set_1\'
+strconcat oid_sub_dir '\\'
+
+; Call the ``oid_fn_download_img`` subroutine.
+callsub = 'ota_img_dl:oid_fn_download_img'
+include 'subroutine.ttl'
+
+; init per TC variables ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+otc_tc_name = "TC 1.3.2.15"
+otc_str_pre_chk_item = 'v_6.0.14.1114.2 (id=1) at bank_1'
+otc_str_pre_chk_item_2 = 'Advertising...'
+otc_str_pre_chk_item_3 = ""
+otc_str_pre_chk_item_4 = ""
+otc_str_pre_chk_item_5 = ""
+otc_str_pre_chk_item_6 = ""
+otc_str_pre_chk_item_7 = ""
+
+otc_str_post_chk_item    = 'v_6.0.14.1114.1 (id=2) at bank_2'
+otc_str_post_chk_item_2    = 'Advertising...'
+otc_str_post_chk_item_3    = ""
+otc_str_post_chk_item_4    = ""
+otc_str_post_chk_item_5    = ""
+otc_str_post_chk_item_6    = ""
+otc_str_post_chk_item_7    = ""
+otc_cmd_set_uri_rtos = "nvram.unsetenv URI_RTOS"
+otc_cmd_set_uri_ble  = "nvram.setenv URI_BLE http://192.168.0.230/pxr_sr_coex_ext_531_6_0_14_1114_1_single.img"
+
+; Call the ``otc_fn_tc_run_multi`` subroutine.
+callsub = 'ota_tc:otc_fn_tc_run_multi'
+include 'subroutine.ttl'
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; TC 1.3.2.16
+; New FW update when bank_1 img is invalid
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; download da14531_multi_part_proxr_C.img ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+oid_boot_img = "DA16600_FBOOT-GEN01-01-922f1e27d_W25Q32JW.img"
+oid_rtos_img = ""
+oid_ble_img  = "da14531_multi_part_proxr_C.img"
+
+getdir oid_sub_dir
+;strconcat oid_sub_dir '\\img_set_1\'
+strconcat oid_sub_dir '\\'
+
+; Call the ``oid_fn_download_img`` subroutine.
+callsub = 'ota_img_dl:oid_fn_download_img'
+include 'subroutine.ttl'
+
+
+; init per TC variables ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+otc_tc_name = "TC 1.3.2.16"
+otc_str_pre_chk_item = 'v_6.0.14.1114.1 (id=0) at bank_2'
+otc_str_pre_chk_item_2 = 'Advertising...'
+otc_str_pre_chk_item_3 = ""
+otc_str_pre_chk_item_4 = ""
+otc_str_pre_chk_item_5 = ""
+otc_str_pre_chk_item_6 = ""
+otc_str_pre_chk_item_7 = ""
+
+otc_str_post_chk_item    = 'v_6.0.14.1114.3 (id=1) at bank_1'
+otc_str_post_chk_item_2    = 'Advertising...'
+otc_str_post_chk_item_3    = ""
+otc_str_post_chk_item_4    = ""
+otc_str_post_chk_item_5    = ""
+otc_str_post_chk_item_6    = ""
+otc_str_post_chk_item_7    = ""
+otc_cmd_set_uri_rtos = "nvram.unsetenv URI_RTOS"
+otc_cmd_set_uri_ble  = "nvram.setenv URI_BLE http://192.168.0.230/pxr_sr_coex_ext_531_6_0_14_1114_3_single.img"
+
+; Call the ``otc_fn_tc_run_multi`` subroutine.
+callsub = 'ota_tc:otc_fn_tc_run_multi'
+include 'subroutine.ttl'
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; TC 1.3.2.17
+; New FW update when bank_1 img is invalid (new fw is same version as the active image)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; download da14531_multi_part_proxr_C.img ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+oid_boot_img = "DA16600_FBOOT-GEN01-01-922f1e27d_W25Q32JW.img"
+oid_rtos_img = ""
+oid_ble_img  = "da14531_multi_part_proxr_C.img"
+
+getdir oid_sub_dir
+;strconcat oid_sub_dir '\\img_set_1\'
+strconcat oid_sub_dir '\\'
+
+; Call the ``oid_fn_download_img`` subroutine.
+callsub = 'ota_img_dl:oid_fn_download_img'
+include 'subroutine.ttl'
+
+; init per TC variables ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+otc_tc_name = "TC 1.3.2.17"
+otc_str_pre_chk_item = 'v_6.0.14.1114.1 (id=0) at bank_2'
+otc_str_pre_chk_item_2 = 'Advertising...'
+otc_str_pre_chk_item_3 = ""
+otc_str_pre_chk_item_4 = ""
+otc_str_pre_chk_item_5 = ""
+otc_str_pre_chk_item_6 = ""
+otc_str_pre_chk_item_7 = ""
+
+otc_str_post_chk_item    = 'v_6.0.14.1114.1 (id=1) at bank_1'
+otc_str_post_chk_item_2    = 'Advertising...'
+otc_str_post_chk_item_3    = ""
+otc_str_post_chk_item_4    = ""
+otc_str_post_chk_item_5    = ""
+otc_str_post_chk_item_6    = ""
+otc_str_post_chk_item_7    = ""
+otc_cmd_set_uri_rtos = "nvram.unsetenv URI_RTOS"
+otc_cmd_set_uri_ble  = "nvram.setenv URI_BLE http://192.168.0.230/pxr_sr_coex_ext_531_6_0_14_1114_1_single.img"
+
+; Call the ``otc_fn_tc_run_multi`` subroutine.
+callsub = 'ota_tc:otc_fn_tc_run_multi'
+include 'subroutine.ttl'
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; TC 1.3.2.18
+; New FW update when bank_1 img is invalid (new fw is same version as the inactive invalid image)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; download da14531_multi_part_proxr_C.img ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+oid_boot_img = "DA16600_FBOOT-GEN01-01-922f1e27d_W25Q32JW.img"
+oid_rtos_img = ""
+oid_ble_img  = "da14531_multi_part_proxr_C.img"
+
+getdir oid_sub_dir
+;strconcat oid_sub_dir '\\img_set_1\'
+strconcat oid_sub_dir '\\'
+
+; Call the ``oid_fn_download_img`` subroutine.
+callsub = 'ota_img_dl:oid_fn_download_img'
+include 'subroutine.ttl'
+
+; init per TC variables ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+otc_tc_name = "TC 1.3.2.18"
+otc_str_pre_chk_item = 'v_6.0.14.1114.1 (id=0) at bank_2'
+otc_str_pre_chk_item_2 = 'Advertising...'
+otc_str_pre_chk_item_3 = ""
+otc_str_pre_chk_item_4 = ""
+otc_str_pre_chk_item_5 = ""
+otc_str_pre_chk_item_6 = ""
+otc_str_pre_chk_item_7 = ""
+
+otc_str_post_chk_item    = 'v_6.0.14.1114.2 (id=1) at bank_1'
+otc_str_post_chk_item_2    = 'Advertising...'
+otc_str_post_chk_item_3    = ""
+otc_str_post_chk_item_4    = ""
+otc_str_post_chk_item_5    = ""
+otc_str_post_chk_item_6    = ""
+otc_str_post_chk_item_7    = ""
+otc_cmd_set_uri_rtos = "nvram.unsetenv URI_RTOS"
+otc_cmd_set_uri_ble  = "nvram.setenv URI_BLE http://192.168.0.230/pxr_sr_coex_ext_531_6_0_14_1114_2_single.img"
+
+; Call the ``otc_fn_tc_run_multi`` subroutine.
+callsub = 'ota_tc:otc_fn_tc_run_multi'
+include 'subroutine.ttl'
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;#####################################################################
+; OTA BLE Only: TC 1.3.2.1 ~ TC 1.3.2.18 (END)
+;#####################################################################
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;#####################################################################
+; OTA WIFI Only: TC 1.3.3.1 ~ TC 1.3.3.5 (START)
+;#####################################################################
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; TC 1.3.3.1
+; new Wi-Fi FW
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; download img_set_1 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+oid_boot_img = "DA16600_FBOOT-GEN01-01-922f1e27d_W25Q32JW.img"
+oid_rtos_img = "DA16600_FRTOS-GEN01-01-acfbc6be6-005006.img"
+oid_ble_img  = "da14531_multi_part_proxr.img"
+
+getdir oid_sub_dir
+strconcat oid_sub_dir '\\img_set_1\'
+;strconcat oid_sub_dir '\\'
+
+; Call the ``oid_fn_download_img`` subroutine.
+callsub = 'ota_img_dl:oid_fn_download_img'
+include 'subroutine.ttl'
+
+; init per TC variables ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+otc_tc_name = "TC 1.3.3.1"
+otc_str_pre_chk_item   = 'FRTOS-GEN01-01-acfbc6be6-005006'
+otc_str_pre_chk_item_2 = 'Boot Index      : 0'
+otc_str_pre_chk_item_3 = "Advertising..."
+otc_str_pre_chk_item_4 = ""
+otc_str_pre_chk_item_5 = ""
+otc_str_pre_chk_item_6 = ""
+otc_str_pre_chk_item_7 = ""
+
+otc_str_post_chk_item      = 'FRTOS-GEN01-01-507491211-005007'
+otc_str_post_chk_item_2    = 'Boot Index      : 1'
+otc_str_post_chk_item_3    = "Advertising..."
+otc_str_post_chk_item_4    = ""
+otc_str_post_chk_item_5    = ""
+otc_str_post_chk_item_6    = ""
+otc_str_post_chk_item_7    = ""
+
+otc_cmd_set_uri_rtos = "nvram.setenv URI_RTOS http://192.168.0.230/DA16600_FRTOS-GEN01-01-507491211-005007.img"
+otc_cmd_set_uri_ble  = "nvram.unsetenv URI_BLE"
+
+; Call the ``otc_fn_tc_run_multi`` subroutine.
+callsub = 'ota_tc:otc_fn_tc_run_multi'
+include 'subroutine.ttl'
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; TC 1.3.3.2
+; new Wi-Fi FW (same version)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; init per TC variables ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+otc_tc_name = "TC 1.3.3.2"
+
+otc_str_pre_chk_item   = 'FRTOS-GEN01-01-507491211-005007'
+otc_str_pre_chk_item_2 = 'Boot Index      : 1'
+otc_str_pre_chk_item_3 = "Advertising..."
+otc_str_pre_chk_item_4 = ""
+otc_str_pre_chk_item_5 = ""
+otc_str_pre_chk_item_6 = ""
+otc_str_pre_chk_item_7 = ""
+
+otc_str_post_chk_item      = 'FRTOS-GEN01-01-507491211-005007'
+otc_str_post_chk_item_2    = 'Boot Index      : 0'
+otc_str_post_chk_item_3    = "Advertising..."
+otc_str_post_chk_item_4    = ""
+otc_str_post_chk_item_5    = ""
+otc_str_post_chk_item_6    = ""
+otc_str_post_chk_item_7    = ""
+
+otc_cmd_set_uri_rtos = "nvram.setenv URI_RTOS http://192.168.0.230/DA16600_FRTOS-GEN01-01-507491211-005007.img"
+otc_cmd_set_uri_ble  = "nvram.unsetenv URI_BLE"
+
+; Call the ``otc_fn_tc_run_multi`` subroutine.
+callsub = 'ota_tc:otc_fn_tc_run_multi'
+include 'subroutine.ttl'
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; TC 1.3.3.3
+; not required, skipped
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; TC 1.3.3.4
+; Wi-Fi (imcompatible)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; init per TC variables ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+otc_tc_name = "TC 1.3.3.4"
+
+otc_str_pre_chk_item   = 'System Mode : Station Only'
+otc_str_pre_chk_item_2 = "Advertising..."
+otc_str_pre_chk_item_3 = ""
+otc_str_pre_chk_item_4 = ""
+otc_str_pre_chk_item_5 = ""
+otc_str_pre_chk_item_6 = ""
+otc_str_pre_chk_item_7 = ""
+
+otc_str_post_chk_item      = ""
+otc_str_post_chk_item_2    = ""
+otc_str_post_chk_item_3    = ""
+otc_str_post_chk_item_4    = ""
+otc_str_post_chk_item_5    = ""
+otc_str_post_chk_item_6    = ""
+otc_str_post_chk_item_7    = ""
+
+otc_cmd_set_uri_rtos = "nvram.setenv URI_RTOS http://192.168.0.230/DA16600_FRTOS-GEN01-02-acfbc6be6-005006.img"
+otc_cmd_set_uri_ble  = "nvram.unsetenv URI_BLE"
+
+; Call the ``otc_fn_tc_run_2_multi`` subroutine.
+callsub = 'ota_tc:otc_fn_tc_run_2_multi'
+include 'subroutine.ttl'
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;#####################################################################
+; OTA WIFI Only: TC 1.3.3.1 ~ TC 1.3.3.5 (END)
+;#####################################################################
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;#####################################################################
+; OTA WIFI & BLE : TC 1.3.4.1 ~ TC 1.3.4.6 (START)
+;#####################################################################
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; TC 1.3.4.1
+; 'Both Wi-Fi FW and BLE FW update
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; download img_set_1 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+oid_boot_img = "DA16600_FBOOT-GEN01-01-922f1e27d_W25Q32JW.img"
+oid_rtos_img = "DA16600_FRTOS-GEN01-01-acfbc6be6-005006.img"
+oid_ble_img  = "da14531_multi_part_proxr.img"
+
+getdir oid_sub_dir
+strconcat oid_sub_dir '\\img_set_1\'
+;strconcat oid_sub_dir '\\'
+
+; Call the ``oid_fn_download_img`` subroutine.
+callsub = 'ota_img_dl:oid_fn_download_img'
+include 'subroutine.ttl'
+
+; init per TC variables ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+otc_tc_name = "TC 1.3.4.1"
+otc_str_pre_chk_item   = 'FRTOS-GEN01-01-acfbc6be6-005006'
+otc_str_pre_chk_item_2 = 'Boot Index      : 0'
+otc_str_pre_chk_item_3 = "v_6.0.14.1114.2 (id=1) at bank_1"
+otc_str_pre_chk_item_4 = "Advertising..."
+otc_str_pre_chk_item_5 = ""
+otc_str_pre_chk_item_6 = ""
+otc_str_pre_chk_item_7 = ""
+
+otc_str_post_chk_item      = 'FRTOS-GEN01-01-507491211-005007'
+otc_str_post_chk_item_2    = 'Boot Index      : 1'
+otc_str_post_chk_item_3    = "v_6.0.14.1114.3 (id=2) at bank_2"
+otc_str_post_chk_item_4    = "Advertising..."
+otc_str_post_chk_item_5    = ""
+otc_str_post_chk_item_6    = ""
+otc_str_post_chk_item_7    = ""
+
+otc_cmd_set_uri_rtos = "nvram.setenv URI_RTOS http://192.168.0.230/DA16600_FRTOS-GEN01-01-507491211-005007.img"
+otc_cmd_set_uri_ble  = "nvram.setenv URI_BLE http://192.168.0.230/pxr_sr_coex_ext_531_6_0_14_1114_3_single.img"
+
+; Call the ``otc_fn_tc_run_multi`` subroutine.
+callsub = 'ota_tc:otc_fn_tc_run_multi'
+include 'subroutine.ttl'
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; TC 1.3.4.2
+; BLE FW not found
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; init per TC variables ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+otc_tc_name = "TC 1.3.4.2"
+
+otc_str_pre_chk_item   = 'System Mode : Station Only'
+otc_str_pre_chk_item_2 = "Advertising..."
+otc_str_pre_chk_item_3 = ""
+otc_str_pre_chk_item_4 = ""
+otc_str_pre_chk_item_5 = ""
+otc_str_pre_chk_item_6 = ""
+otc_str_pre_chk_item_7 = ""
+
+otc_str_post_chk_item      = "<RTOS> Succeeded to download."
+otc_str_post_chk_item_2    = ""
+otc_str_post_chk_item_3    = ""
+otc_str_post_chk_item_4    = ""
+otc_str_post_chk_item_5    = ""
+otc_str_post_chk_item_6    = ""
+otc_str_post_chk_item_7    = ""
+
+otc_cmd_set_uri_rtos = "nvram.setenv URI_RTOS http://192.168.0.230/DA16600_FRTOS-GEN01-01-7885771ad-005008.img"
+otc_cmd_set_uri_ble  = "nvram.setenv URI_BLE http://192.168.0.230/pxr_sr_coex_ext_531_6_0_14_1114_4_single.img"
+
+; Call the ``otc_fn_tc_run_2_multi`` subroutine.
+callsub = 'ota_tc:otc_fn_tc_run_2_multi'
+include 'subroutine.ttl'
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; TC 1.3.4.3
+; BLE FW header error (wrong signature)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; init per TC variables ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+otc_tc_name = "TC 1.3.4.3"
+
+otc_str_pre_chk_item   = 'System Mode : Station Only'
+otc_str_pre_chk_item_2 = "Advertising..."
+otc_str_pre_chk_item_3 = ""
+otc_str_pre_chk_item_4 = ""
+otc_str_pre_chk_item_5 = ""
+otc_str_pre_chk_item_6 = ""
+otc_str_pre_chk_item_7 = ""
+
+otc_str_post_chk_item      = "<RTOS> Succeeded to download."
+otc_str_post_chk_item_2    = ""
+otc_str_post_chk_item_3    = ""
+otc_str_post_chk_item_4    = ""
+otc_str_post_chk_item_5    = ""
+otc_str_post_chk_item_6    = ""
+otc_str_post_chk_item_7    = ""
+
+otc_cmd_set_uri_rtos = "nvram.setenv URI_RTOS http://192.168.0.230/DA16600_FRTOS-GEN01-01-7885771ad-005008.img"
+otc_cmd_set_uri_ble  = "nvram.setenv URI_BLE http://192.168.0.230/pxr_sr_coex_ext_531_6_0_14_1114_3_single_wsig.img"
+
+; Call the ``otc_fn_tc_run_2_multi`` subroutine.
+callsub = 'ota_tc:otc_fn_tc_run_2_multi'
+include 'subroutine.ttl'
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; TC 1.3.4.4
+; 'Wi-Fi FW not found
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; init per TC variables ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+otc_tc_name = "TC 1.3.4.4"
+
+otc_str_pre_chk_item   = 'System Mode : Station Only'
+otc_str_pre_chk_item_2 = "Advertising..."
+otc_str_pre_chk_item_3 = ""
+otc_str_pre_chk_item_4 = ""
+otc_str_pre_chk_item_5 = ""
+otc_str_pre_chk_item_6 = ""
+otc_str_pre_chk_item_7 = ""
+
+otc_str_post_chk_item      = ""
+otc_str_post_chk_item_2    = ""
+otc_str_post_chk_item_3    = ""
+otc_str_post_chk_item_4    = ""
+otc_str_post_chk_item_5    = ""
+otc_str_post_chk_item_6    = ""
+otc_str_post_chk_item_7    = ""
+
+otc_cmd_set_uri_rtos = "nvram.setenv URI_RTOS http://192.168.0.230/DA16600_FRTOS-GEN01-01-fbd391916-005111.img"
+otc_cmd_set_uri_ble  = "nvram.setenv URI_BLE http://192.168.0.230/pxr_sr_coex_ext_531_6_0_14_1114_1_single.img"
+
+; Call the ``otc_fn_tc_run_2_multi`` subroutine.
+callsub = 'ota_tc:otc_fn_tc_run_2_multi'
+include 'subroutine.ttl'
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; TC 1.3.4.5
+; Renew fail due to Wi-Fi FW incompatibility (incompatible major number)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; init per TC variables ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+otc_tc_name = "TC 1.3.4.5"
+
+otc_str_pre_chk_item   = 'System Mode : Station Only'
+otc_str_pre_chk_item_2 = "Advertising..."
+otc_str_pre_chk_item_3 = ""
+otc_str_pre_chk_item_4 = ""
+otc_str_pre_chk_item_5 = ""
+otc_str_pre_chk_item_6 = ""
+otc_str_pre_chk_item_7 = ""
+
+otc_str_post_chk_item      = 'Mismatch major-number'
+otc_str_post_chk_item_2    = ""
+otc_str_post_chk_item_3    = ""
+otc_str_post_chk_item_4    = ""
+otc_str_post_chk_item_5    = ""
+otc_str_post_chk_item_6    = ""
+otc_str_post_chk_item_7    = ""
+
+otc_cmd_set_uri_rtos = "nvram.setenv URI_RTOS http://192.168.0.230/DA16600_FRTOS-GEN01-02-acfbc6be6-005006.img"
+otc_cmd_set_uri_ble  = "nvram.setenv URI_BLE http://192.168.0.230/pxr_sr_coex_ext_531_6_0_14_1114_1_single.img"
+
+; Call the ``otc_fn_tc_run_2_multi`` subroutine.
+callsub = 'ota_tc:otc_fn_tc_run_2_multi'
+include 'subroutine.ttl'
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; TC 1.3.4.6
+; normal case (update to boot_idx=0)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; init per TC variables ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+otc_tc_name = "TC 1.3.4.6"
+otc_str_pre_chk_item   = 'Boot Index      : 1'
+otc_str_pre_chk_item_2 = "Advertising..."
+otc_str_pre_chk_item_3 = ""
+otc_str_pre_chk_item_4 = ""
+otc_str_pre_chk_item_5 = ""
+otc_str_pre_chk_item_6 = ""
+otc_str_pre_chk_item_7 = ""
+
+otc_str_post_chk_item      = 'FRTOS-GEN01-01-7885771ad-005008'
+otc_str_post_chk_item_2    = 'Boot Index      : 0'
+otc_str_post_chk_item_3    = "v_6.0.14.1114.1"
+otc_str_post_chk_item_4    = "Advertising..."
+otc_str_post_chk_item_5    = ""
+otc_str_post_chk_item_6    = ""
+otc_str_post_chk_item_7    = ""
+
+otc_cmd_set_uri_rtos = "nvram.setenv URI_RTOS http://192.168.0.230/DA16600_FRTOS-GEN01-01-7885771ad-005008.img"
+otc_cmd_set_uri_ble  = "nvram.setenv URI_BLE http://192.168.0.230/pxr_sr_coex_ext_531_6_0_14_1114_1_single.img"
+
+; Call the ``otc_fn_tc_run_multi`` subroutine.
+callsub = 'ota_tc:otc_fn_tc_run_multi'
+include 'subroutine.ttl'
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;#####################################################################
+; OTA WIFI & BLE : TC 1.3.4.1 ~ TC 1.3.4.6 (END)
+;#####################################################################
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;####################################################################
+;####################################################################
+;:MIKE_START
+;####################################################################
+;####################################################################
+
+end

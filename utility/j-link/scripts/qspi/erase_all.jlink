@@ -1,0 +1,8 @@
+si 1
+speed auto
+r
+h
+exec EnableEraseAllFlashBanks
+erase
+h
+exit

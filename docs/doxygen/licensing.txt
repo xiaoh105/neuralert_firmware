@@ -1,0 +1,32 @@
+LICENSES
+
+NAME                    LICENSE FILE PATH                                   LICENSE TYPE    COPYRIGHT                       COMMENTS
+------------------------------------------------------------------------------------------------------------------------------------------------------------
+SDK core and                                                                Dialog          Dialog Semiconductor            Licensed under the relevant Dialog SLA
+applications                                                                proprietary
+------------------------------------------------------------------------------------------------------------------------------------------------------------
+Network stack                                                               Third Party     Third Party                     Licensed under the relevant Dialog SLA
+                                                                            proprietary
+------------------------------------------------------------------------------------------------------------------------------------------------------------
+Crypto implementation   src\crypto\mbedTLS_license.txt                      Revised BSD     ARM LIMITED                     Contained in file headers
+                                                                                                                                 where applicable
+------------------------------------------------------------------------------------------------------------------------------------------------------------
+ARM                     sdk\platform\arm_license.txt                        Revised BSD     ARM LIMITED                     Contained in file headers
+                                                                                                                                 where applicable
+------------------------------------------------------------------------------------------------------------------------------------------------------------
+MQTT implementation	src\mqtt_client\mosquitto_license.txt               ECL/EDL         Eclipse Foundation              Contained in file headers
+                                                                                                                                 where applicable
+------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+This software includes both proprietary and open source components. The proprietary components may only be used after execution of the
+relevant Dialog Semiconductor Licensing Agreement. If you have not executed such an agreement you are not authorised to use this software.
+All open source components constitute a separate delivery and are licensed according to the applicable terms of their respective open source
+licenses. All open source software is delivered "AS IS" with no warranties. While Dialog Semiconductor seeks to provide complete and
+accurate licensing information with regard to each open source package, Dialog Semiconductor does not warrant or represent that the
+licensing information is complete or error-free. Certain open source licenses may  require that source code is made available under certain conditions. 
+Please contact bluetooth.support@diasemi.com for any source code requests, as well as for any licensing inquiries with respect to the proprietary components.
+
+Release Version: DA14585/586/531 v6.0.12.1020.2 SDK
+
+Approved by Legal: Yes

@@ -1,0 +1,28 @@
+var struct__coap__client__conf__t =
+[
+    [ "ack_timeout", "struct__coap__client__conf__t.html#ab1ca463cc58d4fe6e7fd09f989a9ded2", null ],
+    [ "authmode", "struct__coap__client__conf__t.html#abb8388c055f9ebb1897b557de4ce6f1f", null ],
+    [ "block1_szx", "struct__coap__client__conf__t.html#a4c2866f36fd54cd235aefa3ba369a026", null ],
+    [ "block2_szx", "struct__coap__client__conf__t.html#a95e8ebe1d4c5680928460402c36d3632", null ],
+    [ "ca_cert", "struct__coap__client__conf__t.html#a00b01067a391cd05c8870f8aa7bbc9da", null ],
+    [ "ca_cert_len", "struct__coap__client__conf__t.html#a73476ef7d1a91adeed6622df6c8328e7", null ],
+    [ "cert", "struct__coap__client__conf__t.html#aaf269ba0def89c7b618ded233293cabb", null ],
+    [ "cert_len", "struct__coap__client__conf__t.html#a3c3fa7258232b594d323522ce727c346", null ],
+    [ "fragment", "struct__coap__client__conf__t.html#a1a7f2591e24dda2d37ee9fd20a4937a5", null ],
+    [ "handshake_max_timeout", "struct__coap__client__conf__t.html#a8719fc55ac69539b4091ce4293ce65ce", null ],
+    [ "handshake_min_timeout", "struct__coap__client__conf__t.html#a62c056cc30500990cd20ca5090907209", null ],
+    [ "iface", "struct__coap__client__conf__t.html#a230073b67dc686efcd32a89ccb6a1571", null ],
+    [ "max_retransmit", "struct__coap__client__conf__t.html#a5b019035d09600b407441077ced65b01", null ],
+    [ "msg_type", "struct__coap__client__conf__t.html#a276242e8ff6f9da8a6e935f90f2aeba5", null ],
+    [ "pkey", "struct__coap__client__conf__t.html#acbe07809ba6233d7ed03bf1be7dc2bb5", null ],
+    [ "pkey_len", "struct__coap__client__conf__t.html#a297c001af1f867ef3a4a3d42bbf376dc", null ],
+    [ "proxy_uri", "struct__coap__client__conf__t.html#ab0fa2a924315186fbba9959b2e5608ba", null ],
+    [ "proxy_uri_len", "struct__coap__client__conf__t.html#a05e7826c607881cee357388e808e1104", null ],
+    [ "psk_identity", "struct__coap__client__conf__t.html#af755f3f3a559886a0d5a0d3e0e535205", null ],
+    [ "psk_identity_len", "struct__coap__client__conf__t.html#ad56991b0d7ddd6a5e7f83ccbd560890d", null ],
+    [ "psk_key", "struct__coap__client__conf__t.html#ae20933a02a9136b7047eb91014488e71", null ],
+    [ "psk_key_len", "struct__coap__client__conf__t.html#afe5d8db0828226bd3a2877c06f967709", null ],
+    [ "secure_conn_max_retransmit", "struct__coap__client__conf__t.html#a46fb6749c48650642cecf8dcecf46381", null ],
+    [ "uri", "struct__coap__client__conf__t.html#af2c03b6965ce2fbbb29b97a2818c96a2", null ],
+    [ "uri_len", "struct__coap__client__conf__t.html#a7210711f2842d1f9ba769f2bd06059f7", null ]
+];

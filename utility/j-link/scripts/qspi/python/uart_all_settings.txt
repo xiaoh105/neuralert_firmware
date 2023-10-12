@@ -1,0 +1,5 @@
+COM80
+0 d:\Project\WIFI\sdk\FreeRTOS\test\DA16200_DA16600_SDK_FreeRTOS_v3.2.5.0\apps\da16600\get_started\projects\da16600\img\DA16600_FBOOT-GEN01-01-922f1e27d_W25Q32JW.img
+#0 d:\Project\WIFI\sdk\FreeRTOS\test\DA16200_DA16600_SDK_FreeRTOS_v3.2.5.0\apps\da16600\get_started\projects\da16600\img\DA16600_FBOOT-GEN01-01-922f1e27d_AT25SL321.img
+23000 d:\Project\WIFI\sdk\FreeRTOS\test\DA16200_DA16600_SDK_FreeRTOS_v3.2.5.0\apps\da16600\get_started\projects\da16600\img\DA16600_FRTOS-GEN01-01-089fe9f2c-006048.img
+3ad000 d:\Project\WIFI\sdk\FreeRTOS\test\DA16200_DA16600_SDK_FreeRTOS_v3.2.5.0\apps\da16600\get_started\projects\da16600\img\DA14531_1\da14531_multi_part_proxr.img

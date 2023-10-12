@@ -1,0 +1,73 @@
+LICENSES
+
+NAME			LICENSE FILE PATH                      			LICENSE TYPE		COPYRIGHT                       COMMENTS
+------------------------------------------------------------------------------------------------------------------------------------------------------------
+FreeRTOS									MIT License		Amazon.com			Contained in file headers
+                                                               	                                                
+------------------------------------------------------------------------------------------------------------------------------------------------------------
+LwIP			sdk\libraries\3rdparty\lwip\COPYING			BSD License		Swedish Institute of Computer Science       
+								           
+------------------------------------------------------------------------------------------------------------------------------------------------------------
+Lower MAC               							Third party		Third party Licensor            Contained in file headers 
+										proprietary						where applicable
+------------------------------------------------------------------------------------------------------------------------------------------------------------
+Upper MAC                   							Renesas			Renesas Electronics             Licensed under the
+										proprietary                      			Renesas SLA
+------------------------------------------------------------------------------------------------------------------------------------------------------------
+Supplicant                     							BSD     		Jouni Malinen			Contained in file headers
+																	where applicable
+------------------------------------------------------------------------------------------------------------------------------------------------------------
+ARM Embed TLS v2.7.0	src\crypto\src\mbedtls\LICENSE-2.0.txt			Apache License V2.0	ARM LIMITED			Contained in file headers 
+																	where applicable
+------------------------------------------------------------------------------------------------------------------------------------------------------------
+DPM Daemon                                                    		 	Renesas			Renesas Electronics             Licensed under the Renesas SLA
+										proprietary                                     
+------------------------------------------------------------------------------------------------------------------------------------------------------------
+LwIP Network Components								BSD License		Swedish Institute of Computer Sciense
+(DHCP, Ping, ARP, DNS, FTP, HTTP, SNTP)                        	                                                
+------------------------------------------------------------------------------------------------------------------------------------------------------------
+Network Applicattion                           		                	Renesas			Renesas Electronics             Licensed under the Renesas SLA
+(ifconfig, mDNS/xmDNS/DNS-SD, CoAP, OTA, AT-CMD)       		        	proprietary                                     
+------------------------------------------------------------------------------------------------------------------------------------------------------------
+MQTT Client		src\mqtt_client\LICENSE-EDL-1.0.txt			EDL 1.0			Roger Light                     Contained in file headers 
+																	where applicable
+------------------------------------------------------------------------------------------------------------------------------------------------------------
+crc32			src\library\gzip\crc32_license.txt			unrestricted use					Contained in file headers
+                                                                                                                       			where applicable
+------------------------------------------------------------------------------------------------------------------------------------------------------------
+ARM			src\crypto\arm_license.txt				Revised BSD License	ARM LIMITED        		Contained in file headers
+                                                                                                                  		  	where applicable
+-----------------------------------------------------------------------------------------------------------------------------------------------------------
+DHCP Server		sdk/libraries/3rdparty/lwip/src/apps/dhcpserver		Apache License V2.0	Espressif Systems		Contained in file headers
+                                                                                                                    			where applicable
+-----------------------------------------------------------------------------------------------------------------------------------------------------------
+SEGGER                  							Revised BSD License	SEGGER Microcontroller 		Contained in file headers 
+													GmbH & Co. KG			where applicable
+-----------------------------------------------------------------------------------------------------------------------------------------------------------
+µOS++ distribution                  						Eclipse Public License	Liviu Ionescu			Contained in file headers
+											V1.0						where applicable
+-----------------------------------------------------------------------------------------------------------------------------------------------------------
+Sanos Operating System Kernel           					Revised BSD License	Michael Ringgaard		Contained in file headers
+																	where applicable
+-----------------------------------------------------------------------------------------------------------------------------------------------------------
+Time Zone Database                         					BSD License		The Regents of the UCLA		Contained in file headers
+																	where applicable
+-----------------------------------------------------------------------------------------------------------------------------------------------------------
+Python tool		utility\j-link\scripts\qspi\python			Renesas	 		Renesas Electronics		Contained in file headers
+										proprietary
+-----------------------------------------------------------------------------------------------------------------------------------------------------------
+Python Ymodem 		utility\j-link\scripts\qspi\python\Ymodem		MIT License		Alex Woo			Contained in License file
+-----------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+This software includes both proprietary and open source components. The proprietary components may only be used after execution of the
+relevant Renesas Electronics Software Licensing Agreement. If you have not executed such an agreement you are not authorised to use this software.
+All open source components constitute a separate delivery and are licensed according to the applicable terms of their respective open source
+licenses. All open source software is delivered "AS IS" with no warranties. While Renesas Electronics seeks to provide complete and
+accurate licensing information with regard to each open source package, Renesas Electronics does not warrant or represent that the
+licensing information is complete or error-free. Please contact customer support for any source code requests, as well as for any 
+licensing inquiries with respect to the proprietary components.
+ 
+Release Version: v.3.2.8 
+
+Approved by Legal: Yes

@@ -1,0 +1,33 @@
+; otp init (it is already init status in MROM prompt)
+; read lock status
+sendln 'lwr 40120000 38000000'
+wait '[BOOT]' '[MROM]'
+
+:RETRY
+sendln 'lrd 40103ffc'
+wait '[0x40103FFC] : '
+recvln
+;strtrim inputstr '[0x40103FFC] :'
+;messagebox inputstr "str"
+;strtrim inputstr '[0x40103FFC] : 0x0000000'
+strcopy inputstr 25 1 substr
+;messagebox substr "str"
+strcompare substr '1'
+; if locked do nothing
+if result=0 then 
+	goto END
+; if not lock the 0bit
+else  
+	messagebox 'secure regien lock' "confirm"
+	sendln 'lwr 40120000 34000000'
+	wait '[BOOT]' '[MROM]'
+	sendln 'lwr 40103ffc 04000000'
+	wait '[BOOT]' '[MROM]'
+	sendln 'lwr 40120000 38000000'
+	wait '[BOOT]' '[MROM]'
+	goto RETRY
+goto END
+endif
+:END
+;MessageBox 'end' 'unlock'
+end

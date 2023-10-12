@@ -1,0 +1,4 @@
+Size	Type	Optional	RW_or_RO	Title	Description	Default_Option_Index	Option_i_String[Value]	Option_i+1_String[Value]
+Section_type	1	Configuration Script
+SIZEOF_VALUE	String	false	RW	Configuration Script	<html><html>
+ALIGN_SECTOR_SIZE	Align	false	RW	Reserved	<html></html>

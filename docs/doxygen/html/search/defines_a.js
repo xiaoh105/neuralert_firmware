@@ -1,0 +1,26 @@
+var searchData=
+[
+  ['ota_5fble_5fversion_5funknown_0',['OTA_BLE_VERSION_UNKNOWN',['../ota__update_8h.html#a47c2a2d870aa62e8e34ef9e0bb4c8ecc',1,'ota_update.h']]],
+  ['ota_5ferror_5fcrc_1',['OTA_ERROR_CRC',['../ota__update_8h.html#ad814acd5b54e61c07289ef0855ea5f07',1,'ota_update.h']]],
+  ['ota_5ferror_5fsflash_5faddr_2',['OTA_ERROR_SFLASH_ADDR',['../ota__update_8h.html#af1183b56b9b3f3f943b321548edeed99',1,'ota_update.h']]],
+  ['ota_5ferror_5fsize_3',['OTA_ERROR_SIZE',['../ota__update_8h.html#a99ac095afce97d797b33b6825b46ee23',1,'ota_update.h']]],
+  ['ota_5ferror_5ftype_4',['OTA_ERROR_TYPE',['../ota__update_8h.html#a75050350c6b790412db8123672796d40',1,'ota_update.h']]],
+  ['ota_5ferror_5furl_5',['OTA_ERROR_URL',['../ota__update_8h.html#aad7a352346b27bba06c5e4d8af086cc8',1,'ota_update.h']]],
+  ['ota_5ffailed_6',['OTA_FAILED',['../ota__update_8h.html#a6388528b9ff9fde2d68266f7326ab941',1,'ota_update.h']]],
+  ['ota_5fhttp_5fnvram_5ftls_5fauthmode_7',['OTA_HTTP_NVRAM_TLS_AUTHMODE',['../ota__update__http_8h.html#aba0179cac3da56a65b7adaa4aa43ec24',1,'ota_update_http.h']]],
+  ['ota_5fhttp_5frx_5fbuf_5fsz_8',['OTA_HTTP_RX_BUF_SZ',['../ota__update__http_8h.html#a7c98d48940ad774ce9ba197b7b7ea10a',1,'ota_update_http.h']]],
+  ['ota_5fmcu_5ffw_5fname_5flen_9',['OTA_MCU_FW_NAME_LEN',['../ota__update__common_8h.html#a491a6861f05140ab6532e8312361c52a',1,'ota_update_common.h']]],
+  ['ota_5fmem_5falloc_5ffailed_10',['OTA_MEM_ALLOC_FAILED',['../ota__update_8h.html#a561a81d6b59224b8600451ba555d8c59',1,'ota_update.h']]],
+  ['ota_5fnot_5fall_5fdownload_11',['OTA_NOT_ALL_DOWNLOAD',['../ota__update_8h.html#addbed5eb16b5cc4fa50d342079feebb1',1,'ota_update.h']]],
+  ['ota_5fnot_5fconnected_12',['OTA_NOT_CONNECTED',['../ota__update_8h.html#ae8ebe4597b6e63e6763c5248e45af94d',1,'ota_update.h']]],
+  ['ota_5fnot_5ffound_13',['OTA_NOT_FOUND',['../ota__update_8h.html#a503f50e68be4a986a19b36bbae9f1853',1,'ota_update.h']]],
+  ['ota_5fstate_5ffinish_14',['OTA_STATE_FINISH',['../ota__update__common_8h.html#a96b6281b325f5ee091601a38df06a7c4',1,'ota_update_common.h']]],
+  ['ota_5fstate_5fnot_5fready_15',['OTA_STATE_NOT_READY',['../ota__update__common_8h.html#a4f1eb3cf04a60965daa850750904a6e7',1,'ota_update_common.h']]],
+  ['ota_5fstate_5fprogress_16',['OTA_STATE_PROGRESS',['../ota__update__common_8h.html#aba838b38ca2f518b1a67b444eca17c76',1,'ota_update_common.h']]],
+  ['ota_5fstate_5fready_17',['OTA_STATE_READY',['../ota__update__common_8h.html#ac94dd586288991ad6da7969e365ced33',1,'ota_update_common.h']]],
+  ['ota_5fstate_5fstop_18',['OTA_STATE_STOP',['../ota__update__common_8h.html#a6ffab357d6420672162753e9a49a5e82',1,'ota_update_common.h']]],
+  ['ota_5fsuccess_19',['OTA_SUCCESS',['../ota__update_8h.html#af95350bd912f1797eaf2ad1ff338faad',1,'ota_update.h']]],
+  ['ota_5ftask_5fname_20',['OTA_TASK_NAME',['../ota__update__common_8h.html#a887dacfeaef07750fcbbef9a7c0ba5d9',1,'ota_update_common.h']]],
+  ['ota_5fversion_5fincompati_21',['OTA_VERSION_INCOMPATI',['../ota__update_8h.html#a23a651e9d126efcc26a08663619d3401',1,'ota_update.h']]],
+  ['ota_5fversion_5funknown_22',['OTA_VERSION_UNKNOWN',['../ota__update_8h.html#aacf2df8d22bfc81942e097065824efde',1,'ota_update.h']]]
+];

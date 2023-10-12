@@ -1,0 +1,8 @@
+cleanall:
+	-$(file > clean.lst, $(CC_DEPS) $(C++_DEPS) $(OBJS) $(C_UPPER_DEPS) $(CXX_DEPS) $(SECONDARY_FLASH) $(SECONDARY_SIZE) $(ASM_DEPS) $(S_UPPER_DEPS) $(C_DEPS) $(CPP_DEPS))
+	-xargs $(RM) < clean.lst
+	-$(RM) *.a *.elf *.elf.in *.bin *.map clean.lst
+	-$(RM) ../img/*.img
+	-$(RM) "${SDK_ROOT}/tools/SBOOT/image/"*RTOS.bin
+	-$(RM) "${SDK_ROOT}/tools/SBOOT/public/"*RTOS.img
+	-@echo ' '

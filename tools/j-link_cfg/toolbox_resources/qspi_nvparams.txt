@@ -1,0 +1,13 @@
+Address	Value Size	Type	RW or RO	Parameter	Description	Default Group	Default	Number of options
+#The following addresses are relative. The user specified address indicating the start of QSPI NV Params section is added to these relative addresses.
+00000	6	String	RW	NVPARAM_BLE_PLATFORM_BD_ADDRESS	Local Bd Address	group	010080CAEA80
+00007	2	Integer	RW	NVPARAM_BLE_PLATFORM_LPCLK_DRIFT	LP Clock Drift	group	500
+0000A	8	String	RO	TAG_RESERVED	Reserved for future use	group	0
+00013	1	Integer	RW	NVPARAM_BLE_PLATFORM_SLEEP_ENABLE	Enable sleep mode	group	0
+00015	1	String	RO	TAG_RESERVED	Reserved for future use	group	0
+00017	2	Integer	RW	NVPARAM_BLE_PLATFORM_BLE_CA_TIMER_DUR	Channel Assessment - Timer Duration	group	500
+0001A	1	Integer	RW	NVPARAM_BLE_PLATFORM_BLE_CRA_TIMER_DUR	Channel Reassessment - Timer Duration	group	8
+0001C	1	Signed_Integer	RW	NVPARAM_BLE_PLATFORM_BLE_CA_MIN_RSSI	Channel Assessment - Minimum RSSI Threshold	group	-60
+0001E	2	Integer	RW	NVPARAM_BLE_PLATFORM_BLE_CA_NB_PKT	Channel Assessment - Number of packets to study	group	20
+00021	2	Integer	RW	NVPARAM_BLE_PLATFORM_BLE_CA_NB_BAD_PKT	Channel Assessment - Number of bad packets before removing a channel	group	10
+00024	16	String	RW	NVPARAM_BLE_PLATFORM_IRK	Local IRK	group	EFCDAB8967452301EFCDAB8967452301

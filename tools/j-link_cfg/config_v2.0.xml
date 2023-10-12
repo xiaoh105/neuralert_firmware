@@ -1,0 +1,332 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sdk_configuration xmlns="http://www.diasemi.com/sdkConfig" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" format_ver="3.0" xsi:schemaLocation="http://www.diasemi.com/sdkConfig config_v2.0.xsd">
+   <!--Please note that the following characters should be escaped in xml:
+"   &amp;quot;
+'   &amp;apos;
+<   &amp;lt;
+>   &amp;gt;
+&amp;   &amp;-->
+   <sdk>
+      <family>DA16200</family>
+      <manufacturer>Dialog Semiconductor</manufacturer>
+      <name>SmartSnippets SDK10</name>
+      <version>10.0.1</version>
+      <doc_root>/doc/html/</doc_root>
+      <devices>
+         <device id="DA16200-00">
+            <name>DA16200-00</name>
+            <filtering_configuration />
+            <part_numbers />
+         </device>
+      </devices>
+      <platforms>
+         <platform name="windows" default="yes">
+            <!-- Default means which configuration to be used if platform failed to detect  -->
+            <tools>
+               <tool id="toolchain">
+                  <name>GNU Tools for ARM Embedded Processors</name>
+                  <official_url>www.dialog-semiconductor.com/sw/gnutoolpage</official_url>
+                  <version>10-2021-q3</version>
+                  <official_download_url direct_download="yes">https://developer.arm.com/-/media/Files/downloads/gnu-rm/7-2018q2/gcc-arm-none-eabi-7-2018-q2-update-win32.zip?revision=9b83e69c-e279-4d16-9401-990c836197b3?product=GNU%20Arm%20Embedded%20Toolchain,ZIP,,Windows,7-2018-q2-update</official_download_url>
+               </tool>
+               <tool id="segger_jlink">
+                  <name>J-Link software package components</name>
+                  <official_url>www.dialog-semiconductor.com/sw/jlinktoolpage</official_url>
+                  <version>6.40</version>
+                  <official_download_url direct_download="no">JLink_Windows_V640.exe</official_download_url>
+               </tool>
+               <tool id="segger_ozone" can_skip="true">
+                  <name>Segger Ozone</name>
+                  <official_url>https://www.segger.com/ozone.html</official_url>
+                  <version>2.60c</version>
+                  <official_download_url direct_download="yes">https://www.segger.com/downloads/jlink/Ozone_Windows_V260c_x86.exe</official_download_url>
+               </tool>
+               <tool id="segger_systemview" can_skip="true">
+                  <name>SystemView</name>
+                  <official_url>https://www.segger.com/systemview.html</official_url>
+                  <version>2.52d</version>
+                  <official_download_url direct_download="yes">https://www.segger.com/downloads/jlink/Setup_SystemView_V252d.exe</official_download_url>
+               </tool>
+               <tool id="iar" status="disabled">
+                  <name>IAR Embedded Workbench IDE</name>
+                  <official_url>https://www.iar.com/iar-embedded-workbench/</official_url>
+                  <version>latest</version>
+                  <official_download_url direct_download="no">https://www.iar.com/iar-embedded-workbench/#!?architecture=Arm</official_download_url>
+               </tool>
+               <tool id="keil" status="disabled">
+                  <name>uVision IDE Keil for ARM Embedded Processors</name>
+                  <official_url>https://www.keil.com/</official_url>
+                  <version>5.25</version>
+                  <official_download_url direct_download="no">https://www.keil.com/demo/eval/arm.htm</official_download_url>
+               </tool>
+            </tools>
+            <tool_buttons>
+               <!--Note that status can be ommited. By default it is enabled. -->
+               <tool_button id="eclipse_ide">
+                  <name>IDE</name>
+                  <tooltip>Switch to the IDE in the C/C++ perspective</tooltip>
+               </tool_button>
+               <tool_button id="smartsnippets_toolbox">
+                  <name>SmartSnippets Toolbox</name>
+                  <tooltip>Launch SmartSnippets Toolbox as an external application</tooltip>
+               </tool_button>
+               <tool_button id="segger_systemview">
+                  <name>Segger Systemview</name>
+                  <tooltip>Opens Segger&amp;apos;s SystemView as an external application</tooltip>
+               </tool_button>
+               <tool_button id="segger_ozone">
+                  <name>Segger Ozone</name>
+                  <tooltip>Opens Segger&amp;apos;s Ozone (JLink Debugger) as an external application</tooltip>
+               </tool_button>
+               <tool_button id="keil_ide" status="invisible">
+                  <name>Keil IDE</name>
+                  <tooltip>Opens Keil uVision as an external application</tooltip>
+               </tool_button>
+               <tool_button id="iar_ide" status="invisible">
+                  <name>IAR Embedded Workbench IDE</name>
+                  <tooltip>Opens IAR Embedded Workbench IDE as an external application</tooltip>
+               </tool_button>
+               <tool_button id="rf_master" status="invisible">
+                  <name>RF Master</name>
+                  <tooltip>Opens SmartSnippets RF Master as an external application</tooltip>
+               </tool_button>
+               <tool_button id="project_initializer" status="invisible">
+                  <name>Application Creator</name>
+                  <tooltip>Opens the Application Creator view</tooltip>
+               </tool_button>
+               <tool_button id="application_logger" status="invisible">
+                  <name>Application Logger</name>
+                  <tooltip>Opens the Application Logger view</tooltip>
+               </tool_button>
+               <tool_button id="battery_profiler" status="invisible">
+                  <name>Battery Profiler</name>
+                  <tooltip>Opens Battery Profiler for DA16200 as an external application</tooltip>
+               </tool_button>
+               <tool_button id="sdk_inspector"  status="invisible">
+                  <name>SDK Inspector</name>
+                  <tooltip>SDK Inspector</tooltip>
+               </tool_button>
+               <!--Custom tool button follows. Use a unique ID of your choice. 
+                  Enter the path of the executable (.exe suported) under <executable> tag-->
+               <!--tool_button id="eclipse_java" status="enabled">
+                  <name>Eclispe JDT</name>
+                  <tooltip>Opens Eclipse for Java</tooltip>
+                  <executable>C:\eclipse\java-neon\eclipse\eclipse.exe</executable>
+               </tool_button-->
+            </tool_buttons>
+            <product_id_setup_script>utilities\scripts\config\product_id_config_win.bat</product_id_setup_script>
+            <toolbox_resources>
+               <libprogrammer location="../binaries/libprogrammer.dll" />
+               <libmkimage location="../binaries/libmkimage.dll" />
+            </toolbox_resources>
+         </platform>
+         <platform name="linux" default="no">
+            <tools>
+               <tool id="toolchain">
+                  <name>GNU Tools for ARM Embedded Processors</name>
+                  <official_url>www.dialog-semiconductor.com/sw/gnutoolpage</official_url>
+                  <version>10-2021-q3</version>
+                  <official_download_url direct_download="yes">https://developer.arm.com/-/media/Files/downloads/gnu-rm/7-2018q2/gcc-arm-none-eabi-7-2018-q2-update-linux.tar.bz2?revision=bc2c96c0-14b5-4bb4-9f18-bceb4050fee7?product=GNU%20Arm%20Embedded%20Toolchain,64-bit,,Linux,7-2018-q2-update</official_download_url>
+               </tool>
+               <tool id="segger_jlink">
+                  <name>J-Link software package components</name>
+                  <official_url>www.dialog-semiconductor.com/sw/jlinktoolpage</official_url>
+                  <version>6.40</version>
+                  <official_download_url direct_download="no">JLink_Linux_V640_x86_64.tgz</official_download_url>
+               </tool>
+               <tool id="segger_ozone" can_skip="true">
+                  <name>Segger Ozone</name>
+                  <official_url>https://www.segger.com/ozone.html</official_url>
+                  <version>2.60c</version>
+                  <official_download_url direct_download="yes">https://www.segger.com/downloads/jlink/Ozone_Linux_V260c_x86_64.tgz</official_download_url>
+               </tool>
+               <tool id="segger_systemview" can_skip="true">
+                  <name>SystemView</name>
+                  <official_url>https://www.segger.com/systemview.html</official_url>
+                  <version>2.52d</version>
+                  <official_download_url direct_download="yes">https://www.segger.com/downloads/jlink/SystemView_Linux_V252d_x86_64.tgz</official_download_url>
+               </tool>
+            </tools>
+            <tool_buttons>
+               <tool_button id="eclipse_ide">
+                  <name>IDE</name>
+                  <tooltip>Switch to the IDE in the C/C++ perspective</tooltip>
+               </tool_button>
+               <tool_button id="smartsnippets_toolbox">
+                  <name>SmartSnippets Toolbox</name>
+                  <tooltip>Launch SmartSnippets Toolbox as an external application</tooltip>
+               </tool_button>
+               <tool_button id="segger_systemview">
+                  <name>Segger Systemview</name>
+                  <tooltip>Opens Segger&amp;apos;s SystemView as an external application</tooltip>
+               </tool_button>
+               <tool_button id="segger_ozone">
+                  <name>Segger Ozone</name>
+                  <tooltip>Opens Segger&amp;apos;s Ozone (JLink Debugger) as an external application</tooltip>
+               </tool_button>
+               <tool_button id="keil_ide" status="invisible">
+                  <name>Keil IDE</name>
+                  <tooltip>Opens Keil uVision as an external application</tooltip>
+               </tool_button>
+               <tool_button id="iar_ide" status="invisible">
+                  <name>IAR Embedded Workbench IDE</name>
+                  <tooltip>Opens IAR Embedded Workbench IDE as an external application</tooltip>
+               </tool_button>
+               <tool_button id="rf_master" status="invisible">
+                  <name>RF Master</name>
+                  <tooltip>Opens SmartSnippets RF Master as an external application</tooltip>
+               </tool_button>
+               <tool_button id="project_initializer" status="invisible">
+                  <name>Application Creator</name>
+                  <tooltip>Opens the Application Creator view</tooltip>
+               </tool_button>
+               <tool_button id="application_logger" status="invisible">
+                  <name>Application Logger</name>
+                  <tooltip>Opens the Application Logger view</tooltip>
+               </tool_button>
+               <tool_button id="battery_profiler" status="invisible">
+                  <name>Battery Profiler</name>
+                  <tooltip>Opens Battery Profiler for DA16200 as an external application</tooltip>
+               </tool_button>
+               <tool_button id="sdk_inspector"  status="invisible">
+                  <name>SDK Inspector</name>
+                  <tooltip>SDK Inspector</tooltip>
+               </tool_button>
+            </tool_buttons>
+            <product_id_setup_script>utilities/scripts/config/product_id_config_linux_mac.sh</product_id_setup_script>
+            <toolbox_resources>
+               <libprogrammer location="../binaries/libprogrammer.so" />
+               <libmkimage location="../binaries/libmkimage.so" />
+            </toolbox_resources>
+         </platform>
+         <platform name="mac" default="no">
+            <tools>
+               <tool id="toolchain">
+                  <name>GNU Tools for ARM Embedded Processors</name>
+                  <official_url>www.dialog-semiconductor.com/sw/gnutoolpage</official_url>
+                  <version>10-2021-q3</version>
+                  <official_download_url direct_download="yes">https://developer.arm.com/-/media/Files/downloads/gnu-rm/7-2018q2/gcc-arm-none-eabi-7-2018-q2-update-mac.tar.bz2?revision=982ef8a4-1815-4651-9c44-6144c9d8b34b?product=GNU%20Arm%20Embedded%20Toolchain,64-bit,,Mac%20OS%20X,7-2018-q2-update</official_download_url>
+               </tool>
+               <tool id="segger_jlink">
+                  <name>J-Link software package components</name>
+                  <official_url>www.dialog-semiconductor.com/sw/jlinktoolpage</official_url>
+                  <version>6.40</version>
+                  <official_download_url direct_download="no">JLink_MacOSX_V640.pkg</official_download_url>
+               </tool>
+               <tool id="segger_ozone" can_skip="true">
+                  <name>Segger Ozone</name>
+                  <official_url>https://www.segger.com/ozone.html</official_url>
+                  <version>2.60c</version>
+                  <official_download_url direct_download="yes">https://www.segger.com/downloads/jlink/Ozone_MacOSX_V260c_Universal.pkg</official_download_url>
+               </tool>
+               <tool id="segger_systemview" can_skip="true">
+                  <name>SystemView</name>
+                  <official_url>https://www.segger.com/systemview.html</official_url>
+                  <version>2.52d</version>
+                  <official_download_url direct_download="yes">https://www.segger.com/downloads/jlink/SystemView_MacOSX_V252d.pkg</official_download_url>
+               </tool>
+            </tools>
+            <tool_buttons>
+               <tool_button id="eclipse_ide">
+                  <name>IDE</name>
+                  <tooltip>Switch to the IDE in the C/C++ perspective</tooltip>
+               </tool_button>
+               <tool_button id="smartsnippets_toolbox" status="invisible">
+                  <name>SmartSnippets Toolbox</name>
+                  <tooltip>Launch SmartSnippets Toolbox as an external application</tooltip>
+               </tool_button>
+               <tool_button id="segger_systemview">
+                  <name>Segger Systemview</name>
+                  <tooltip>Opens Segger&amp;apos;s SystemView as an external application</tooltip>
+               </tool_button>
+               <tool_button id="segger_ozone">
+                  <name>Segger Ozone</name>
+                  <tooltip>Opens Segger&amp;apos;s Ozone (JLink Debugger) as an external application</tooltip>
+               </tool_button>
+               <tool_button id="keil_ide" status="invisible">
+                  <name>Keil IDE</name>
+                  <tooltip>Opens Keil uVision as an external application</tooltip>
+               </tool_button>
+               <tool_button id="iar_ide" status="invisible">
+                  <name>IAR Embedded Workbench IDE</name>
+                  <tooltip>Opens IAR Embedded Workbench IDE as an external application</tooltip>
+               </tool_button>
+               <tool_button id="rf_master" status="invisible">
+                  <name>RF Master</name>
+                  <tooltip>Opens SmartSnippets RF Master as an external application</tooltip>
+               </tool_button>
+               <tool_button id="project_initializer" status="invisible">
+                  <name>Application Creator</name>
+                  <tooltip>Opens the Application Creator view</tooltip>
+               </tool_button>
+               <tool_button id="application_logger" status="invisible">
+                  <name>Application Logger</name>
+                  <tooltip>Opens the Application Logger view</tooltip>
+               </tool_button>
+               <tool_button id="battery_profiler" status="invisible">
+                  <name>Battery Profiler</name>
+                  <tooltip>Opens Battery Profiler for DA16200 as an external application</tooltip>
+               </tool_button>
+               <tool_button id="sdk_inspector"  status="invisible">
+                  <name>SDK Inspector</name>
+                  <tooltip>SDK Inspector</tooltip>
+               </tool_button>
+            </tool_buttons>
+            <product_id_setup_script>utilities/scripts/config/product_id_config_linux_mac.sh</product_id_setup_script>
+         </platform>
+      </platforms>
+      <resources>
+         <resource id="product_documentation">
+            <name>Product Documentation</name>
+            <link id="product_1">
+               <name>DA16200-00</name>
+               <url>www.dialog-semiconductor.com/product/da16200-00</url>
+            </link>
+         </resource>
+         <resource id="forum">
+            <name>Forums</name>
+            <link id="forum">
+               <name>SmartBond Forums</name>
+               <url>https://support.dialog-semiconductor.com/forum</url>
+            </link>
+         </resource>
+         <resource id="ref_designs">
+            <name>Reference Designs</name>
+            <link id="smartbond_ref_designs">
+               <name>Examples and Reference Designs</name>
+               <url>www.dialog-semiconductor.com/da16200-refdes</url>
+            </link>
+         </resource>
+         <resource id="partner">
+            <name>Find Your Partner</name>
+            <link id="smartbond_partner_eco">
+               <name>SmartBond Partner Ecosystem</name>
+               <url>https://support.dialog-semiconductor.com/ecosystem</url>
+            </link>
+         </resource>
+      </resources>
+      <toolbox_resources>
+         <uartboot location="../binaries/uartboot.bin" /> <!--Default. Unless device specific uartboot is specified, this file will be used-->
+         <header_txt location="toolbox_resources/header.txt" />
+         <qspi_nvparams_txt location="toolbox_resources/qspi_nvparams.txt" />
+         <qspi_image_header_txt location="toolbox_resources/image_header.txt" />
+         <qspi_product_header_txt location="toolbox_resources/product_header.txt" />
+         <qspi_cs_txt location="toolbox_resources/cs.txt" />
+         <sw_version location="toolbox_resources/sw_version.h" /><!--  Needed for libmkimage -->
+         <registers_xml location="embsys/Dialog_Semiconductor/DA16200.xml" /><!--  CS parses it for reg address-value CMDs -->
+         <cs_groups_xml location="toolbox_resources/tcs.xml" /><!--  CS parses it for trim/cslib CMDs -->
+      </toolbox_resources>
+      <toolbox_config>
+         <defaults>
+            <OTP_START_ADDRESS>0x10080000</OTP_START_ADDRESS>
+            <OTP_HEADER_START_ADDRESS>0x10080000</OTP_HEADER_START_ADDRESS>
+            <OTP_SIZE>4096</OTP_SIZE>
+            <OTP_HEADER_SIZE>4096</OTP_HEADER_SIZE>
+            <BAUDRATE>115200</BAUDRATE> <!-- baudrate for communication with application e.g. uartboot.bin -->
+            <SERIAL_PORT_BAUDRATE>57600</SERIAL_PORT_BAUDRATE> <!-- baudrate for communication with bootloader -->
+            <QSPI_NVPARAMS_START_ADDRESS>0x1FF000</QSPI_NVPARAMS_START_ADDRESS>
+         </defaults>
+      </toolbox_config>
+      <studio_config />
+   </sdk>
+</sdk_configuration>

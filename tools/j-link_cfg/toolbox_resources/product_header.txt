@@ -1,0 +1,12 @@
+Size	Type	Optional	RW_or_RO	Title	Description	Default_Option_Index	Option_i_String[Value]	Option_i+1_String[Value]
+Section_type	1	Product Header
+2	Flag	false	RW	Flash Programmed Identifier	<html>Should contain "Pp" if flash is programmed</html>	0	Flash not programmed[0xFFFF]	Flash programmed[0x5070]
+4	Integer	false	RW	Active FW image address	<html>Start address of the image header of the<br>currently active image, relative to address 0</html>
+4	Integer	false	RW	Upgrade FW image address	<html>Start address of the image header of the<br>upgrade active image, relative to address 0 (if<br>available, otherwise equal to Active FW image<br>address)</html>
+4	Integer	false	RW	Flash BURSTCMDA reg value	<html>Value that should be programmed by the booter<br>to the QSPIC_BURSTCMDA_REG for this type<br>of flash device</html>
+4	Integer	false	RW	Flash BURSTCMDB reg value	<html>Value that should be programmed by the booter<br>to the QSPIC_BURSTCMDB_REG for this type<br>of flash device</html>
+2	Flag	false	RW	Type Flash Config Section	<html>Should contain 0xAA11 to signal the booter that<br>a valid flash configuration is present</html>	0	Invalid flash configuration[0xFFFF]	Valid flash configuration[0xAA11]
+2	Integer	false	RW	Length of Flash Config Section	<html>Length of the config section<html>
+[6]	String	[6]	RW	Flash Write Config reg Command sequence	<html>Sequence of flash commands to be written to the<br>QSPI device in order to set it in Quad mode.<br><b>NOTE: the last byte will indicate the readpipe<br>setting. If set to 0, the booter will use the<br>default value of 4.</b></html>
+2	Integer	false	RO	CRC	<html>CRC</html>
+ALIGN_SECTOR_SIZE	Align	false	RW	Reserved	<html></html>

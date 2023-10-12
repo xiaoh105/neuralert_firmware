@@ -1,0 +1,9 @@
+<DataBase>
+  <!--                      -->
+  <!-- Dialog Semiconductor -->
+  <!--                      -->
+  <Device>
+   <ChipInfo Vendor="Dialog Semiconductor" Name="DA16200.eclipse.4MB" Core="JLINK_CORE_CORTEX_M4" WorkRAMAddr="0x83000" WorkRAMSize="0x00020000" />
+   <FlashBankInfo Name="QSPI Flash" BaseAddr="0x10000000" MaxSize="0x400000" Loader="Devices/Dialog/DA16200_4MB.elf" LoaderType="FLASH_ALGO_TYPE_OPEN" />
+  </Device>
+</DataBase>

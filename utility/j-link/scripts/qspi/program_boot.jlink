@@ -1,0 +1,7 @@
+si 1
+speed auto
+r
+h
+eoe 1
+loadbin FBOOT.bin, 0x10000000
+exit
