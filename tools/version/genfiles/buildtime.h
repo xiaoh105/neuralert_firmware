@@ -5,9 +5,9 @@
  *
  * @brief Build Time Generation
  *
- * Copyright (c) 2016-2022 Renesas Electronics. All rights reserved.
+ * Copyright (c) 2016-2023 Renesas Electronics. All rights reserved.
  *
- * This software ("Software") is owned by Renesas Electronics.
+ * This software (Software) is owned by Renesas Electronics.
  *
  * By using this Software you agree that Renesas Electronics retains all
  * intellectual property and proprietary rights in and to this Software and any
@@ -17,7 +17,7 @@
  * with Renesas Electronics products.
  *
  * EXCEPT AS OTHERWISE PROVIDED IN A LICENSE AGREEMENT BETWEEN THE PARTIES, THE
- * SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * SOFTWARE IS PROVIDED AS IS, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT. EXCEPT AS OTHERWISE
  * PROVIDED IN A LICENSE AGREEMENT BETWEEN THE PARTIES, IN NO EVENT SHALL
@@ -33,12 +33,12 @@
 #ifndef __buildtime_h__
 #define __buildtime_h__
 
-#define REV_BUILDFULLTIME			202308101126
-#define REV_BUILDDATE				20230810
-#define REV_BUILDTIME				112624
-#define REV_BUILDDATE_HEX			0x20230810
-#define REV_BUILDTIME_HEX			0x00112624
-#define SVN_REPOSITORY				"bitbucket/iotwifi_da16200 branch release/DA16200_3_2_8_0"
+#define REV_BUILDFULLTIME			202310161130
+#define REV_BUILDDATE				20231016
+#define REV_BUILDTIME				113027
+#define REV_BUILDDATE_HEX			0x20231016
+#define REV_BUILDTIME_HEX			0x00113027
+#define SVN_REPOSITORY			"NULL"
 #define SVN_REVISION_NUMBER		f017bfdf51
 #define SVN_REVISION_NUMBER_HEX	0xf017bfdf51
 
