@@ -1,0 +1,7 @@
+cleanall:
+	-$(RM) $(CC_DEPS)$(C++_DEPS)$(OBJS)
+	-$(RM) $(C_UPPER_DEPS)$(CXX_DEPS)$(SECONDARY_FLASH)$(SECONDARY_SIZE)$(ASM_DEPS)$(S_UPPER_DEPS)$(C_DEPS)$(CPP_DEPS) *.a
+	-$(RM) ../../../img/*.img
+	-$(RM) ../../../../../../../../tools/SBOOT/image/*RTOS.bin
+	-$(RM) ../../../../../../../../tools/SBOOT/public/*RTOS.img
+	-@echo ' '
