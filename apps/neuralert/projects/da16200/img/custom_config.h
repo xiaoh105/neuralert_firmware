@@ -1,9 +1,9 @@
 /**
  ****************************************************************************************
  *
- * @file sdk_type.h
+ * @file custom_config.h
  *
- * @brief Define for System Running Model
+ * @brief Board Support Package. User Configuration file.
  *
  * Copyright (c) 2016-2022 Renesas Electronics. All rights reserved.
  *
@@ -30,39 +30,33 @@
  ****************************************************************************************
  */
 
-#ifndef	__SYS_RUN_TYPE_H__
-#define	__SYS_RUN_TYPE_H__
+#ifndef CUSTOM_CONFIG__H_
+#define CUSTOM_CONFIG__H_
+
+/* Use SEGGER"s RTT(Real Time Terminal) */
+#define CONFIG_RTT
 
 
-// FreeRTOS feature
-#include "FreeRTOS.h"
-#include "project_config.h"
+/* ----------------------------- Segger System View configuration ------------------------------- */
 
+/**
+ * \brief Segger's System View
+ *
+ * When enabled the application should also call SEGGER_SYSVIEW_Conf() to enable system monitoring.
+ * configTOTAL_HEAP_SIZE should be increased by dg_configSYSTEMVIEW_STACK_OVERHEAD bytes for each system task.
+ * For example, if there are 8 system tasks configTOTAL_HEAP_SIZE should be increased by
+ * (8 * dg_configSYSTEMVIEW_STACK_OVERHEAD) bytes.
+ *
+ * - 0 : Disabled
+ * - 1 : Enabled
+ *
+ * \bsp_default_note{\bsp_config_option_app,}
+ *
+ */
+#ifndef dg_configSYSTEMVIEW
+#define dg_configSYSTEMVIEW                     (0)
+#endif
 
-/// Global Define : Chipset Model
-#if defined (__DA16600__)
-#define CHIPSET_NAME	"DA16600"
-#else
-#define CHIPSET_NAME	"DA16200"
-#endif	//(__DA16600__)
-
-
-//////////////////////////////////////////////////////////////////
-
-
-/* Default : Generic SDK mode */
-#define	GENERIC_SDK
-
-
-//////////////////////////////////////////////////////////////////
-
-#if defined ( GENERIC_SDK )
-	#include <config_generic_sdk.h>         // Customer's Generic SDK
-#else
-	#Config Error ...
-#endif	/* ... customer_features ... */
-
-
-#endif	// __SYS_RUN_TYPE_H__
+#endif /* CUSTOM_CONFIG__H_ */
 
 /* EOF */

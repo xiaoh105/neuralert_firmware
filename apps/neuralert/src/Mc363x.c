@@ -78,7 +78,7 @@ int i2cWriteStop(int addr, uint8_t *data, int length)
 int i2cWriteNoStop(int addr, uint8_t *data, int length)
 {
 	int address = addr, trys;
-	int status,i;
+	int status;
 
 	// Set Address for Atmel eeprom AT24C512
 	DRV_I2C_IOCTL(I2C, I2C_SET_CHIPADDR, &address);
@@ -96,7 +96,7 @@ int i2cWriteNoStop(int addr, uint8_t *data, int length)
 int i2cRead(int addr, uint8_t *data, int length)
 {
 	int address = addr, trys;
-	int status, i;
+	int status;
 
 	// Set Address for Atmel eeprom AT24C512
 	DRV_I2C_IOCTL(I2C, I2C_SET_CHIPADDR, &address);
@@ -259,7 +259,7 @@ void set_mode(MC36XX_MODE mode)
 void set_wakegain(MC36XX_WAKE_GAIN wake_gain)
 {
 	unsigned char _bRegData = 0x01;
-	 int status;
+	int status;
 
 	 _bRegData=0x01;
 //	 mc_write_regs(0x20, &_bRegData, 1);
@@ -285,7 +285,7 @@ void set_wakegain(MC36XX_WAKE_GAIN wake_gain)
 void set_sniffgain(MC36XX_SNIFF_GAIN sniff_gain)
 {
 	unsigned char _bRegData = 0x00;
-	 int status;
+	int status;
 
 	 _bRegData=0;
 //	mc_write_regs(0x20, &_bRegData, 1);
@@ -346,7 +346,8 @@ void set_power_mode(MC36XX_WAKE_POWER wakepowermode,MC36XX_SNIFF_POWER sniffpowe
 
 void set_sniff_rate(MC36XX_SNIFF_SR rate)
 {
-    	unsigned char _bRegData ,_bRegPowerMode= 0x00;
+    	//unsigned char _bRegData ,_bRegPowerMode= 0x00;
+    	unsigned char _bRegData;
     	int status;
 
 		_bRegData = rate;
@@ -358,7 +359,8 @@ void set_sniff_rate(MC36XX_SNIFF_SR rate)
 
 void set_fifo_Len(uint8_t len,uint8_t onoff,uint8_t readfeature)
 {
-	unsigned char _bRegData, buf[2] ;
+	(void)readfeature;
+	unsigned char _bRegData, buf[2];
 	int status;
 
 	if(onoff==1)
@@ -404,7 +406,7 @@ void set_fifo_Len(uint8_t len,uint8_t onoff,uint8_t readfeature)
 
 void set_wake_rate(MC36XX_CWAKE_SR rate)
 {
-	unsigned char _bRegData=0x00;
+	//unsigned char _bRegData=0x00;
 	int status;
 
 	//  suppose using LOWPOWERMODE  !!!!!!!!
@@ -518,7 +520,7 @@ void set_int_type(
 		unsigned char bWakeEnable)
 {
 
-	unsigned char _bPreMode ,_bRegData= 0;
+	unsigned char _bRegData=0; //,_bPreMode;
 	int status;
 
 	//mc_read_regs(M_DRV_MC36XX_REG_MODE_C, &_bPreMode, 1);
@@ -556,7 +558,7 @@ void set_int_type(
 
 void set_clear_Intmethod()
 {
-	unsigned char _bRegData , buf[2];
+	unsigned char _bRegData;// , buf[2];
 	int status;
 
 // Edited to enable interrupt clearance only by reading register 0x09   -  NJ 06/21/2022
@@ -583,7 +585,7 @@ void set_clear_Intmethod()
 void clear_intstate(uint8_t* state)
 {
 	int status;
-	unsigned char _bRegData, buf[2];
+	unsigned char buf[2]; //,_bRegData;
 
  //   mc_read_regs(MC36XX_REG_INTR_S, state,1);
 	buf[0] = MC36XX_REG_INTR_S;
@@ -651,7 +653,7 @@ void mc_timer_handle(void )
 
 	 uint8_t i,fifo_length;
 	 unsigned char rawdata[192]; //6*32
-	 unsigned char buf[2], buf1[10];
+	 unsigned char buf[2];//, buf1[10];
 	 int status;
 	 int16_t Xvalue;
 	 int16_t Yvalue;
@@ -798,7 +800,7 @@ void mc_interrupt_handler(void)
 //void mc3672Init(int FIFO_threshold)
 void mc3672Init(void)
 {
-	uint32_t pin;
+	//uint32_t pin;
 
 	// ************************************************
 	// Accelerometer FIFO threshold that determines

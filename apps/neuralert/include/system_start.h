@@ -33,6 +33,7 @@
 #include "da16x_network_common.h"
 #include "common_def.h"
 #include "da16x_system.h"
+#include "user_def.h"
 //#include "patch.h"	/* F_F_S */
 
 
