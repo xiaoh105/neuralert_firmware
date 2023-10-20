@@ -381,6 +381,27 @@ void da16x_time64_usec(__time64_t *p, __time64_t *cur_usec)
 unsigned long long systime_offset;
 #endif // BUILD_OPT_FC9050_ASIC
 
+// Jim Patch -- 10/19/23 added to get source code working.  TODO: needs removed.
+// additional function added by F. Strathmann to get raw ms relative to
+// power on
+void user_time64_msec_since_poweron(__time64_t *cur_msec)
+{
+        unsigned long long time_ms;
+        unsigned long long rtc;
+
+        if (xtal_32KHz_rmv_flag == pdTRUE)
+                rtc = ALT_RTC_GET_COUNTER();
+        else
+                rtc = RTC_GET_COUNTER();
+
+        time_ms = CLK2MS(rtc); /* msec. */
+
+        *cur_msec = time_ms; /* msec */
+}
+
+
+
+
 void da16x_time64_msec(__time64_t *p, __time64_t *cur_msec)
 {
 	unsigned long long time_ms;

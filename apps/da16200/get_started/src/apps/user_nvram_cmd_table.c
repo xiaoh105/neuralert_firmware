@@ -71,6 +71,7 @@ const user_conf_str user_config_str_with_nvram_name[] = {
   { DA16X_CONF_STR_MQTT_WILL_MSG,             MQTT_NVRAM_CONFIG_WILL_MSG,     MQTT_WILL_MSG_MAX_LEN            },
   { DA16X_CONF_STR_MQTT_SUB_CLIENT_ID,        MQTT_NVRAM_CONFIG_SUB_CID,      MQTT_CLIENT_ID_MAX_LEN           },
   { DA16X_CONF_STR_MQTT_PUB_CLIENT_ID,        MQTT_NVRAM_CONFIG_PUB_CID,      MQTT_CLIENT_ID_MAX_LEN           },
+  { DA16X_CONF_STR_MQTT_RUN_FLAG, MQTT_NVRAM_CONFIG_RUN_FLAG, MQTT_CLIENT_ID_MAX_LEN}, //Jim patch 10/19/23 for Neuralert App
   #if defined (__MQTT_TLS_OPTIONAL_CONFIG__)
   { DA16X_CONF_STR_MQTT_TLS_SNI,              MQTT_NVRAM_CONFIG_TLS_SNI,      MQTT_BROKER_MAX_LEN              },
   #endif // __MQTT_TLS_OPTIONAL_CONFIG__
@@ -208,6 +209,7 @@ user_conf_int user_config_int_with_nvram_name[] = {
 #if defined(__SUPPORT_OTA__)
 { DA16X_CONF_INT_OTA_TLS_AUTHMODE,	OTA_HTTP_NVRAM_TLS_AUTHMODE,	0,	3,	OTA_HTTP_TLS_AUTHMODE_DEF },
 #endif //(__SUPPORT_OTA__)
+
 
     { 0, "", 0, 0, 0 }
 };

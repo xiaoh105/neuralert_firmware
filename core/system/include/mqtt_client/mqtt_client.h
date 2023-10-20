@@ -131,6 +131,9 @@ Copyright (c) 2019-2022 Modified by Renesas Electronics.
 #define MQTT_NVRAM_CONFIG_TLS_CSUITS	"MQTT_TLS_CSUIT"
 #endif // __MQTT_TLS_OPTIONAL_CONFIG__
 
+/// NVRAM name of MQTT run flag -- Jim patch 10/19/23 for Neuralert app
+#define MQTT_NVRAM_CONFIG_RUN_FLAG		"MQTT_RUN_FLAG"
+
 /// Default port number of the broker
 #define MQTT_CONFIG_PORT_DEF			1883
 /// Default Qos value

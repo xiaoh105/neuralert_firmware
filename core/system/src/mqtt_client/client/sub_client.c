@@ -799,6 +799,39 @@ static void mqtt_subscriber(void* arg)
 	vTaskDelete(NULL);
 }
 
+//Jim Patch -- 10/23/23 : adding this patch to get Neuralert app to run
+/*
+ * check_mqtt_client_thread_status: See if MQTT client is already running
+ * Author: F. Strathmann 7/8/22
+ *
+ * returns -1 if the task is already running
+ * returns 0 if the task is not running
+ */
+int check_mqtt_client_thread_status(void)
+{
+        BaseType_t      xRet;
+
+        mqtt_client_thread *mqtt_client_thd = &mqtt_sub_thd_config;
+        PRINTF("**Neuralert: check_mqtt_client_thread_status\n"); // FRSDEBUG
+
+        if (mqtt_client_thd->thread)
+        {
+                MQTT_DBG_TEMP("mqtt_sub_thd_config->thread is running\n");
+                PRINTF("**Neuralert: thread is running\n"); // FRSDEBUG
+                return -1;
+        }
+        else
+        {
+                MQTT_DBG_TEMP("mqtt_sub_thd_config->thread is not running\n");
+                PRINTF("**Neuralert: thread is not running\n"); // FRSDEBUG
+                return 0;
+        }
+}
+
+
+
+
+
 int mqtt_client_start(void)
 {
 	BaseType_t	xRet;
