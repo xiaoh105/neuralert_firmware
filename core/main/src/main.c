@@ -51,6 +51,8 @@
 #include "lwip/dhcp.h"
 #include "netif/etharp.h"
 //#include "ethernetif.h"
+#include "util_api.h" //JW: Added to support time stamping
+#include "da16x_time.h" //JW: Added to support time stamping
 
 #include "project_config.h"
 #include "SEGGER_RTT.h"
@@ -79,6 +81,16 @@
 extern void system_launcher( void *pvParameters );
 extern void Printf(const char *fmt,...);
 extern void da16200_trace(int index, unsigned int value);
+
+////////////////////////////////////////////////////////////////
+//JW: added these back.  They seem to be for Fred's way of doing time stamping
+#if defined(__TCP_CLIENT_SLEEP2_SAMPLE__)
+// FRS additional function to grab RTC clock time early in the boot sequence
+extern void user_time64_msec_since_poweron(__time64_t *cur_msec);
+extern __time64_t user_raw_launch_time_msec;  // relative time msec since boot (RTC clock based)
+#endif
+///////////////////////////////////////////////////////////
+
 
 /*
  * Prototypes for the standard FreeRTOS application hook (callback) functions
@@ -200,6 +212,18 @@ main (int argc, char* argv[])
     vPortDefineHeapRegions(xHeapRegions); 
     }
 #endif    /* USING_HEAP_5 */
+
+    //////////////////////////////////////////////////////////////////
+    //JW: Added these.  Seem to be for Fred's timing calculations.
+	// FRSTIME
+	// Try to get an early snapshot of the RTC clock
+#if defined(__TCP_CLIENT_SLEEP2_SAMPLE__)
+	user_time64_msec_since_poweron(&user_raw_launch_time_msec);
+#if defined(__RUNTIME_CALCULATION__) && defined(XIP_CACHE_BOOT)
+	save_with_run_time("Timestamp taken");
+#endif
+#endif
+    //////////////////////////////////////////////////////////////////
 
     xTaskCreate(system_launcher,
                 "system_launcher",

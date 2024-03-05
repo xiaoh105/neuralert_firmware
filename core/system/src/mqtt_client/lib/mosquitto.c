@@ -888,7 +888,6 @@ int mosquitto_loop(struct mosquitto *mosq, int timeout, int max_packets)
 	/* ===== 3. mqtt msg rx if any ==== */
 	
 	// start init for select( )
-	
 	FD_ZERO(&readfds);
 	
 	if (mosq->sock != INVALID_SOCKET) {

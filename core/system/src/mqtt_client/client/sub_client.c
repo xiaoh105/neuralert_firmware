@@ -799,39 +799,6 @@ static void mqtt_subscriber(void* arg)
 	vTaskDelete(NULL);
 }
 
-//Jim Patch -- 10/23/23 : adding this patch to get Neuralert app to run
-/*
- * check_mqtt_client_thread_status: See if MQTT client is already running
- * Author: F. Strathmann 7/8/22
- *
- * returns -1 if the task is already running
- * returns 0 if the task is not running
- */
-int check_mqtt_client_thread_status(void)
-{
-        BaseType_t      xRet;
-
-        mqtt_client_thread *mqtt_client_thd = &mqtt_sub_thd_config;
-        PRINTF("**Neuralert: check_mqtt_client_thread_status\n"); // FRSDEBUG
-
-        if (mqtt_client_thd->thread)
-        {
-                MQTT_DBG_TEMP("mqtt_sub_thd_config->thread is running\n");
-                PRINTF("**Neuralert: thread is running\n"); // FRSDEBUG
-                return -1;
-        }
-        else
-        {
-                MQTT_DBG_TEMP("mqtt_sub_thd_config->thread is not running\n");
-                PRINTF("**Neuralert: thread is not running\n"); // FRSDEBUG
-                return 0;
-        }
-}
-
-
-
-
-
 int mqtt_client_start(void)
 {
 	BaseType_t	xRet;
@@ -951,6 +918,7 @@ int mqtt_client_send_message(char *top, char *publish)
 	
 	if (mosq_sub->inflight_messages > 0)
 	{
+		PRINTF ("Number inflight message: %d", mosq_sub->inflight_messages);
 		MQTT_DBG_ERR(RED_COLOR "Previous MSG is in-flight state\n" CLEAR_COLOR);
 		return -2;
 	}
@@ -1022,8 +990,12 @@ int mqtt_client_send_message_with_qos(char *top, char *publish, ULONG timeout)
 
 	status = mqtt_pub_send_msg(top, publish);
 
+
 	if (!status && qos >= 1)
 	{
+		//PRINTF ("*************************In QOS >1 \n"); //JW: DEBUG
+		//vTaskDelay(100); //JW: Adding this to delay the check for inflight message
+		// it is zero now, but later becomes 1 at some point later.
 		while (timeout--)
 		{
 
@@ -1034,6 +1006,7 @@ int mqtt_client_send_message_with_qos(char *top, char *publish, ULONG timeout)
 
 			if (!mosq_sub->inflight_messages)
 			{
+				//PRINTF ("number inflight messages: %d", mosq_sub->inflight_messages); //JW:DEBUG
 				return 0;
 			}
 

@@ -39,13 +39,13 @@
 #define INTERRUPT_LOW              0
 #define INTERRUPT_HIGH             1
 
-#define BUTTON1_GPIO               7                /* GPIO 7 */
+#define BUTTON1_GPIO               3                /* GPIO 7 */ //JW: Changed to GPIO 3
 #define BUTTON2_GPIO               6                /* GPIO 6 */
 
 #define FACTORY_BUTTON             BUTTON1_GPIO
 #define WPS_BUTTON                 BUTTON2_GPIO
 
-#define CHECK_TIME_FACTORY_BTN     5                /* 5 sec. */
+#define CHECK_TIME_FACTORY_BTN     2                /* 5 sec. */ //JW: Changed to 2 seconds
 #define CHECK_TIME_WPS_BTN         1                /* 1 sec. */
 
 #if defined ( __SUPPORT_EVK_LED__ )
@@ -54,8 +54,8 @@
   #error "Config error: If __ATCMD_IF_SPI__ is defined, assign unused GPIO for LEDs"
 #endif // __ATCMD_IF_SPI__
 
-  #define BUTTON1_LED              2                /* GPIO 2 */
-  #define BUTTON2_LED              3                /* GPIO 3 */
+  #define BUTTON1_LED              12                /* GPIO 12 */
+  #define BUTTON2_LED              5                /* GPIO 5 */
 
   #define FACTORY_LED              BUTTON1_LED
   #define WPS_LED                  BUTTON2_LED

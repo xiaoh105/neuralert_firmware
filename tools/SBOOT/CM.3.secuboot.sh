@@ -50,11 +50,15 @@ rm -f "$script_path/public/DA16xxx_RTOS.img"
 rm -f "$script_path/public/DA16xxx_ueboot_*.img"
 
 if [ $4 == DA16xxx_ueboot ]; then
-	rm -f "${IMG_PATH}/${MODEL_NAME}_BOOT*.img"
+	pushd "${IMG_PATH}"
+	rm -f ${MODEL_NAME}_BOOT*.img
+	popd
 elif [ $# -ne 1 ]; then
 	# For normal build
-	rm -f "${IMG_PATH}/${MODEL_NAME}_${OS_TYPE}BOOT*.img"
-	rm -f "${IMG_PATH}/${MODEL_NAME}_${OS_TYPE}RT*.img"
+	pushd "${IMG_PATH}"
+	rm -f ${MODEL_NAME}_${OS_TYPE}BOOT*.img
+	rm -f ${MODEL_NAME}_${OS_TYPE}RT*.img
+	popd
 fi
 
 pushd "$script_path"

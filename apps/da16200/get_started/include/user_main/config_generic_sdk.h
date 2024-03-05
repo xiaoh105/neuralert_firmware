@@ -76,7 +76,7 @@
     // And it is defined below function :
     //    static void config_gpio_button(void) in ~/apps/da16200/get_started/src/user_main/system_start.c
     //
-    #define __SUPPORT_WPS_BTN__
+    #undef __SUPPORT_WPS_BTN__
 
     //
     // Enable/Disable Factory-Reset button on DA16X00 EVK : Default is GPIOA7
@@ -85,7 +85,7 @@
     // And it is defined below function :
     //    static void config_gpio_button(void) in ~/apps/da16200/get_started/src/user_main/system_start.c
     //
-    #define __SUPPORT_FACTORY_RESET_BTN__
+    #undef __SUPPORT_FACTORY_RESET_BTN__
 
     //
     // Enable/Disable BOR(Brown & Black out interrupt) Circuit
@@ -414,7 +414,7 @@
     //        Refer to AT-CMD user's guide document for how to use it.
     //  Note) This feature is internal feature in ~/library/libsupplicant.a
     //
-    #undef  __SUPPORT_WPA_ENTERPRISE__
+    #define  __SUPPORT_WPA_ENTERPRISE__
 
     //
     // Support Wi-Fi WPA3-Personal features.
@@ -466,7 +466,7 @@
     //        : +WFDAP:0,APBUSY
     //        : +WFDAP:0,OTHER,reason_code
     //
-    #define __SUPPORT_WIFI_CONN_CB__
+    #undef __SUPPORT_WIFI_CONN_CB__
 
     //
     // Support Wi-Fi Concurrent-mode.
@@ -481,7 +481,7 @@
     //      3. Station & SOFT-AP                   <= Wi-Fi Concurrent-mode
     //    MODE ?  [1/2/3/Quit] (Default Station) :
     //
-    #define __SUPPORT_WIFI_CONCURRENT__
+    #undef __SUPPORT_WIFI_CONCURRENT__
 
 
 //-----------------------
@@ -763,8 +763,8 @@
         #undef  __SUPPORT_FACTORY_RST_APMODE__              // Factory reset AP-Mode
         #undef  __SUPPORT_FACTORY_RST_STAMODE__             // Factory reset STA-Mode
     #else
-        #define __SUPPORT_FACTORY_RST_APMODE__              // Factory reset AP-Mode
-        #undef  __SUPPORT_FACTORY_RST_STAMODE__             // Factory reset STA-Mode
+        #undef __SUPPORT_FACTORY_RST_APMODE__              // Factory reset AP-Mode
+        #define  __SUPPORT_FACTORY_RST_STAMODE__             // Factory reset STA-Mode
     #endif // __SUPPORT_WIFI_CONCURRENT__
 
     //

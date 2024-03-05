@@ -34,7 +34,6 @@
 #define __USER_CONFIG_H__
 
 #include "common_config.h"
-#include "mqtt_client.h"
 
 /// NVRAM string value structure
 typedef struct _user_conf_str {
@@ -77,7 +76,6 @@ typedef enum {
     DA16X_CONF_STR_MQTT_WILL_MSG,
     DA16X_CONF_STR_MQTT_SUB_CLIENT_ID,
     DA16X_CONF_STR_MQTT_PUB_CLIENT_ID,
-	DA16X_CONF_STR_MQTT_RUN_FLAG, //Jim patch 10/19/23 for Neuralert app
   #if defined (__MQTT_TLS_OPTIONAL_CONFIG__)
     DA16X_CONF_STR_MQTT_TLS_SNI,
   #endif // __MQTT_TLS_OPTIONAL_CONFIG__
@@ -115,8 +113,6 @@ typedef enum {
     DA16X_CONF_STR_ATCMD_NW_TR_PEER_IPADDR_8,
     DA16X_CONF_STR_ATCMD_NW_TR_PEER_IPADDR_9,
 #endif // (__SUPPORT_ATCMD_MULTI_SESSION__)
-
-
 
     DA16X_CONF_STR_FINAL_MAX
 } DA16X_USER_CONF_STR;

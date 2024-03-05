@@ -126,6 +126,16 @@ INT32 __GPIO_RETAIN_HIGH_RECOVERY()
 	if ((da16x_boot_get_wakeupmode() & WAKEUP_RESET_WITH_RETENTION) == 0)
 		memset((void *)(RETMEM_GPIO_RETENTION_INFO_BASE + 0x10), 0x0, sizeof(UINT32)*2);
 
+#if !defined ( __BLE_COMBO_REF__ ) && defined ( __SUPPORT_BTCOEX__ )
+	/*initialize GPIO internal pull_up*/
+	if ((da16x_boot_get_wakeupmode() & WAKEUP_RESET_WITH_RETENTION) == 0)
+		SAVE_INTERNAL_PULLUP_PINS_INFO(GPIO_UNIT_MAX, 0);
+
+	/*initialize GPIO internal pull_disable*/
+	if ((da16x_boot_get_wakeupmode() & WAKEUP_RESET_WITH_RETENTION) == 0)
+		SAVE_PULLUP_PINS_INFO(GPIO_UNIT_MAX, 0);
+#endif
+
 	GPIO_TRACE_PRINT("restore pin mux info\n");
 	GPIO_TRACE_PRINT("\tFC9K_DIOCFG->FSEL_GPIO1: 0x%08x\n", DA16200_DIOCFG->FSEL_GPIO1);
 	GPIO_TRACE_PRINT("\tFC9K_DIOCFG->FSEL_GPIO2: 0x%08x\n", DA16200_DIOCFG->FSEL_GPIO2);
@@ -305,6 +315,16 @@ INT32 __GPIO_RETAIN_HIGH_RECOVERY()
 	/* Initialize GPIO retention info area for a wake-up source that does not use retention memory. */
 	if ((fc9k_boot_get_wakeupmode() & WAKEUP_RESET_WITH_RETENTION) == 0)
 		memset((void *)RETMEM_GPIO_RETENTION_INFO_BASE, 0x0, sizeof(UINT32)*2);
+
+#if !defined ( __BLE_COMBO_REF__ ) && defined ( __SUPPORT_BTCOEX__ )
+	/*initialize GPIO internal pull_up*/
+	if ((da16x_boot_get_wakeupmode() & WAKEUP_RESET_WITH_RETENTION) == 0)
+		SAVE_INTERNAL_PULLUP_PINS_INFO(GPIO_UNIT_MAX, 0);
+
+	/*initialize GPIO internal pull_disable*/
+	if ((da16x_boot_get_wakeupmode() & WAKEUP_RESET_WITH_RETENTION) == 0)
+		SAVE_PULLUP_PINS_INFO(GPIO_UNIT_MAX, 0);
+#endif
 
 	GPIO_TRACE_PRINT("restore pin mux info\n");
 	GPIO_TRACE_PRINT("\tFC9K_DIOCFG->FSEL_GPIO1: 0x%08x\n", DA16200_DIOCFG->FSEL_GPIO1);

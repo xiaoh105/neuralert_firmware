@@ -30,8 +30,8 @@ Copyright (c) 2019-2022 Modified by Renesas Electronics.
 #include "stdbool.h"
 
 /* Do not commit if log's define is changed. */
-#undef	MQTT_DEBUG_INFO
-#undef	MQTT_DEBUG_TEMP
+#define	MQTT_DEBUG_INFO //JW Change back to undef
+#define	MQTT_DEBUG_TEMP //JW Change back to undef
 #define	MQTT_DEBUG_ERROR
 #define	MQTT_DEBUG_PRINT
 

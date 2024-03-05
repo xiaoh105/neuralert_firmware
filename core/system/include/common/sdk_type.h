@@ -57,7 +57,7 @@
 //////////////////////////////////////////////////////////////////
 
 #if defined ( GENERIC_SDK )
-	#include <config_generic_sdk.h>         // Customer's Generic SDK
+	#include "config_generic_sdk.h"         // Customer's Generic SDK
 #else
 	#Config Error ...
 #endif	/* ... customer_features ... */

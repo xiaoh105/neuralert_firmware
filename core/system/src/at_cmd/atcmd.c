@@ -2845,8 +2845,12 @@ int atcmd_dpm(int argc, char *argv[])
                 err_code = AT_CMD_ERR_DPM_SLP2_PERIOD_TYPE;
                 goto atcmd_dpm_end;
             } else if (is_in_valid_range(tmp_int1, 0x3E8, 0x7CFFFC18) == pdFALSE) {
-                err_code = AT_CMD_ERR_DPM_SLP2_PERIOD_RANGE;
-                goto atcmd_dpm_end;
+                if (tmp_int1 == 0) { // In case of RTC_WAKE_UP
+                    tmp_msec = 0;
+                } else {
+                    err_code = AT_CMD_ERR_DPM_SLP2_PERIOD_RANGE;
+                    goto atcmd_dpm_end;
+                }
             } else {
                 tmp_msec = (unsigned long long)tmp_int1;
             }
@@ -2906,11 +2910,16 @@ int atcmd_dpm(int argc, char *argv[])
                 err_code = AT_CMD_ERR_DPM_SLP3_PERIOD_TYPE;
                 goto atcmd_dpm_end;
             } else if (is_in_valid_range(tmp_int1, 0x3E8, 0x7CFFFC18) == pdFALSE) {
-                err_code = AT_CMD_ERR_DPM_SLP3_PERIOD_RANGE;
-                goto atcmd_dpm_end;
+                if (tmp_int1 == 0) { // In case of RTC_WAKE_UP
+                    tmp_msec = 0;
+                } else {
+                    err_code = AT_CMD_ERR_DPM_SLP3_PERIOD_RANGE;
+                    goto atcmd_dpm_end;
+                }
             } else {
                 tmp_msec = (unsigned long long)tmp_int1;
             }            
+
 #if defined (__BLE_COMBO_REF__)
             int tmp_sec = 0;
             tmp_sec = tmp_int1/1000; 
