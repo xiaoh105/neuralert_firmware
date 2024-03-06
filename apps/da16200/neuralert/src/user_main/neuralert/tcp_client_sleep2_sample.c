@@ -390,7 +390,11 @@ static const char *cert_buffer2 =
 // more than an hour.
 // So 40 minutes = 8 intervals = 144 * 8 = 1152 FIFO buffers per interval
 //#define MAX_FIFO_BUFFERS_PER_TRANSMIT_INTERVAL 288
-#define MAX_FIFO_BUFFERS_PER_TRANSMIT_INTERVAL 1152 //JW: I want to make this infinite -- always send all the data.
+// #define MAX_FIFO_BUFFERS_PER_TRANSMIT_INTERVAL 1152
+// JW: We want to send all the data out.  Let's pick a larger value than our
+// expected buffer size (could confirm later)
+// 10 hours = 120 intervals = 144 * 120 = 17280
+#define MAX_FIFO_BUFFERS_PER_TRANSMIT_INTERVAL 17280
 
 // Trigger value for the accelerometer to start MQTT transmission
 //  64 ~= 2 minutes
@@ -405,10 +409,10 @@ static const char *cert_buffer2 =
 // erases the next flash sector before it starts the MQTT task
 // That means that the MQTT task will have 16 AXL interrupt times to
 // operate in before the next erase sector time
-// #define MQTT_TRANSMIT_TRIGGER_FIFO_BUFFERS 32 //JW: use this for testing
+ #define MQTT_TRANSMIT_TRIGGER_FIFO_BUFFERS 32 //JW: use this for testing
 //#define MQTT_TRANSMIT_TRIGGER_FIFO_BUFFERS 64
 // 144 = 9 x 16 and just about 5 minutes at 29 samples / FIFO
-#define MQTT_TRANSMIT_TRIGGER_FIFO_BUFFERS 144 // Use this for production
+// #define MQTT_TRANSMIT_TRIGGER_FIFO_BUFFERS 144 // Use this for production
 //#define MQTT_TRANSMIT_TRIGGER_FIFO_BUFFERS 176
 //#define MQTT_TRANSMIT_TRIGGER_FIFO_BUFFERS 208
 //#define MQTT_TRANSMIT_TRIGGER_FIFO_BUFFERS 272
@@ -428,7 +432,7 @@ static const char *cert_buffer2 =
 // were causing errors in the MQTT publish client.  We didn't try anything
 // between 20 and 30, so a little larger might be possible.
 // #define FIFO_BLOCKS_PER_PACKET 24 // used in 1.9
-#define FIFO_BLOCKS_PER_PACKET 5 // Smaller numbers work a lot better
+#define FIFO_BLOCKS_PER_PACKET 5 // Smaller numbers work better, used in 1.10
 
 // How many actual samples to be sent in each JSON packet
 // # samples in the Accel FIFO times blocks per JSON packet
@@ -453,17 +457,17 @@ static const char *cert_buffer2 =
 // #define MQTT_INTER_PACKET_DELAY_MS 2000 // Release 1.9 -- JW: trying to deprecate this delay
 // JW: The problem wasn't that a delay was needed, it was that there was a race condition
 // in sub_client.c -- I fixed this.
-#define MQTT_INTER_PACKET_DELAY_MS 0
+#define MQTT_INTER_PACKET_DELAY_MS 0 // Release 1.10
 // How long to sleep after completing MQTT transmission to allow cloud to respond
 // and/or let transmission to complete
 // JW: Again, a delay isn't needed -- it was a race condition in sub_client.c that Inteprod didn't diagnose.
 // #define MQTT_POST_TRANSMISSION_DELAY_MS 2000 // Release 1.9
-#define MQTT_POST_TRANSMISSION_DELAY_MS 0
+#define MQTT_POST_TRANSMISSION_DELAY_MS 0 // Release 1.10
 
 // How long to sleep after powering down the RF section before allowing sleep
+// Again, this isn't necessary now that the race condition is fixed in Release 1.10.
 //#define MQTT_POST_RF_POWER_OFF_DELAY_MS 1000 // Release 1.9
-#define MQTT_POST_RF_POWER_OFF_DELAY_MS 0 // Again, this isn't necessary now that the race condition is fixed
-
+#define MQTT_POST_RF_POWER_OFF_DELAY_MS 0 // Release 1.10
 
 // Global area for building system error messages that
 // will be logged
@@ -649,7 +653,7 @@ typedef struct _userData {
 	unsigned int MQTT_dropped_data_events;	// # times MQTT had to skip data because it was catching up to AXL
 	unsigned int MQTT_attempts_this_tx; // # times MQTT has attempted to send this packet
 	unsigned int MQTT_inflight;			// indicates the number of inflight messages
-	int MQTT_message_id; // indicates the MQTT message ID (ensures uniqueness)
+	int MQTT_last_message_id; // indicates the MQTT message ID (ensures uniqueness)
 
 	// Time synchronization information
 	// A time snapshot is taken on the first successful MQTT connection
@@ -901,8 +905,8 @@ void user_time64_msec_since_poweron(__time64_t *cur_msec);
 //void mqtt_client_set_msg_cb(void (*user_cb)(const char *buf, int len, const char *topic));
 
 // Fred written functions to check on MQTT thread
-//extern int check_mqtt_client_thread_status(void);
-//extern int check_mqtt_client_state(void);
+//extern int check_mqtt_client_thread_status(void); // JW: Deprecated - to be removed
+//extern int check_mqtt_client_state(void); // JW: Deprecated - to be removed
 
 // Fred written function in util_api.c
 // Returns elapsed time since hardware boot for adjusting
@@ -1146,7 +1150,7 @@ void my_app_mqtt_msg_cb(const char *buf, int len, const char *topic)
 
 void user_mqtt_pub_cb(int mid)
 {
-    pUserData->MQTT_message_id = mid; // store the last message id
+    pUserData->MQTT_last_message_id = mid; // store the last message id
 
     PRINTF ("MQTT PUB CALBACK, clearing inflight!\n");
 
@@ -2880,7 +2884,6 @@ static int user_mqtt_chk_connection(int timeout)
  */
 static int user_mqtt_client_send_message_with_qos(char *top, char *publish, ULONG timeout)
 {
-	extern struct mosquitto	*mosq_sub;
 	int status;
 
 	if (pUserData->MQTT_inflight > 0){
@@ -3443,7 +3446,8 @@ static void user_process_send_MQTT_data(void* arg)
 			{
 				msg_sequence++;
 				send_start_addr = 0;
-				user_set_mid_sent(pUserData->MQTT_message_id); // Probably could/should do this once when creating the MQTT client
+				//JW: The following user_set_mid_sent is now deprecated -- to be removed
+				//user_set_mid_sent(pUserData->MQTT_last_message_id); // Probably could/should do this once when creating the MQTT client
 				status = send_json_packet (send_start_addr, samples_to_send,
 						pUserData->MQTT_message_number, msg_sequence);
 				if(status == 0)
@@ -3660,7 +3664,8 @@ void user_start_MQTT_client()
 		//user_create_MQTT_task(); // If client is started, start the transmit -- this is handled differently now.
 	} else {
 		int status = 0;
-		status = mqtt_client_start();
+		status = mqtt_client_start(); // starts the MQTT client
+
 		if(status == 0)
 		{
 			PRINTF("\n**Neuralert: MQTT client start success -- waiting for connection"); // FRSDEBUG
@@ -3746,12 +3751,18 @@ static void user_create_MQTT_task()
 		return;
 	}
 
-
+	extern struct mosquitto	*mosq_sub;
 	BaseType_t create_status;
-//	UBaseType_t current_task_priority;	// priority of main task (Accelerometer task)
 
+#if 0
+//	UBaseType_t current_task_priority;	// priority of main task (Accelerometer task)
 	// Get our priority
 //	current_task_priority = uxTaskPriorityGet((TaskHandle_t)NULL);
+#endif
+
+	// Prior to starting to transmit data, we need to store the message id state
+	// so we have unique message ids for each client message
+	mosq_sub->last_mid = pUserData->MQTT_last_message_id;
 
 	create_status = xTaskCreate(
 			user_process_send_MQTT_data,
@@ -6999,7 +7010,7 @@ printf_with_run_time("Starting boot event process");
 	pUserData->MQTT_connect_fails = 0;
 	pUserData->MQTT_transmit_fails = 0;
 	pUserData->MQTT_dropped_data_events = 0;
-	pUserData->MQTT_message_id = 0;
+	pUserData->MQTT_last_message_id = 0;
 
 
 	// Complete the log initialization process, including
