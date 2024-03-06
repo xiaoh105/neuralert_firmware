@@ -651,7 +651,7 @@ typedef struct _userData {
 	unsigned int MQTT_connect_fails;	// # times we've failed to connect
 	unsigned int MQTT_transmit_fails;	// # times a packet send failed
 	unsigned int MQTT_dropped_data_events;	// # times MQTT had to skip data because it was catching up to AXL
-	unsigned int MQTT_attempts_this_tx; // # times MQTT has attempted to send this packet
+	unsigned int MQTT_tx_attempts_remaining; // # times MQTT can attempt to send this packet
 	unsigned int MQTT_inflight;			// indicates the number of inflight messages
 	int MQTT_last_message_id; // indicates the MQTT message ID (ensures uniqueness)
 
@@ -3446,7 +3446,7 @@ static void user_process_send_MQTT_data(void* arg)
 			{
 				msg_sequence++;
 				send_start_addr = 0;
-				//JW: The following user_set_mid_sent is now deprecated -- to be removed
+				//JW: The following line user_set_mid_sent(...) is now deprecated -- to be removed
 				//user_set_mid_sent(pUserData->MQTT_last_message_id); // Probably could/should do this once when creating the MQTT client
 				status = send_json_packet (send_start_addr, samples_to_send,
 						pUserData->MQTT_message_number, msg_sequence);
@@ -3492,24 +3492,24 @@ static void user_process_send_MQTT_data(void* arg)
 						PRINTF("\n MQTT: updated AB transmit location: %d ******\n\n",next_packet_start_block);
 					}
 				}
-				else if (pUserData->MQTT_attempts_this_tx < MQTT_MAX_ATTEMPTS_PER_TX){
-					PRINTF("\nMQTT transmission %d:%d failed. Attempt %d. Retry Transmission",
-							pUserData->MQTT_message_number, msg_sequence, pUserData->MQTT_attempts_this_tx+1);
+				else if (pUserData->MQTT_tx_attempts_remaining > 0){
+					PRINTF("\nMQTT transmission %d:%d failed. Remaining attempts %d. Retry Transmission",
+							pUserData->MQTT_message_number, msg_sequence, pUserData->MQTT_tx_attempts_remaining);
 
-					sprintf(user_log_string_temp, "MQTT transmission %d:%d failed. Attempt %d. Retry Transmission",
-							pUserData->MQTT_message_number, msg_sequence, pUserData->MQTT_attempts_this_tx+1);
+					sprintf(user_log_string_temp, "MQTT transmission %d:%d failed. Remaining attempts %d. Retry Transmission",
+							pUserData->MQTT_message_number, msg_sequence, pUserData->MQTT_tx_attempts_remaining);
 
-					pUserData->MQTT_attempts_this_tx++;
+					pUserData->MQTT_tx_attempts_remaining--;
 					request_stop_transmit = pdTRUE; // must set to true to exit loop
 					request_retry_transmit = pdTRUE;
 				}
 				else
 				{
-					PRINTF("\nMQTT transmission %d:%d failed. Attempt %d. Ending Transmission",
-							pUserData->MQTT_message_number, msg_sequence, pUserData->MQTT_attempts_this_tx+1);
+					PRINTF("\nMQTT transmission %d:%d failed. Remaining attempts %d. Ending Transmission",
+							pUserData->MQTT_message_number, msg_sequence, pUserData->MQTT_tx_attempts_remaining);
 
-					sprintf(user_log_string_temp, "MQTT transmission %d:%d failed. Attempt %d. Ending transmission.",
-							pUserData->MQTT_message_number, msg_sequence, pUserData->MQTT_attempts_this_tx+1);
+					sprintf(user_log_string_temp, "MQTT transmission %d:%d failed. Remaining attempts %d. Ending transmission.",
+							pUserData->MQTT_message_number, msg_sequence, pUserData->MQTT_tx_attempts_remaining);
 					user_log_error(user_log_string_temp);
 					PRINTF_RED("\n**** %s\n", user_log_string_temp);
 					request_stop_transmit = pdTRUE;
@@ -3698,7 +3698,6 @@ void user_start_MQTT_client()
  */
 static void user_start_data_tx(){
 
-
 	// Specifically, let the other tasks know that the watchdog is turning on,
 	// so we don't sleep
 	SET_PROCESS_BIT(processLists, USER_PROCESS_WATCHDOG);
@@ -3720,20 +3719,20 @@ static void user_start_data_tx(){
 	// so we need both bits set to stay awake until transmittion is complete
 	SET_PROCESS_BIT(processLists, USER_PROCESS_MQTT_TRANSMIT);
 	vTaskDelay(1);
-	pUserData->MQTT_attempts_this_tx = 0;
+
+	// Intialize the maximum number of retries here -- this can't be done in
+	// user_create_MQTT_task() since that function will be called when we restart
+	// the client.  We do it here because this is the entry point data transmission
+	pUserData->MQTT_tx_attempts_remaining = MQTT_MAX_ATTEMPTS_PER_TX;
 
 
 	PRINTF("\n ===== Starting WIFI =====\n\n");
 	// Start the RF section power up -- this will trigger the wifi to connect
 	wifi_cs_rf_cntrl(FALSE);
 
-	//vTaskDelay(pdMS_TO_TICKS(5000)); // 5 second delay for RF to warm up
-
-	//int	ret = 0;
 	char value_str[128] = {0, };
-	//ret = da16x_cli_reply("select_network 0", NULL, value_str);
-	da16x_cli_reply("select_network 0", NULL, value_str);
-
+	ret = da16x_cli_reply("select_network 0", NULL, value_str);
+	//TODO: Implement a check for the select network execution.  If it fails, call termination
 
 	return;
 }
