@@ -601,6 +601,9 @@ typedef struct _userData {
 	accelBufferStruct FIFOstash[USER_RTM_DATA_MAX_CNT];
 #endif
 
+
+	//JW: AXL calibration is deprecated -- no longer needed, we interpolate between two buffer read times
+#if 0
 	// *****************************************************
 	// Accelerometer sample rate calibration data
 	// *****************************************************
@@ -615,7 +618,7 @@ typedef struct _userData {
 	// Note that nominal is 1,000,000/14 = 71,429 usec.
 	ULONG AXL_cal_sample_period_usec;
 	int AXL_calibration_complete;		// pdTRUE if we've completed cal
-
+#endif // TO BE REMOVED -- DEPRECATED
 
 	// *****************************************************
 	// Timekeeping for FIFO read cycles
@@ -1899,11 +1902,14 @@ static int user_process_MQTT_wait_for_connection(int max_ms)
 		__time64_t accelTime;               //!< time when accelleromter data taken
 	} accelDataStruct;
  *
+ *
+ *
  *******************************************************************************
  */
 
 int send_json_packet (int startAdd, int count, int msg_number, int sequence)
 {
+
 	int return_status = 0;
 	int transmit_status = 0;
 	int packet_len;
@@ -1999,49 +2005,42 @@ int send_json_packet (int startAdd, int count, int msg_number, int sequence)
 		sprintf(str,"\t\t\t\"seq\": %d,\r\n",sequence);
 		strcat(mqttMessage,str);
 
-		/*
-		 * On the first packet of a transmission interval, send
-		 * battery status, time sync info, and any taps detected
+		/* New timesync field added 1/26/23 per ECO approved by Neuralert
+		 * Format:
+		 *
+		 *	The current first JSON packet has this format:
+		 *	{ "state": { "reported": { "id": "EB345A",
+		 *	"trans": 1,
+		 *	"seq": 1,
+		 *	"bat": 140,
+		 *	"tap": 0,
+		 *	"accX": [6 6 6 6 6 6 6 6 6 6 6 6 5 6 6 6 6 6 6 6 5 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 5 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6
+		 *
+		 *	This change will add the following field between the “seq” field and the “bat” field:
+		 *
+		 *	"timesync": "2023.01.17 12:53:55 (GMT 00:00) 0656741",
+		 *
+		 *	where the data consists of the current date and time in “local” time, as configured when WIFI is set up.  The last field (0656741) is an internal timestamp in milliseconds since power-on that corresponds to the current local time.  This will make it possible to align timestamps from different devices.
+		 *
+		 *	Note that the “current” local date and time is that returned from an SNTP server on the Internet and is subject to internet lag and internal processing times.
+		 *
 		 */
-		if(sequence == 1)
-		{
-
-			/* New timesync field added 1/26/23 per ECO approved by Neuralert
-			 * Format:
-			 *
-			 *	The current first JSON packet has this format:
-			 *	{ "state": { "reported": { "id": "EB345A",
-			 *	"trans": 1,
-			 *	"seq": 1,
-			 *	"bat": 140,
-			 *	"tap": 0,
-			 *	"accX": [6 6 6 6 6 6 6 6 6 6 6 6 5 6 6 6 6 6 6 6 5 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 5 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6
-			 *
-			 *	This change will add the following field between the “seq” field and the “bat” field:
-			 *
-			 *	"timesync": "2023.01.17 12:53:55 (GMT 00:00) 0656741",
-			 *
-			 *	where the data consists of the current date and time in “local” time, as configured when WIFI is set up.  The last field (0656741) is an internal timestamp in milliseconds since power-on that corresponds to the current local time.  This will make it possible to align timestamps from different devices.
-			 *
-			 *	Note that the “current” local date and time is that returned from an SNTP server on the Internet and is subject to internet lag and internal processing times.
-			 *
-			 */
-			time64_string(buf, &pUserData->MQTT_timesync_timestamptime_msec);
-			sprintf(str,"\t\t\t\"timesync\": \"%s %s\",\r\n",
-					pUserData->MQTT_timesync_current_time_str, buf);
-			strcat(mqttMessage,str);
+		time64_string(buf, &pUserData->MQTT_timesync_timestamptime_msec);
+		sprintf(str,"\t\t\t\"timesync\": \"%s %s\",\r\n",
+				pUserData->MQTT_timesync_current_time_str, buf);
+		strcat(mqttMessage,str);
 
 
-			/* get battery value */
-			adcDataFloat = get_battery_voltage();
-	//	    PRINTF("Current ADC Value: %d\n",(uint16_t)(adcDataFloat * 100));
-			// Battery voltage in centivolts
-			sprintf(str,"\t\t\t\"bat\": %d,\r\n",(uint16_t)(adcDataFloat * 100));
-			strcat(mqttMessage,str);
-			sprintf(str,"\t\t\t\"tap\": %d,\r\n",doubleTap);
-			strcat(mqttMessage,str);
-			doubleTap = 0;
-		}
+		/* get battery value */
+		adcDataFloat = get_battery_voltage();
+//	    PRINTF("Current ADC Value: %d\n",(uint16_t)(adcDataFloat * 100));
+		// Battery voltage in centivolts
+		sprintf(str,"\t\t\t\"bat\": %d,\r\n",(uint16_t)(adcDataFloat * 100));
+		strcat(mqttMessage,str);
+		sprintf(str,"\t\t\t\"tap\": %d,\r\n",doubleTap);
+		strcat(mqttMessage,str);
+		doubleTap = 0;
+
 
 	//	PRINTF(">> JSON preamble: %s\n", mqttMessage); // FRSDEBUG
 
@@ -2119,7 +2118,8 @@ int send_json_packet (int startAdd, int count, int msg_number, int sequence)
 			uint64_t num1 = ((now/1000000) * 1000000);
 			uint64_t num2 = now - num1;
 			uint32_t num3 = num2;
-			sprintf(nowStr,"%ld",now/1000000);
+			sprintf(nowStr,"%03ld",now/1000000); //JW: I changed this so all times are formatted the same (9 digits)
+			//sprintf(nowStr,"%ld",now/1000000);
 			sprintf(str2,"%06ld ",num3);
 			strcat(nowStr,str2);
 			strcat(mqttMessage,nowStr);
@@ -2201,7 +2201,7 @@ void time64_string (UCHAR *timestamp_str, __time64_t *timestamp)
 	uint64_t num2 = timestamp_copy - num1;
 	uint32_t num3 = num2;
 
-	sprintf(nowStr,"%ld",(uint32_t)(timestamp_copy/1000000));
+	sprintf(nowStr,"%03ld",(uint32_t)(timestamp_copy/1000000));
 	sprintf(str2,"%06ld",num3);
 	strcat(nowStr,str2);
 	strcpy(timestamp_str,nowStr);
@@ -2280,6 +2280,59 @@ void time64_seconds_string (UCHAR *time_str, __time64_t *time_msec)
 }
 
 
+
+
+/**
+ *******************************************************************************
+ * @brief calculate the timestamp for all a sample read from the accelerometer FIFO
+ *      by using it's relative position in the buffer.
+ *
+ *   FIFO_ts 			- is the timestamp assigned to the FIFO buffer when it was read
+ *   FIFO_ts_prev		- is the timestamp assigned to the previous FIFO buffer when it was read
+ *   offset         	- is the position in the FIFO
+ *   FIFO_samples		- is the total number of samples in the FIFO
+ *   adjusted_timestamp - is the calculated timestamp to be assigned to the sample
+ *                    		with this offset
+ *
+ *******************************************************************************
+ */
+void calculate_timestamp_for_sample(__time64_t *FIFO_ts, __time64_t *FIFO_ts_prev, int offset, int FIFO_samples, __time64_t *adjusted_timestamp)
+{
+	__time64_t scaled_timestamp;	// times 1000 for more precise math
+	__time64_t scaled_timestamp_prev; // times 1000 for more precise math
+	__time64_t scaled_offsettime;	// the time offset of this sample * 1000
+	__time64_t adjusted_scaled_timestamp;
+	__time64_t rounded_offsettime;
+	__time64_t inter_sample_period_usec;	// Amount we adjust for each sample in the block
+
+	char input_str[20];
+	char output_str[20];
+	char scaled_time_str[20];
+	char scaled_offset_str[20];
+	char offset_str[20];
+
+	scaled_timestamp = *FIFO_ts;
+	scaled_timestamp = scaled_timestamp * (__time64_t)1000;
+
+	scaled_timestamp_prev = *FIFO_ts_prev;
+	scaled_timestamp_prev = scaled_timestamp_prev * (__time64_t)1000;
+
+	scaled_offsettime = ((scaled_timestamp - scaled_timestamp_prev) * (__time64_t)(offset + 1)) / (__time64_t)FIFO_samples;
+
+	// offset time * 1000
+	adjusted_scaled_timestamp = scaled_timestamp_prev + scaled_offsettime;
+	// back to msec.  We round by adding 500 usec before dividing
+	rounded_offsettime = (adjusted_scaled_timestamp + (__time64_t)500)
+			                  / (__time64_t)1000;
+
+	*adjusted_timestamp = rounded_offsettime;
+	return;
+}
+
+
+//JW: This is the old way of calculating the timestamps using calibration and interpolation
+// This chunk of code can be removed in a future release.
+#if 0
 /**
  *******************************************************************************
  * @brief calculate the timestamp for a sample read from the accelerometer FIFO
@@ -2345,7 +2398,7 @@ void calculate_timestamp_for_sample(__time64_t *FIFO_timestamp, int offset, __ti
 	*adjusted_timestamp = rounded_offsettime;
 	return;
 }
-
+#endif // TO BE REMOVED -- DEPRECATED
 
 /**
  *******************************************************************************
@@ -2369,8 +2422,10 @@ static int assemble_packet_data (HANDLE SPI_handle, int start_block, int end_blo
 	ULONG blockaddr;			// physical address in flash
 	int done = pdFALSE;
 	__time64_t block_timestamp;
+	__time64_t block_timestamp_prev;
 	__time64_t sample_timestamp;
 	ULONG sample_timestamp_offset;
+	int block_samples;
 	int timesource;
 	int timeoffset;
 	accelBufferStruct FIFOblock;
@@ -2452,11 +2507,17 @@ static int assemble_packet_data (HANDLE SPI_handle, int start_block, int end_blo
 		// add the samples to the transmit array
 		num_blocks++;
 		block_timestamp = FIFOblock.accelTime;
+		block_timestamp_prev = FIFOblock.accelTime_prev;
+		block_samples = FIFOblock.num_samples;
 		time64_string (block_timestamp_str, &block_timestamp);
-		timesource = FIFOblock.timestamp_sample;
+		//timesource = FIFOblock.timestamp_sample; // JW: Deprecated: changed to the last AXL value (below)
+		timesource = FIFOblock.num_samples - 1; //JW: this is the last sample
 //		PRINTF("  FIFO timesource: %d  timestamp: %s\n",
 //				timesource, block_timestamp_str);
 
+
+// JW: The AXL calibration process no longer exists
+#if 0
 		if (pUserData->AXL_calibration_complete)
 		{
 			inter_sample_period_usec = pUserData->AXL_cal_sample_period_usec;
@@ -2469,12 +2530,24 @@ static int assemble_packet_data (HANDLE SPI_handle, int start_block, int end_blo
 			time64_string (scaled_time_str, &inter_sample_period_usec);
 //			PRINTF ("  >>Using nominal sample period: %s usec\n", scaled_time_str);
 		}
+#endif // TO BE REMOVED -- DEPRECATED
+
 
 		for (i=0; i<FIFOblock.num_samples; i++)
 		{
 			accelXmitData[num_samples].Xvalue = FIFOblock.Xvalue[i];
 			accelXmitData[num_samples].Yvalue = FIFOblock.Yvalue[i];
 			accelXmitData[num_samples].Zvalue = FIFOblock.Zvalue[i];
+			calculate_timestamp_for_sample(&block_timestamp, &block_timestamp_prev,
+					i, block_samples, &sample_timestamp);
+			accelXmitData[num_samples].accelTime = sample_timestamp;
+			num_samples++;
+
+//JW: This was the old way of calculating timestamps below.  To interpolate required
+// figuring out the offest from when the interrupt time was assigned.  In the new version
+// we just interpolate between the last time the AXL buffer was read and the current.
+// This chunk of code can be removed in a future release.
+#if 0
 			// Calculate the approximate time of this sample.
 			// The timestamp for the FIFO block applies to "timesource" sample,
 			// which is the sample that reached the FIFO threshold set
@@ -2494,12 +2567,14 @@ static int assemble_packet_data (HANDLE SPI_handle, int start_block, int end_blo
 				// accelerometer so we have to calculate what it's timestamp
 				// should be based on it's position in the FIFO relative to
 				// the sample that caused the interrupt
-				calculate_timestamp_for_sample(&block_timestamp,
-						timeoffsetindex, &sample_timestamp);
+				calculate_timestamp_for_sample(&block_timestamp, &block_timestamp_prev,
+						i, block_samples, &sample_timestamp);
 			}
 
 			accelXmitData[num_samples].accelTime = sample_timestamp;
 			num_samples++;
+#endif //TO BE REMOVED -- DEPRECATED
+
 		}
 
 		// See if we're done
@@ -5590,7 +5665,7 @@ static int user_process_write_to_flash(accelBufferStruct *pFIFOdata, int *did_an
 	PRINTF(" Flash Write ADDR: 0x%X\r\n", NextWriteAddr);
 	PRINTF(" Data sequence # : %d\n", pFIFOdata->data_sequence);
 	PRINTF(" Number samples  : %d\n", pFIFOdata->num_samples);
-	PRINTF(" Timestamp sample: %d\n", pFIFOdata->timestamp_sample);
+	//PRINTF(" Timestamp sample: %d\n", pFIFOdata->timestamp_sample); //JW: Deprecated -- can be removed
 	PRINTF("-------------------------------\n");
 
 	fault_happened = 1;
@@ -5958,6 +6033,14 @@ static void log_operating_info(void)
 	user_log_event(user_log_string_temp);
 }
 
+
+
+
+
+//JW: In the following code chunk is the old way to determine the timestamp for each
+// FIFO read.  This old approach focused on identifying the instance the interrupt
+// was called, and not just the RTC time.
+#if 0
 /**
  *******************************************************************************
  * @brief Determine timestamp to use for this reading of the accelerometer FIFO
@@ -6431,6 +6514,7 @@ end_of_func:
 
 	return;
 }
+#endif // TO BE REMOVED -- DEPRECATED
 
 /**
  *******************************************************************************
@@ -6516,6 +6600,11 @@ static int user_process_read_data(void)
 		//PRINTF("FIFO STAT %d: 	%d\r\n", dataptr, fiforeg[0]);
 	}
 
+	// The buffer has been read, now we need to assign a timestamp.
+	// JW: we are just going to log the RTC time counter register
+	user_time64_msec_since_poweron(&assigned_timestamp);
+
+
 	// Clear the interrupt pending in the accelerometer
 	clear_intstate(&ISR_reason);
 
@@ -6524,6 +6613,34 @@ static int user_process_read_data(void)
 	// Set an ever-increasing sequence number
 	pUserData->ACCEL_read_count++;  // Increment FIFO read #
 	receivedFIFO.data_sequence = pUserData->ACCEL_read_count;
+	receivedFIFO.accelTime = assigned_timestamp;
+	receivedFIFO.accelTime_prev = pUserData->last_FIFO_read_time_ms;
+
+	// check if we have initalized the previous read.  If not, just estimate it using 14Hz.
+	// this simplifies how timestamps are calculated and won't affect algorithm performance.
+	// 71429 is the number of usec for 14 Hz sampling, so we'll use 71 here.
+	if (pUserData->last_FIFO_read_time_ms == 0){
+		PRINTF ("THIS SHOULD NOT HAPPEN");
+	} // TODO: JW: Confirm this isn't called, then delete
+
+	//TODO: add sanity check to ensure time isn't negative, etc.  Probably should move this
+	// to a function somewhere.
+
+	ms_since_last_read = assigned_timestamp - pUserData->last_FIFO_read_time_ms;
+	pUserData->last_FIFO_read_time_ms = assigned_timestamp;
+	PRINTF(" >>Milliseconds since last AXL read: %u\n",
+			ms_since_last_read);
+
+#if 0
+	//JW: The following chunk of code (and comments) is for time stamping.
+	// It is a VERY odd way of time stamping.  The goal seems to have been to
+	// identify the moment the interrupt was triggered.  Instead, we're now moving from
+	// timestamping to identify when the interrupt was triggered to a timestamp corresponding
+	// when the data was read from the buffer.  Our new way will be accurate +/- 1 AXL sample.
+	// which is more than sufficient -- and a lot less convoluted.
+	//
+	// TO BE DEPRECATED.
+	//
 	// Tell MQTT which sample index is the one that we think
 	// triggered the interrupt and therefore is the one
 	// to associate with the timestamp
@@ -6560,6 +6677,7 @@ static int user_process_read_data(void)
 	pUserData->last_FIFO_read_time_ms = assigned_timestamp;
 	PRINTF(" >>Milliseconds since last AXL read: %u\n",
 			ms_since_last_read);
+#endif // To be removed (now deprecated)
 
 	// Display the values
 //#if defined(__RUNTIME_CALCULATION__) && defined(XIP_CACHE_BOOT)
@@ -6820,6 +6938,11 @@ uint8_t ISR_reason;
 		status = i2cRead(MC3672_ADDR, fiforeg, 1);
 		i++;
 	}
+	// Assign the initial timestamp.
+	// JW: We log the timestamps right after reading the buffer in
+	// the main loop, so doing it here.
+	user_time64_msec_since_poweron(&(pUserData->last_FIFO_read_time_ms));
+
 	PRINTF("\n------>FIFO buffer emptied %d samples\n", i);
 
 	//Enable RTC ISR - NJ 6/30/2022
@@ -6989,11 +7112,14 @@ printf_with_run_time("Starting boot event process");
 
 	pUserData->ACCEL_missed_interrupts = 0;
 
+// JW: AXL calibration is deprecated
+#if 0
 	// Initialize the accelerometer calibration process
 	pUserData->AXL_calibration_complete = pdFALSE;
 	pUserData->num_AXL_cal_entries = 0;
 	// Set the accelerometer sample period to nominal (14Hz sample rate)
 	pUserData->AXL_cal_sample_period_usec = (ULONG)71429;
+#endif //TO BE REMOVED -- DEPRECATED
 
 	// Initialize the FIFO interrupt cycle statistics
 	pUserData->FIFO_reads_this_power_cycle = 0;
@@ -7002,6 +7128,7 @@ printf_with_run_time("Starting boot event process");
 	pUserData->last_accelerometer_wakeup_time_msec = 0;
 	pUserData->FIFO_reads_since_last_wakeup = 0;
 	pUserData->FIFO_samples_since_last_wakeup = 0;
+	pUserData->last_FIFO_read_time_ms = 0;
 
 	// Initialize the MQTT statistics
 	pUserData->MQTT_message_number = 0;

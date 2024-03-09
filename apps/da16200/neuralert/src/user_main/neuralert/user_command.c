@@ -950,7 +950,7 @@ void display_FIFO_data(UCHAR *FIFO_buffer)
 	PRINTF("  Data sequence  : %d\n", fifo->data_sequence);
 	time64_string (time_string, &fifo->accelTime);
 	PRINTF("  Timestamp      : %s\n", time_string);
-	PRINTF("  Timestamp index: %d\n", fifo->timestamp_sample);
+	//PRINTF("  Timestamp index: %d\n", fifo->timestamp_sample); \\JW: deprecated.
 	PRINTF("  Num of samples : %d\n", fifo->num_samples);
 	if (fifo->num_samples > 0 && fifo->num_samples < MAX_ACCEL_FIFO_SIZE)
 	{

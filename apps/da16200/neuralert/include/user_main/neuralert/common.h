@@ -330,8 +330,17 @@ typedef struct
 #else
 	time_t accelTime;
 #endif /* __TIME64__ */
+
+	//JW: The timestamp_sample was only used for trying to identify when the interrupt
+	// was called.  This is no longer needed as we log the buffer read time now.
+#if 0
 	int8_t timestamp_sample;				// The INDEX of the sample to which
 											// the timestamp applies
+#endif // TO BE REMOVED -- DEPRECATED
+
+	//JW: Need this sample, easier to keep it in the FIFO block rather than interpolate between
+	// entries.
+	__time64_t accelTime_prev;				// time of previous AXL reading JW: added this
 
 	int8_t num_samples;						// actual # of samples stored
 	int8_t Xvalue[MAX_ACCEL_FIFO_SIZE];		//!< X-Value
