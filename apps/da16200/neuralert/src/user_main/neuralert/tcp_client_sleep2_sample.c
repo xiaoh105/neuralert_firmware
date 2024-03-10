@@ -29,11 +29,7 @@
  *
  ****************************************************************************************
  */
-// following temporary for Fred
 
-// DEBUG FRED FRSDEBUG
-//#define __MQTT_CLIENT_SAMPLE__
-//#define CFG_USE_RETMEM_WITHOUT_DPM
 #if defined (__TCP_CLIENT_SLEEP2_SAMPLE__)
 
 
@@ -182,102 +178,6 @@
 //#define USER_RTM_DATA_SIZE						(USER_RTM_DATA_LEN * USER_RTM_DATA_MAX_CNT)
 #define USER_CONNECT_STATUS_REPLY_SIZE			(512)
 
-
-/**
- *******************************************************************************
- * @brief MQTT broker configuration
- *******************************************************************************
- */
-#if 0
-static const char *cert_buffer0 =
-	"-----BEGIN CERTIFICATE-----\n"
-	"MIIDQTCCAimgAwIBAgITBmyfz5m/jAo54vB4ikPmljZbyjANBgkqhkiG9w0BAQsF\n"
-	"ADA5MQswCQYDVQQGEwJVUzEPMA0GA1UEChMGQW1hem9uMRkwFwYDVQQDExBBbWF6\n"
-	"b24gUm9vdCBDQSAxMB4XDTE1MDUyNjAwMDAwMFoXDTM4MDExNzAwMDAwMFowOTEL\n"
-	"MAkGA1UEBhMCVVMxDzANBgNVBAoTBkFtYXpvbjEZMBcGA1UEAxMQQW1hem9uIFJv\n"
-	"b3QgQ0EgMTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBALJ4gHHKeNXj\n"
-	"ca9HgFB0fW7Y14h29Jlo91ghYPl0hAEvrAIthtOgQ3pOsqTQNroBvo3bSMgHFzZM\n"
-	"9O6II8c+6zf1tRn4SWiw3te5djgdYZ6k/oI2peVKVuRF4fn9tBb6dNqcmzU5L/qw\n"
-	"IFAGbHrQgLKm+a/sRxmPUDgH3KKHOVj4utWp+UhnMJbulHheb4mjUcAwhmahRWa6\n"
-	"VOujw5H5SNz/0egwLX0tdHA114gk957EWW67c4cX8jJGKLhD+rcdqsq08p8kDi1L\n"
-	"93FcXmn/6pUCyziKrlA4b9v7LWIbxcceVOF34GfID5yHI9Y/QCB/IIDEgEw+OyQm\n"
-	"jgSubJrIqg0CAwEAAaNCMEAwDwYDVR0TAQH/BAUwAwEB/zAOBgNVHQ8BAf8EBAMC\n"
-	"AYYwHQYDVR0OBBYEFIQYzIU07LwMlJQuCFmcx7IQTgoIMA0GCSqGSIb3DQEBCwUA\n"
-	"A4IBAQCY8jdaQZChGsV2USggNiMOruYou6r4lK5IpDB/G/wkjUu0yKGX9rbxenDI\n"
-	"U5PMCCjjmCXPI6T53iHTfIUJrU6adTrCC2qJeHZERxhlbI1Bjjt/msv0tadQ1wUs\n"
-	"N+gDS63pYaACbvXy8MWy7Vu33PqUXHeeE6V/Uq2V8viTO96LXFvKWlJbYK8U90vv\n"
-	"o/ufQJVtMVT8QtPHRh8jrdkPSHCa2XV4cdFyQzR1bldZwgJcJmApzyMZFo6IQ6XU\n"
-	"5MsI+yMRQ+hDKXJioaldXgjUkK642M4UwtBV8ob2xJNDd2ZhwLnoQdeXeGADbkpy\n"
-	"rqXRfboQnoZsG4q5WTP468SQvvG5\n"
-	"-----END CERTIFICATE----\n";
-static const char *cert_buffer1 =
-    "-----BEGIN CERTIFICATE-----\n"
-    "MIIDWTCCAkGgAwIBAgIUSQLnj6+bPW1TjHi2WVfAcR+dc0owDQYJKoZIhvcNAQEL\n"
-	"BQAwTTFLMEkGA1UECwxCQW1hem9uIFdlYiBTZXJ2aWNlcyBPPUFtYXpvbi5jb20g\n"
-	"SW5jLiBMPVNlYXR0bGUgU1Q9V2FzaGluZ3RvbiBDPVVTMB4XDTIyMTExODE5MzA1\n"
-	"NVoXDTQ5MTIzMTIzNTk1OVowHjEcMBoGA1UEAwwTQVdTIElvVCBDZXJ0aWZpY2F0\n"
-	"ZTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAMBWL8Dx3ydu07cPK3la\n"
-	"LZYqaOe1OYebBq6tdSNjaVbqZgsonFz4bRTMRLloVSbRilv1/U4oWSfnbckL6imY\n"
-	"nqUlI3+5p9UMfRDEZAfHxxQGw7HLZ7/wfMUgEG+rtR1tGHTig66/ajnEkF7ksIkg\n"
-	"wh0lSslCEa7ZyqigXvx2VONF6YTisDyaf117BXQzFyv6ilvZPUY6Rw3v57AZGG0K\n"
-	"JrE0varIRh1LfD55Mvmbihc94WBBcxQNklNxAHDIJTF4MrnePWi6qckPvcq/Ouq3\n"
-	"wF+jLHhmqwXcIRR8tSeiDVx2y228kEffW6giCN/JC6t+dQRFDLuobhh45kFQWtFd\n"
-	"g3cCAwEAAaNgMF4wHwYDVR0jBBgwFoAULxwyLnd1bmUOVT1MED0Mi7FMuUYwHQYD\n"
-	"VR0OBBYEFKTeX7tRvNZahkDaWIzDIwUaWk5VMAwGA1UdEwEB/wQCMAAwDgYDVR0P\n"
-	"AQH/BAQDAgeAMA0GCSqGSIb3DQEBCwUAA4IBAQAwLT5XrdcXVLUH9yIUaB1qT3OF\n"
-	"Sn3w88MxOtesAIGnZ8FaXuFAyGE2zpzP7hxR3H9ZDzLNhJXrqQwGC9GlfoJLxFss\n"
-	"o3aEhh8UHFoXZj9FnpFBnXuMWHKItIib8Ncb+/oyik1BTChop6KsK9zTnMFHLZLG\n"
-	"xavD+T0FDnIz0/O5znGUl+zI+w5yWjQZJBFhMp/A4yDtI39/upSK90MUouCIv1Jb\n"
-	"wVLVXNFgbSCH8nIFbcS/58Kv2aMXWDKVa8/ioE3QEGLwbI1tYLcnLd5fHjuWBpxQ\n"
-	"yZJvKRTHAfWGCro9slCNjcu5WTUC2h3Gr7FL604Fem0sb+vsk4k7AJmTvfnQ\n"
-    "-----END CERTIFICATE-----\n";
-static const char *cert_buffer2 =
-    "-----BEGIN RSA PRIVATE KEY-----\n"
-	"MIIEowIBAAKCAQEAwFYvwPHfJ27Ttw8reVotlipo57U5h5sGrq11I2NpVupmCyic\n"
-	"XPhtFMxEuWhVJtGKW/X9TihZJ+dtyQvqKZiepSUjf7mn1Qx9EMRkB8fHFAbDsctn\n"
-	"v/B8xSAQb6u1HW0YdOKDrr9qOcSQXuSwiSDCHSVKyUIRrtnKqKBe/HZU40XphOKw\n"
-	"PJp/XXsFdDMXK/qKW9k9RjpHDe/nsBkYbQomsTS9qshGHUt8Pnky+ZuKFz3hYEFz\n"
-	"FA2SU3EAcMglMXgyud49aLqpyQ+9yr866rfAX6MseGarBdwhFHy1J6INXHbLbbyQ\n"
-	"R99bqCII38kLq351BEUMu6huGHjmQVBa0V2DdwIDAQABAoIBAQCJC6BBIda4uT4/\n"
-	"vJ5kfH3o9tUC7N1OI4cyZcQGcCo51RDauJgZoqXO4PHDDnVGEJ4+glt4GkXUqhFO\n"
-	"5J93/hhkYb8WnknZA2oFzXndFVtjiKJeCCon2Ip+xycO+tE1Y2u+tTvRAvEEsmuQ\n"
-	"QfEL9Hx72fucxeflp6fAWWz1BLfdq88ialNrr5nt8j3EHC8Ulg8Fl2OFrQ5DCSvN\n"
-	"+qC8CQ+PjBc6qghQPEW4WXEqV8wRyGjFAvcqStv3Q4qxKHH1iLcqoAOr6FqDLpfL\n"
-	"gjrl2/IA7jv6XvrlrFk7pTYiVR6oVUTtlIubUDkUju33V9w7c3VV38Ml3vZbYpXT\n"
-	"cFcRQCPRAoGBAPyk1FUGt8EnmsLovyKm/b+sI6ruv26BHnh0ic3SUZh/kSKPq5Yo\n"
-	"cZu2+YQfXvZhmgfi8T/1rYCnT1pwenetV3xMsjVIq3xKd3wff57syF9MdFkH46TR\n"
-	"IB+Oy+xu8FcJqQGP7wnpv5l4Bqy3Breh0WbUnIcL5ZLuCnRLa93QA8kPAoGBAMLk\n"
-	"RPLNiGkFMvWzEp5XYXUHmMuTNGlcT0XNn7Cq3IrhHRo/0bEOkIxNuLM2RAT9UQh9\n"
-	"vKK6dRutODf8rdFQjxjsIdPss83tPYyJwgQ6o8lc0V9JLXfkKXDvnqZ7gaqr4NUE\n"
-	"l4ke2DKnywsqF5r/PsLddVihesO7rmuzJBV+WQ8ZAoGAZ99ZEXBGopqm7ZYF57hi\n"
-	"waiDraalfEiH/5xigAYF2D4yrNQHByCvvQbYxbKkN4ZfbvimmdZntGqVnKh8IbJa\n"
-	"MtfRuUicgOiZAaZtsSjHJS9o8qXkuYHlxDPQse/WzuJA40yLSjcZuH55uA80KtHU\n"
-	"J4QoqvmANQ27rJ7JxZPdyo8CgYB3Yb7+gHpr4nxp10yzY9FWD9Y/9acoVxxUJPYK\n"
-	"EU/RXr4mAyve6o4O89kNJlOaPtXxfpwbjl4IGx6R5R1QV6mgWZ0LJTarEQUf3o7T\n"
-	"alxED7BNTxUkGMZt4MptLsCqHGk3830jyJokxXXyG9Gj53C5i1DDfv8lgQUCAhU7\n"
-	"eU7ymQKBgA1CeWrA+TiTJb8u6ROO3vUld3cMmnJKB8yAOe2xsBn4vFeh25xBN8vp\n"
-	"DS3f5/oSrrkb9RJTQuX7W9eqpcDDNaNBR/KK6OKMPT//tq1sJ9Fjj1TKVaoTgoA1\n"
-	"4DhNWKdC9+LqDU0Nkvga5EHAHeY2UlHiGXo4eGX4rleQfd5U3dPU\n"
-    "-----END RSA PRIVATE KEY-----\n";
-#endif
-
-#define MQTT_SAMPLE_BROKER_IP	"a2el2ec1s2kje-ats.iot.us-east-2.amazonaws.com"
-#define MQTT_SAMPLE_BROKER_PORT	8883
-#define MQTT_SAMPLE_QOS			1
-#define MQTT_SAMPLE_TLS			1
-#define MQTT_SAMPLE_CLIENT_ID	"Neuralert-Thing" //JW I added this, need to confirm
-#define MQTT_SAMPLE_TOPIC_SUB	"Neuralert-Subscribe"
-#define MQTT_SAMPLE_TOPIC_PUB	"Neuralert-Publish"
-
-#if 0
-// Dialog example from MQTT client example in SDK
-#define MQTT_SAMPLE_BROKER_IP	"172.168.15.1"
-#define MQTT_SAMPLE_BROKER_PORT	8883
-#define MQTT_SAMPLE_QOS			2
-#define MQTT_SAMPLE_TLS			1
-#define MQTT_SAMPLE_TOPIC_SUB	"da16k"
-#define MQTT_SAMPLE_TOPIC_PUB	"_da16k"
-#endif
 
 /*
  * Accelerometer buffer (AB) setup
@@ -448,6 +348,8 @@ static const char *cert_buffer2 =
 // In that function, the QoS uses 10s of ticks each loop (not 10s of milliseconds)
 #define MQTT_QOS_TIMEOUT_MS 2000 // 1000 sometimes misses a PUBACK
 
+// JW: Remove this chunk of code in a future release
+#if 0
 // How long to sleep after each JSON packet is sent to allow MQTT and WIFI
 // activity to settle before attempting to read SPI bus again
 // Note that at Release 1.7 (Dec 2022) we lowered this to 1/2 second and
@@ -468,6 +370,7 @@ static const char *cert_buffer2 =
 // Again, this isn't necessary now that the race condition is fixed in Release 1.10.
 //#define MQTT_POST_RF_POWER_OFF_DELAY_MS 1000 // Release 1.9
 #define MQTT_POST_RF_POWER_OFF_DELAY_MS 0 // Release 1.10
+#endif // TO BE REMOVED -- DEPRECATED
 
 // Global area for building system error messages that
 // will be logged
@@ -1755,6 +1658,12 @@ static int user_process_create_rtc_timer(unsigned char tid, unsigned int sec)
 	return ret;
 }
 #endif
+
+//JW: We don't want to encode our MQTT implementation in the firmware
+// This will be setup at provisioning (and frankly, it is easy enough
+// to do when testing anyway).  Remove this chunk of code in a future
+// release
+#if 0
 /**
  ****************************************************************************************
  * @brief MQTT Basic Configuration Function \n
@@ -1802,7 +1711,7 @@ static void mqtt_user_config(void)
 //    cert_flash_write(SFLASH_CERTIFICATE_ADDR1, (char *)cert_buffer1, strlen(cert_buffer1));
 //    cert_flash_write(SFLASH_PRIVATE_KEY_ADDR1, (char *)cert_buffer2, strlen(cert_buffer2));
 }
-
+#endif // TO BE REMOVED -- DEPRECATED
 
 /*
  * Get battery voltage
@@ -2830,7 +2739,7 @@ static void user_mqtt_msg_cb (const char *buf, int len, const char *topic)
  * @brief Terminate the transmission of data over MQTT
  * A robust implementation that can be called at anytime to return the system
  * to the process of logging AXL data on a hardware interrupt.
- * There are lots of reasonas a transmission can fail, the most likely reasons are
+ * There are lots of reasons a transmission can fail, the most likely reasons are
  * intermittent wifi and MQTT client/broker issues.  Since these can't be fixed on
  * the fly, we opt to terminate the tranmission and try again later.
  *******************************************************************************
@@ -2842,15 +2751,24 @@ void user_terminate_transmit(void)
 	printf_with_run_time("\n===user_terminate_transmit called");
 #endif
 
-
 	// Check if MQTT is running -- if so, shut it down
     if (mqtt_client_is_running() == TRUE) {
         mqtt_client_force_stop();
         mqtt_client_stop();
     }
 
+    int ret;
+    char value_str[128] = {0, };
+    ret = da16x_cli_reply("disconnect", NULL, value_str);
+	if (ret < 0 || strcmp(value_str, "FAIL") == 0) {
+		PRINTF(" [%s] Failed disconnect from AP 0x%x\n  %s\n", __func__, ret, value_str);
+	}
+
 	// Power down the RF section
 	// Note as of 7/11/22 this confuses the lan clients
+    // JW: whoever made the above observation wasn't "disconnecting"
+    // prior to trying to turn off the rf.  Of course that might\
+    // confuse the lan client.
 	wifi_cs_rf_cntrl(TRUE);
 
 #ifdef CFG_USE_SYSTEM_CONTROL
@@ -2960,6 +2878,8 @@ static int user_mqtt_chk_connection(int timeout)
 static int user_mqtt_client_send_message_with_qos(char *top, char *publish, ULONG timeout)
 {
 	int status;
+	int qos;
+	da16x_get_config_int(DA16X_CONF_INT_MQTT_QOS, &qos);
 
 	if (pUserData->MQTT_inflight > 0){
 		return -1; // A message is supposedly inflight
@@ -2968,7 +2888,7 @@ static int user_mqtt_client_send_message_with_qos(char *top, char *publish, ULON
 	pUserData->MQTT_inflight = 1;
 	status = mqtt_pub_send_msg(top, publish);
 
-	if (!status && MQTT_SAMPLE_QOS >= 1)
+	if (!status && qos >= 1)
 	{
 		while (timeout--)
 		{
@@ -2985,7 +2905,7 @@ static int user_mqtt_client_send_message_with_qos(char *top, char *publish, ULON
 		pUserData->MQTT_inflight = 0;
 		return -2;			/* timeout */
 	}
-	else if (!status && MQTT_SAMPLE_QOS == 0)
+	else if (!status && qos == 0)
 	{
 		pUserData->MQTT_inflight = 0;
 		return 0;
@@ -3536,6 +3456,9 @@ static void user_process_send_MQTT_data(void* arg)
 	#if defined(__RUNTIME_CALCULATION__) && defined(XIP_CACHE_BOOT)
 		printf_with_run_time("===JSON packet sent");
 	#endif
+
+// JW: Remove this code in a future release.
+#if 0
 					PRINTF("Starting post-JSON packet transmit delay (%d msec)\n", MQTT_INTER_PACKET_DELAY_MS);
 					// Because MQTT and WIFI activity seems to interfere seriously
 					// with SPI bus activity, put a delay here to allow this
@@ -3545,6 +3468,7 @@ static void user_process_send_MQTT_data(void* arg)
 					// due to power draw.  The real fix is to not blast large packets all at
 					// once. Adding this delay is a bandaid at best.
 					vTaskDelay(pdMS_TO_TICKS(MQTT_INTER_PACKET_DELAY_MS));
+#endif // TO BE REMOVED -- DEPRECATED
 
 					// Now that we've transmitted this packet, update the
 					// MQTT transmit pointer to reflect the data transmitted
@@ -3606,6 +3530,8 @@ static void user_process_send_MQTT_data(void* arg)
 
 	if(!request_stop_transmit)
 	{
+
+//JW: remove this chunk of code in a future release
 #if 0
 #if defined(__RUNTIME_CALCULATION__) && defined(XIP_CACHE_BOOT)
 		printf_with_run_time("\n===Starting post-transmit delay");
@@ -3615,7 +3541,7 @@ static void user_process_send_MQTT_data(void* arg)
 #if defined(__RUNTIME_CALCULATION__) && defined(XIP_CACHE_BOOT)
 		printf_with_run_time("\n===Done post-transmit delay");
 #endif
-#endif // deprecated
+#endif // TO BE REMOVED -- DEPRECATED
 
 		sprintf(user_log_string_temp,
 				"MQTT transmission %d complete.  %d samples in %d JSON packets",
@@ -3630,11 +3556,12 @@ static void user_process_send_MQTT_data(void* arg)
 	// command or other message back from the cloud
 	// Turn off the RF section until next transmit interval
 
-
-
-
+//JW: Remove this chunk of code in a future release
+#if 0
 	// delay to allow things to settle
 	//vTaskDelay(pdMS_TO_TICKS(MQTT_POST_RF_POWER_OFF_DELAY_MS)); JW: deprecating this functionality -- not needed anymore
+#endif // TO BE REMOVED -- DEPRECTATED
+
 #if 0
 	spi_flash_close(MQTT_SPI_handle);
 #endif
@@ -7146,6 +7073,9 @@ printf_with_run_time("Starting boot event process");
 	// Initialize the accelerometer and enable the AXL interrupt
 	user_initialize_accelerometer();
 	
+	// Stop the wifi once bootup is done.
+	user_terminate_transmit();
+
 	// Close the SPI handle opened in AB init
 //	spi_status = spi_flash_close(SPI);
 
