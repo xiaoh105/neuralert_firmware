@@ -1903,26 +1903,14 @@ int send_json_packet (int startAdd, int count, int msg_number, int sequence)
 		 */
 		sprintf(str,"\t\t\t\"id\": \"%s\",\r\n",pUserData->Device_ID);
 		strcat(mqttMessage,str);
-		/*
-		 * Transmission sequence #
-		 */
-		sprintf(str,"\t\t\t\"trans\": %d,\r\n",msg_number);
-		strcat(mqttMessage,str);
-		/*
-		 * Message sequence this transmission
-		 */
-		sprintf(str,"\t\t\t\"seq\": %d,\r\n",sequence);
-		strcat(mqttMessage,str);
+
 
 		/* New timesync field added 1/26/23 per ECO approved by Neuralert
 		 * Format:
 		 *
 		 *	The current first JSON packet has this format:
-		 *	{ "state": { "reported": { "id": "EB345A",
-		 *	"trans": 1,
-		 *	"seq": 1,
+		 *	{ "state": { "reported": { "id": "EB345A", "meta": {},
 		 *	"bat": 140,
-		 *	"tap": 0,
 		 *	"accX": [6 6 6 6 6 6 6 6 6 6 6 6 5 6 6 6 6 6 6 6 5 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 5 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6
 		 *
 		 *	This change will add the following field between the “seq” field and the “bat” field:
@@ -1939,6 +1927,22 @@ int send_json_packet (int startAdd, int count, int msg_number, int sequence)
 				pUserData->MQTT_timesync_current_time_str, buf);
 		strcat(mqttMessage,str);
 
+		// Meta data field -- a json for whatever we want.
+		strcat(mqttMessage,"\t\t\t\"meta\":\r\n\t\t\t{\r\n");
+
+		/*
+		 * Meta - Transmission sequence #
+		 */
+		sprintf(str,"\t\t\t\t\"trans\": %d,\r\n",msg_number);
+		strcat(mqttMessage,str);
+		/*
+		 * Meta - Message sequence this transmission
+		 */
+		sprintf(str,"\t\t\t\t\"seq\": %d\r\n",sequence);
+		strcat(mqttMessage,str);
+
+		// End meta data field (close bracket)
+		strcat(mqttMessage,"\t\t\t},\r\n");
 
 		/* get battery value */
 		adcDataFloat = get_battery_voltage();
@@ -1946,10 +1950,6 @@ int send_json_packet (int startAdd, int count, int msg_number, int sequence)
 		// Battery voltage in centivolts
 		sprintf(str,"\t\t\t\"bat\": %d,\r\n",(uint16_t)(adcDataFloat * 100));
 		strcat(mqttMessage,str);
-		sprintf(str,"\t\t\t\"tap\": %d,\r\n",doubleTap);
-		strcat(mqttMessage,str);
-		doubleTap = 0;
-
 
 	//	PRINTF(">> JSON preamble: %s\n", mqttMessage); // FRSDEBUG
 
@@ -6766,7 +6766,8 @@ static int user_process_read_data(void)
 		// Check if MQTT is still active before starting again
 		if (PROCESS_BIT_SET(processLists, USER_PROCESS_MQTT_TRANSMIT))
 		{
-			user_log_error("****** MQTT task still active!!! Unable to start ******");
+			user_log_error("MQTT task still active. Stopping transmission.");
+			user_terminate_transmit();
 		}
 		else
 		{

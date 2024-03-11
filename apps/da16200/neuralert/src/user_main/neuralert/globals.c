@@ -78,7 +78,4 @@ uint8_t runFlag = 0;								//!< =1 start message processing, =0 do not start ta
 char macstr[18];				//!< complete MAC address ASCII string
 char MACaddr[7];				//!< last 6 characters of MAC address
 
-// Currently disused tap detection variable
-uint8_t doubleTap = 0;								//!< double tap has occurred
-
 
