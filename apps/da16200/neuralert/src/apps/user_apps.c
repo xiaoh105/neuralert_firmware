@@ -120,8 +120,10 @@ const app_task_info_t    user_apps_table[] = {
 
 #if defined (__TCP_CLIENT_SLEEP2_SAMPLE__) //JW: Task priority in 3220 was OS_TASK_PRIOTITY_USER + 3 ... not sure which it should be
     //{ SAMPLE_TCP_SLP2_CLI,				tcp_client_sleep2_sample,					2048, (OS_TASK_PRIORITY_USER + 6), FALSE, FALSE,	TCP_CLI_TEST_PORT,		RUN_ALL_MODE },
-    { USER_READ_DATA,					tcp_client_sleep2_sample,					2048, (OS_TASK_PRIORITY_USER + 3), FALSE, FALSE,	UNDEF_PORT,		RUN_ALL_MODE },
-    //{ USER_TRANSMIT_DATA,				mqtt_transmit_task,					512, (OS_TASK_PRIORITY_USER + 7), TRUE, FALSE,	UNDEF_PORT,		RUN_ALL_MODE },
+    //{ USER_READ_DATA,					tcp_client_sleep2_sample,					2048, (OS_TASK_PRIORITY_USER + 3), FALSE, FALSE,	UNDEF_PORT,		RUN_ALL_MODE },
+  //JW: in testing, we've seen close to 2048 utilized -- I'm opting for a 50% margin.
+  { USER_READ_DATA,					tcp_client_sleep2_sample,					3072, (OS_TASK_PRIORITY_USER + 3), FALSE, FALSE,	UNDEF_PORT,		RUN_ALL_MODE },
+	//{ USER_TRANSMIT_DATA,				mqtt_transmit_task,					512, (OS_TASK_PRIORITY_USER + 7), TRUE, FALSE,	UNDEF_PORT,		RUN_ALL_MODE },
 	//	{ HELLO_WORLD_2,				customer_hello_world_2,					512, (OS_TASK_PRIORITY_USER + 1), TRUE, FALSE,	UNDEF_PORT,		RUN_ALL_MODE },
 #endif // (__TCP_CLIENT_SAMPLE__)
 

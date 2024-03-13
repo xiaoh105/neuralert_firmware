@@ -93,9 +93,10 @@
 /* Process list */
 #define USER_PROCESS_HANDLE_RTCKEY				(1 << 0)
 #define USER_PROCESS_HANDLE_TIMER				(1 << 1)
-#define USER_PROCESS_SEND_DATA					(1 << 3)
-#define USER_PROCESS_MQTT_TRANSMIT				(1 << 4)
-#define USER_PROCESS_WATCHDOG					(1 << 5)
+#define USER_PROCESS_SEND_DATA					(1 << 2)
+#define USER_PROCESS_MQTT_TRANSMIT				(1 << 3)
+#define USER_PROCESS_WATCHDOG					(1 << 4)
+#define	USER_PROCESS_WATCHDOG_STOP				(1 << 5)
 
 
 // System states for LED management
@@ -110,6 +111,7 @@
 #define USER_STATE_WIFI_CONNECT_FAILED			(1 << 5)
 #define USER_STATE_BATTERY_EXHAUSTED			(1 << 6)
 #define USER_STATE_INTERNAL_ERROR				(1 << 7)
+
 
 // System alerts for LED management
 // The intent is that more than one condition can occur
@@ -240,7 +242,12 @@
 // poor and we should wait until later. 30 Seconds is pretty reasonable.  This is based on the
 // Inteprod implementation (which basically kept the wifi on for 30 seconds regardless of
 // the transmission) and still achieved a 5 day battery lifetime.
-#define WIFI_AND_MQTT_CONNECT_TIMEOUT_SECONDS 30
+// This has been implemented as a software watchdog -- hints the change in name
+#define WATCHDOG_TIMEOUT_SECONDS 30
+
+// How long to wait for the software watchdog to shutdown.
+#define WATCHDOG_STOP_TIMEOUT_SECONDS 5
+
 
 // MQTT as of 5.0 prohibits retries when using a clean session (which we do).
 // The low power da16200 and da16600 seem to struggle with maintaining a clean TCP connection.
@@ -347,6 +354,12 @@
 // mqtt_client_send_message_with_qos(...) in sub_client.c
 // In that function, the QoS uses 10s of ticks each loop (not 10s of milliseconds)
 #define MQTT_QOS_TIMEOUT_MS 2000 // 1000 sometimes misses a PUBACK
+// How long to wait for the MQTT client to subscribe to topics prior to giving up
+// If we can't subscribe (for whatever reason) it is going to be really hard to
+// publish.
+#define MQTT_SUB_TIMEOUT_SECONDS 5
+
+
 
 // JW: Remove this chunk of code in a future release
 #if 0
@@ -1082,6 +1095,13 @@ void my_app_mqtt_sub_cb(void)
     }
 #endif
 }
+
+void user_process_watchdog_cb(void)
+{
+	// if watchdog was requested to stop, execute the callback
+	CLR_PROCESS_BIT(processLists, USER_PROCESS_WATCHDOG_STOP);
+}
+
 
 
 /**
@@ -1888,174 +1908,181 @@ int send_json_packet (int startAdd, int count, int msg_number, int sequence)
 		user_log_error("**send_json_packet: MQTT connection down - aborting");
 		return -1;
 	}
-	else
-	{
-	//	PRINTF("**Neuralert: send_json_packet: %d samples starting at %d\n",
-	//			 count, startAdd); // FRSDEBUG
-
-		/*
-		 * JSON preamble
-		 */
-		strcpy(mqttMessage,"{\r\n\t\"state\":\r\n\t{\r\n\t\t\"reported\":\r\n\t\t{\r\n");
-		/*
-		 * MAC address of device - stored in retention memory
-		 * during the bootup event
-		 */
-		sprintf(str,"\t\t\t\"id\": \"%s\",\r\n",pUserData->Device_ID);
-		strcat(mqttMessage,str);
 
 
-		/* New timesync field added 1/26/23 per ECO approved by Neuralert
-		 * Format:
-		 *
-		 *	The current first JSON packet has this format:
-		 *	{ "state": { "reported": { "id": "EB345A", "meta": {},
-		 *	"bat": 140,
-		 *	"accX": [6 6 6 6 6 6 6 6 6 6 6 6 5 6 6 6 6 6 6 6 5 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 5 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6
-		 *
-		 *	This change will add the following field between the “seq” field and the “bat” field:
-		 *
-		 *	"timesync": "2023.01.17 12:53:55 (GMT 00:00) 0656741",
-		 *
-		 *	where the data consists of the current date and time in “local” time, as configured when WIFI is set up.  The last field (0656741) is an internal timestamp in milliseconds since power-on that corresponds to the current local time.  This will make it possible to align timestamps from different devices.
-		 *
-		 *	Note that the “current” local date and time is that returned from an SNTP server on the Internet and is subject to internet lag and internal processing times.
-		 *
-		 */
-		time64_string(buf, &pUserData->MQTT_timesync_timestamptime_msec);
-		sprintf(str,"\t\t\t\"timesync\": \"%s %s\",\r\n",
-				pUserData->MQTT_timesync_current_time_str, buf);
-		strcat(mqttMessage,str);
+//	PRINTF("**Neuralert: send_json_packet: %d samples starting at %d\n",
+//			 count, startAdd); // FRSDEBUG
 
-		// Meta data field -- a json for whatever we want.
-		strcat(mqttMessage,"\t\t\t\"meta\":\r\n\t\t\t{\r\n");
+	/*
+	 * JSON preamble
+	 */
+	strcpy(mqttMessage,"{\r\n\t\"state\":\r\n\t{\r\n\t\t\"reported\":\r\n\t\t{\r\n");
+	/*
+	 * MAC address of device - stored in retention memory
+	 * during the bootup event
+	 */
+	sprintf(str,"\t\t\t\"id\": \"%s\",\r\n",pUserData->Device_ID);
+	strcat(mqttMessage,str);
 
-		/*
-		 * Meta - Transmission sequence #
-		 */
-		sprintf(str,"\t\t\t\t\"trans\": %d,\r\n",msg_number);
-		strcat(mqttMessage,str);
-		/*
-		 * Meta - Message sequence this transmission
-		 */
-		sprintf(str,"\t\t\t\t\"seq\": %d\r\n",sequence);
-		strcat(mqttMessage,str);
 
-		// End meta data field (close bracket)
-		strcat(mqttMessage,"\t\t\t},\r\n");
+	/* New timesync field added 1/26/23 per ECO approved by Neuralert
+	 * Format:
+	 *
+	 *	The current first JSON packet has this format:
+	 *	{ "state": { "reported": { "id": "EB345A", "meta": {},
+	 *	"bat": 140,
+	 *	"accX": [6 6 6 6 6 6 6 6 6 6 6 6 5 6 6 6 6 6 6 6 5 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 5 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6
+	 *
+	 *	This change will add the following field between the “seq” field and the “bat” field:
+	 *
+	 *	"timesync": "2023.01.17 12:53:55 (GMT 00:00) 0656741",
+	 *
+	 *	where the data consists of the current date and time in “local” time, as configured when WIFI is set up.  The last field (0656741) is an internal timestamp in milliseconds since power-on that corresponds to the current local time.  This will make it possible to align timestamps from different devices.
+	 *
+	 *	Note that the “current” local date and time is that returned from an SNTP server on the Internet and is subject to internet lag and internal processing times.
+	 *
+	 */
+	time64_string(buf, &pUserData->MQTT_timesync_timestamptime_msec);
+	sprintf(str,"\t\t\t\"timesync\": \"%s %s\",\r\n",
+			pUserData->MQTT_timesync_current_time_str, buf);
+	strcat(mqttMessage,str);
 
-		/* get battery value */
-		adcDataFloat = get_battery_voltage();
+	// META FIELD DEFINITIONS HERE
+	// Meta data field -- a json for whatever we want.
+	strcat(mqttMessage,"\t\t\t\"meta\":\r\n\t\t\t{\r\n");
+
+	/*
+	 * Meta - Transmission sequence #
+	 */
+	sprintf(str,"\t\t\t\t\"trans\": %d,\r\n", msg_number);
+	strcat(mqttMessage, str);
+	/*
+	 * Meta - Message sequence this transmission
+	 */
+	sprintf(str,"\t\t\t\t\"seq\": %d,\r\n", sequence);
+	strcat(mqttMessage, str);
+	/*
+	 * Meta - Remaining free heap size (to monitor for significant leaks)
+	 */
+	sprintf(str,"\t\t\t\t\"mem\": %d\r\n", xPortGetFreeHeapSize());
+	strcat(mqttMessage, str);
+
+
+	// End meta data field (close bracket)
+	strcat(mqttMessage,"\t\t\t},\r\n");
+
+	/* get battery value */
+	adcDataFloat = get_battery_voltage();
 //	    PRINTF("Current ADC Value: %d\n",(uint16_t)(adcDataFloat * 100));
-		// Battery voltage in centivolts
-		sprintf(str,"\t\t\t\"bat\": %d,\r\n",(uint16_t)(adcDataFloat * 100));
-		strcat(mqttMessage,str);
+	// Battery voltage in centivolts
+	sprintf(str,"\t\t\t\"bat\": %d,\r\n",(uint16_t)(adcDataFloat * 100));
+	strcat(mqttMessage,str);
 
-	//	PRINTF(">> JSON preamble: %s\n", mqttMessage); // FRSDEBUG
+//	PRINTF(">> JSON preamble: %s\n", mqttMessage); // FRSDEBUG
 
 //		packet_len = strlen(mqttMessage);
 //		PRINTF("\n**Neuralert: send_json_packet: %d length before accel values\n", packet_len); // FRSDEBUG
 
-		/*
-		 *  Accelerometer X values
-		 */
-		sprintf(str,"\t\t\t\"accX\": [");
+	/*
+	 *  Accelerometer X values
+	 */
+	sprintf(str,"\t\t\t\"accX\": [");
+	strcat(mqttMessage,str);
+	for(i=0;i<count;i++)
+	{
+		Xvalue = accelXmitData[startAdd + i].Xvalue;
+		sprintf(str,"%d ",Xvalue);
 		strcat(mqttMessage,str);
-		for(i=0;i<count;i++)
-		{
-			Xvalue = accelXmitData[startAdd + i].Xvalue;
-			sprintf(str,"%d ",Xvalue);
-			strcat(mqttMessage,str);
-		}
-		sprintf(str,"],\r\n");
-		strcat(mqttMessage,str);
+	}
+	sprintf(str,"],\r\n");
+	strcat(mqttMessage,str);
 
-		packet_len = strlen(mqttMessage);
+	packet_len = strlen(mqttMessage);
 //		PRINTF("\n**Neuralert: send_json_packet: %d length with X accel values\n", packet_len); // FRSDEBUG
 
-		/*
-		 *  Accelerometer Y values
-		 */
-		sprintf(str,"\t\t\t\"accY\": [");
+	/*
+	 *  Accelerometer Y values
+	 */
+	sprintf(str,"\t\t\t\"accY\": [");
+	strcat(mqttMessage,str);
+	for(i=0;i<count;i++)
+	{
+		Yvalue = accelXmitData[startAdd + i].Yvalue;
+		sprintf(str,"%d ",Yvalue);
 		strcat(mqttMessage,str);
-		for(i=0;i<count;i++)
-		{
-			Yvalue = accelXmitData[startAdd + i].Yvalue;
-			sprintf(str,"%d ",Yvalue);
-			strcat(mqttMessage,str);
-		}
-		sprintf(str,"],\r\n");
-		strcat(mqttMessage,str);
+	}
+	sprintf(str,"],\r\n");
+	strcat(mqttMessage,str);
 
-		packet_len = strlen(mqttMessage);
+	packet_len = strlen(mqttMessage);
 //		PRINTF("\n**Neuralert: send_json_packet: %d length with X&Y accel values\n", packet_len); // FRSDEBUG
 
-		/*
-		 *  Accelerometer Z values
-		 */
-		sprintf(str,"\t\t\t\"accZ\": [");
+	/*
+	 *  Accelerometer Z values
+	 */
+	sprintf(str,"\t\t\t\"accZ\": [");
+	strcat(mqttMessage,str);
+	for(i=0;i<count;i++)
+	{
+		Zvalue = accelXmitData[startAdd + i].Zvalue;
+		sprintf(str,"%d ",Zvalue);
 		strcat(mqttMessage,str);
-		for(i=0;i<count;i++)
-		{
-			Zvalue = accelXmitData[startAdd + i].Zvalue;
-			sprintf(str,"%d ",Zvalue);
-			strcat(mqttMessage,str);
-		}
-		sprintf(str,"],\r\n");
-		strcat(mqttMessage,str);
+	}
+	sprintf(str,"],\r\n");
+	strcat(mqttMessage,str);
 
-		packet_len = strlen(mqttMessage);
+	packet_len = strlen(mqttMessage);
 //		PRINTF("\n**Neuralert: send_json_packet: %d length with X&Y&Z accel values\n", packet_len); // FRSDEBUG
 
-		/*
-		 *  Timestamps
-		 */
-		sprintf(str,"\t\t\t\"ts\": [");
-		strcat(mqttMessage,str);
-		// Note - as of 9/2/22 timestamps are in milliseconds,
-		// measured from the time the device was booted.
-		// So the largest expected timestamp will be at 5 days:
-		// 5 days x 24 hours x 60 minutes x 60 seconds x 1000 milliseconds
-		// = 432,000,000 msec
-		// which will transmit as 432000000
-		for(i=0;i<count;i++)
-		{
-			now = accelXmitData[startAdd + i].accelTime;
-			// Break the timestamp into millions and remainder
-			// to be able to use sprintf, which doesn't handle
-			// 64-bit numbers.
-			uint64_t num1 = ((now/1000000) * 1000000);
-			uint64_t num2 = now - num1;
-			uint32_t num3 = num2;
-			sprintf(nowStr,"%03ld",now/1000000); //JW: I changed this so all times are formatted the same (9 digits)
-			//sprintf(nowStr,"%ld",now/1000000);
-			sprintf(str2,"%06ld ",num3);
-			strcat(nowStr,str2);
-			strcat(mqttMessage,nowStr);
-		}
-		sprintf(str,"]\r\n");
-		strcat(mqttMessage,str);
+	/*
+	 *  Timestamps
+	 */
+	sprintf(str,"\t\t\t\"ts\": [");
+	strcat(mqttMessage,str);
+	// Note - as of 9/2/22 timestamps are in milliseconds,
+	// measured from the time the device was booted.
+	// So the largest expected timestamp will be at 5 days:
+	// 5 days x 24 hours x 60 minutes x 60 seconds x 1000 milliseconds
+	// = 432,000,000 msec
+	// which will transmit as 432000000
+	for(i=0;i<count;i++)
+	{
+		now = accelXmitData[startAdd + i].accelTime;
+		// Break the timestamp into millions and remainder
+		// to be able to use sprintf, which doesn't handle
+		// 64-bit numbers.
+		uint64_t num1 = ((now/1000000) * 1000000);
+		uint64_t num2 = now - num1;
+		uint32_t num3 = num2;
+		sprintf(nowStr,"%03ld",now/1000000); //JW: I changed this so all times are formatted the same (9 digits)
+		//sprintf(nowStr,"%ld",now/1000000);
+		sprintf(str2,"%06ld ",num3);
+		strcat(nowStr,str2);
+		strcat(mqttMessage,nowStr);
+	}
+	sprintf(str,"]\r\n");
+	strcat(mqttMessage,str);
 
-		packet_len = strlen(mqttMessage);
+	packet_len = strlen(mqttMessage);
 //		PRINTF("\n**Neuralert: send_json_packet: %d length with all accel values\n", packet_len); // FRSDEBUG
 
-		/*
-		 * Closing braces
-		 */
-		strcat(mqttMessage,"\r\n\t\t}\r\n\t}\r\n}\r\n");
+	/*
+	 * Closing braces
+	 */
+	strcat(mqttMessage,"\r\n\t\t}\r\n\t}\r\n}\r\n");
 
-		packet_len = strlen(mqttMessage);
-		PRINTF(">>send_json_packet: %d total message length\n", packet_len); // FRSDEBUG
-		// Sanity check in case some future person expands message
-		// without increasing buffer size
-		if (packet_len > MAX_JSON_STRING_SIZE)
-		{
-			sprintf(user_log_string_temp, "** JSON packet size too big: %d with limit %d",
-					packet_len, (int)MAX_JSON_STRING_SIZE );
-			user_log_error(user_log_string_temp);
-		}
+	packet_len = strlen(mqttMessage);
+	PRINTF(">>send_json_packet: %d total message length\n", packet_len); // FRSDEBUG
+	// Sanity check in case some future person expands message
+	// without increasing buffer size
+	if (packet_len > MAX_JSON_STRING_SIZE)
+	{
+		sprintf(user_log_string_temp, "** JSON packet size too big: %d with limit %d",
+				packet_len, (int)MAX_JSON_STRING_SIZE );
+		user_log_error(user_log_string_temp);
+	}
 
-		// Transmit with publish topic from NVRAM
+	// Transmit with publish topic from NVRAM
 //		transmit_status = mqtt_client_send_message(NULL, mqttMessage);
 
 //		unsigned long timeout_qos = 0;
@@ -2063,30 +2090,28 @@ int send_json_packet (int startAdd, int count, int msg_number, int sequence)
 //		PRINTF("\n>>timeout qos: %lu \n", timeout_qos);
 //		transmit_status = 	mqtt_client_send_message_with_qos(NULL, mqttMessage, timeout_qos);
 
-		//transmit_status = 	mqtt_client_send_message_with_qos(NULL, mqttMessage, 100);
+	//transmit_status = 	mqtt_client_send_message_with_qos(NULL, mqttMessage, 100);
 
-		transmit_status = user_mqtt_send_message();
+	transmit_status = user_mqtt_send_message();
 
-		if(transmit_status == 0)
-		{
-			PRINTF(" ==== send_json_packet: transmit %d:%d successful\n",
-					msg_number, sequence); // FRSDEBUG
-		}
-		else
-		{
-			PRINTF(" ==== send_json_packet: transmit %d:%d unsuccessful\n",
-					msg_number, sequence); // FRSDEBUG
-			sprintf(user_log_string_temp, "**send_json_packet: transmit %d:%d failed (%d)",
-					msg_number, sequence, transmit_status);
-			user_log_error(user_log_string_temp);
-		}
+	if(transmit_status == 0)
+	{
+		PRINTF(" ==== send_json_packet: transmit %d:%d successful\n",
+				msg_number, sequence); // FRSDEBUG
+	}
+	else
+	{
+		PRINTF(" ==== send_json_packet: transmit %d:%d unsuccessful\n",
+				msg_number, sequence); // FRSDEBUG
+		sprintf(user_log_string_temp, "**send_json_packet: transmit %d:%d failed (%d)",
+				msg_number, sequence, transmit_status);
+		user_log_error(user_log_string_temp);
+	}
 
-		return_status = transmit_status;
+	return_status = transmit_status;
 
-		// delay to allow message to be transmitted by the MQTT client task
-		//vTaskDelay(pdMS_TO_TICKS(500)); //JW: this should be deleted now the race condition is fixed
-
-	} // If MQTT client is still connected
+	// delay to allow message to be transmitted by the MQTT client task
+	//vTaskDelay(pdMS_TO_TICKS(500)); //JW: this should be deleted now the race condition is fixed
 
 	return return_status;
 }
@@ -2748,41 +2773,34 @@ static void user_mqtt_msg_cb (const char *buf, int len, const char *topic)
 void user_terminate_transmit(void)
 {
 #if defined(__RUNTIME_CALCULATION__) && defined(XIP_CACHE_BOOT)
-	printf_with_run_time("\n===user_terminate_transmit called");
+	printf_with_run_time("\n===user_terminate_transmit called"); // This might be causing a fault
 #endif
+
+	// disconnect from wlan
+    int ret;
+	UCHAR value_str[128];
+    ret = da16x_cli_reply("disconnect", NULL, value_str);
+	if (ret < 0 || strcmp(value_str, "FAIL") == 0) {
+		PRINTF(" [%s] Failed disconnect from AP 0x%x\n  %s\n", __func__, ret, value_str);
+	}
 
 	// Check if MQTT is running -- if so, shut it down
     if (mqtt_client_is_running() == TRUE) {
         mqtt_client_force_stop();
         mqtt_client_stop();
     }
+    vTaskDelay(1);
 
-    int ret;
-    char value_str[128] = {0, };
-    ret = da16x_cli_reply("disconnect", NULL, value_str);
-	if (ret < 0 || strcmp(value_str, "FAIL") == 0) {
-		PRINTF(" [%s] Failed disconnect from AP 0x%x\n  %s\n", __func__, ret, value_str);
-	}
-
-	// Power down the RF section
-	// Note as of 7/11/22 this confuses the lan clients
-    // JW: whoever made the above observation wasn't "disconnecting"
-    // prior to trying to turn off the rf.  Of course that might\
-    // confuse the lan client.
-	wifi_cs_rf_cntrl(TRUE);
-
-#ifdef CFG_USE_SYSTEM_CONTROL
-	// Disabling WLAN at the next boot. : This is an example.
-	//system_control_wlan_enable(FALSE);
-#endif
+	// turn off rf
+	wifi_cs_rf_cntrl(TRUE); // Might need to do this elsewhere
 
 	// Clear system state so LEDs are off, unless there's an alert
 	set_sole_system_state(0);
 
 	// Clear all the transmit process bit so the system can go to sleep
 	CLR_PROCESS_BIT(processLists, USER_PROCESS_MQTT_TRANSMIT);
-	vTaskDelay(1);
 	CLR_PROCESS_BIT(processLists, USER_PROCESS_WATCHDOG);
+	CLR_PROCESS_BIT(processLists, USER_PROCESS_WATCHDOG_STOP);
 	vTaskDelay(1);
 
 }
@@ -2949,25 +2967,27 @@ static int user_mqtt_send_message(void)
 
 /**
  *******************************************************************************
- * @brief A simple application-level watchdog for the wifi & MQTT that will
- * trigger a graceful teardown of the wifi & MQTT tasks if something hangs.
- * We expect we'll have some intermittent wifi issues from time to time.
+ * @brief A simple application-level watchdog for ensuring the MQTT task gets
+ * started correctly.  The transmission setup is done via callback initially.
+ * First the wifi is started.  Once connected, the MQTT task is started. If
+ * something happens and the MQTT task doesn't get started (for a variety of reasons)
+ * the microcontroller will think an MQTT transmission is in place and block going
+ * to sleep2. Once the MQTT task is up and running, there is no risk of hanging.
+ * So the watchdog is in place to basically timeout if the MQTT task isn't started
+ * within some period of time.
  *******************************************************************************
  */
 static void user_process_watchdog(void* arg)
 {
-	// Wait a pre-defined time (chosen to optimize tradeoff between likelihood of
-	// getting a usable connection and the power needed)
-	//vTaskDelay(pdMS_TO_TICKS(WIFI_AND_MQTT_CONNECT_TIMEOUT_SECONDS * 1000));
 
-	int timeout = WIFI_AND_MQTT_CONNECT_TIMEOUT_SECONDS * 10;
-	while (PROCESS_BIT_SET(processLists, USER_PROCESS_WATCHDOG) || timeout > 0)
+	int timeout = WATCHDOG_TIMEOUT_SECONDS * 10;
+	while (PROCESS_BIT_SET(processLists, USER_PROCESS_WATCHDOG) && timeout > 0)
 	{
 		vTaskDelay(pdMS_TO_TICKS(100)); // 100 ms delay
 		timeout--;
 	}
 
-	// The Process bit should have been cleared in user_process
+	// The Process bit should have been cleared in user_process_send_MQTT_data()
 	if (PROCESS_BIT_SET(processLists, USER_PROCESS_WATCHDOG)){
 		CLR_PROCESS_BIT(processLists, USER_PROCESS_WATCHDOG);
 		PRINTF ("\n*** WIFI and MQTT Connection Watchdog Timeout ***\n");
@@ -2975,6 +2995,7 @@ static void user_process_watchdog(void* arg)
 	}
 
 	PRINTF ("\n>>> Stopping Watchdog Task <<<\n");
+	user_process_watchdog_cb();
 	user_watchdog_task_handle = NULL;
 	vTaskDelete(NULL);
 }
@@ -2993,33 +3014,31 @@ static void user_process_watchdog(void* arg)
 static int user_process_start_watchdog()
 {
 
-	BaseType_t create_status;
-//	UBaseType_t current_task_priority;	// priority of main task (Accelerometer task)
+	if (user_watchdog_task_handle != NULL){
+		user_log_error(">>>>>>> Watchdog task already running -- Not starting transmission <<<<<<<<<");
+		return -2; //TODO: remove hard coding
+	}
 
-	// Get our priority
-//	current_task_priority = uxTaskPriorityGet((TaskHandle_t)NULL);
+
+	BaseType_t create_status;
 
 	create_status = xTaskCreate(
 			user_process_watchdog,
 			"USER_WATCHDOG", 			// Task name -- TODO: move this to a #define
-			(256),					// 256 stack size for comfort
+			(3072),						// 256 stack size for comfort
 			( void * ) NULL,  			// no parameter to pass
-//			(current_task_priority + 1),  // Make this a higher priority than accelerometer
-//			(current_task_priority - 1),  // Make this a lower priority
-//			OS_TASK_PRIORITY_USER + 1,	// Make this higher than accelerometer
 			(OS_TASK_PRIORITY_USER + 2),	// Make this lower than USER_READ task in user_apps.c
-//		  (tskIDLE_PRIORITY + 6), 		// one less than accelerometer
 			&user_watchdog_task_handle);			// save the task handle
 
 	if (create_status == pdPASS)
 	{
 		PRINTF(">>>>>>> Watchdog task created <<<<<<<<<\n"); // FRSDEBUG
-		return 0;
+		return 0; // TODO: remove hardcoding
 	}
 	else
 	{
 		user_log_error(">>>>>>> Watchdog task failed to create -- Not starting transmission <<<<<<<<<");
-		return 1;
+		return -1; // TODO: remove hardcoding
 	}
 
 }
@@ -3044,9 +3063,24 @@ void user_retry_transmit(void)
 #endif
 
 	// First, turn off the watchdog -- we'll need to restart it in a bit.
+	SET_PROCESS_BIT(processLists, USER_PROCESS_WATCHDOG_STOP);
 	CLR_PROCESS_BIT(processLists, USER_PROCESS_WATCHDOG);
-	vTaskDelay(pdMS_TO_TICKS(200)); // delay to ensure WATCHDOG is gone
-	// Might want to implement the above in a callback vs. delay
+	vTaskDelay(1);
+
+	// Wait until the watchdog is stopped (these aren't high-priority tasks,
+	// so we may need to wait a bit.
+	// If the watchdog doesn't stop, we want to stop the transmit and move on.
+	int timeout = WATCHDOG_STOP_TIMEOUT_SECONDS * 5;
+	while (PROCESS_BIT_SET(processLists, USER_PROCESS_WATCHDOG_STOP) && timeout > 0){
+		vTaskDelay(pdMS_TO_TICKS(200));
+		timeout--;
+	}
+	vTaskDelay(1);
+	if (timeout <= 0){
+		PRINTF ("\n*** WATCHDOG STOP TIMEOUT exceeded, terminating transmision ***\n");
+		user_terminate_transmit();
+		return;
+	}
 
 
 	// Check if MQTT is running -- if so, shut it down
@@ -3061,11 +3095,9 @@ void user_retry_transmit(void)
 
 	// Set the process bits for a clean retry
 	SET_PROCESS_BIT(processLists, USER_PROCESS_MQTT_TRANSMIT);
-	vTaskDelay(1);
 	SET_PROCESS_BIT(processLists, USER_PROCESS_WATCHDOG);
 	vTaskDelay(1);
 
-	// Might want to retry starting with wifi.
 	// Restart the watchdog
 	int ret = 0;
 	ret = user_process_start_watchdog();
@@ -3139,10 +3171,28 @@ static void user_process_send_MQTT_data(void* arg)
 #endif
 
 
+	// We've successfully made it to the transmission task!
 	// Clear the watchdog process bit that was monitoring for this task to start
 	// The watchdog will shutdown itself later regardless.
 	CLR_PROCESS_BIT(processLists, USER_PROCESS_WATCHDOG);
 	vTaskDelay(1);
+
+
+	// Wait until MQTT is actually connected before proceeding
+	// it takes a couple of seconds from when the MQTT connected callback is called
+	// (which is when this function that triggered this task generation)
+	// and when the client will actually be ready to work.
+	// This is because we want to wait for the unsub_topic to be non-zero
+	// in mosq_sub->unsub_topic prior to starting up.  If we experience a timeout,
+	// kill the transmission cycle.
+	int timeout = MQTT_SUB_TIMEOUT_SECONDS * 10;
+	while (!mqtt_client_check_conn() && timeout > 0){
+		vTaskDelay(pdMS_TO_TICKS(100));
+		timeout--;
+	}
+	if (timeout <= 0){
+		goto end_of_task;
+	}
 
 
 	// JW: This is being deprecated now.  Wifi is now started in user_start_data_tx
@@ -3168,8 +3218,9 @@ static void user_process_send_MQTT_data(void* arg)
 
 	// JW: Leaving this for now -- but I plan on deprecating it now that we are using callbacks
 	// Delay added once the network is up -- let power utilization normalize a bit
-	vTaskDelay(pdMS_TO_TICKS(2000));
-
+#if 0
+	//vTaskDelay(pdMS_TO_TICKS(2000)); //JW: Deprecated
+#endif
 
 	// Mark our start time
 	user_time64_msec_since_poweron(&user_MQTT_start_msec);
@@ -3713,8 +3764,8 @@ static void user_start_data_tx(){
 		return;
 	}
 
-	// Now that the Watchdog is in place, we can initialize what is needed for the MQTT transfer
-	// Specifically:
+	// Now that the app Watchdog is in place, we can initialize what is needed for the
+	// MQTT transfer. Specifically:
 	// (i) let the other tasks know that MQTT transmit has been requested so we don't sleep
 	// (ii) reset the MQTT attempts counter for this TX cycle to zero
 	// Note, the watchdog process (above) will clear before the MQTT transmit completes,
@@ -3729,7 +3780,7 @@ static void user_start_data_tx(){
 
 
 	PRINTF("\n ===== Starting WIFI =====\n\n");
-	// Start the RF section power up -- this will trigger the wifi to connect
+	// Start the RF section power up
 	wifi_cs_rf_cntrl(FALSE);
 
 	char value_str[128] = {0, };
@@ -3761,6 +3812,7 @@ static void user_create_MQTT_task()
 //	current_task_priority = uxTaskPriorityGet((TaskHandle_t)NULL);
 #endif
 
+
 	// Prior to starting to transmit data, we need to store the message id state
 	// so we have unique message ids for each client message
 	mosq_sub->last_mid = pUserData->MQTT_last_message_id;
@@ -3768,7 +3820,8 @@ static void user_create_MQTT_task()
 	create_status = xTaskCreate(
 			user_process_send_MQTT_data,
 			"USER_MQTT", 				// Task name -- TODO: move this to a #define
-			(4*1024),					// 4K stack size for comfort
+			(6*1024),					//JW: we've seen near 4K stack utilization in testing, doubling for safety.
+			//(4*1024),					// 4K stack size for comfort
 			( void * ) NULL,  			// no parameter to pass
 //			(current_task_priority + 1),  // Make this a higher priority than accelerometer
 //			(current_task_priority - 1),  // Make this a lower priority
@@ -7101,11 +7154,7 @@ printf_with_run_time("Finished boot event process");
  */
 static UCHAR user_process_event(UINT32 event)
 {
-
 	PRINTF("%s: Event: [%d]\n", __func__, event);
-
-	//int	ret = 0;
-	//char reply[128] = {0, }; // JW: was 128 not 32
 
 	__time64_t awake_time;
 	__time64_t current_msec_since_boot;
