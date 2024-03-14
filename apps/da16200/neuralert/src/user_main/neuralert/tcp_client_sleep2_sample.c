@@ -493,6 +493,10 @@ typedef struct
  */
 #define MAGIC_SHUTDOWN_KEY 0xFACEBABE
 
+
+// A constant used to complement pdTRUE and pdFALSE.
+// Useful when using semaphores
+#define pdERROR	( ( BaseType_t ) 2 )
 /*
  * User data area in retention memory
  *
@@ -566,13 +570,16 @@ typedef struct _userData {
 	// MQTT transmission info
 	// *****************************************************
 	unsigned int MQTT_message_number;   // serial number for msgs
-	unsigned int MQTT_connect_attempts;	// # times we tried
-	unsigned int MQTT_connect_fails;	// # times we've failed to connect
-	unsigned int MQTT_transmit_fails;	// # times a packet send failed
+	unsigned int MQTT_stats_connect_attempts;	// stats: # times we tried
+	unsigned int MQTT_stats_connect_fails;	// # times we've failed to connect
+	unsigned int MQTT_stats_packets_sent;	// # times we've successfully sent a packet
+	unsigned int MQTT_stats_retry_attempts; // # times we've attempted a transmit retry
+	unsigned int MQTT_stats_transmit_success;	// # times we were successful at uploading all the data
 	unsigned int MQTT_dropped_data_events;	// # times MQTT had to skip data because it was catching up to AXL
 	unsigned int MQTT_tx_attempts_remaining; // # times MQTT can attempt to send this packet
 	unsigned int MQTT_inflight;			// indicates the number of inflight messages
 	int MQTT_last_message_id; // indicates the MQTT message ID (ensures uniqueness)
+
 
 	// Time synchronization information
 	// A time snapshot is taken on the first successful MQTT connection
@@ -715,6 +722,19 @@ SemaphoreHandle_t Flash_semaphore = NULL;
  * in retention memory.
  */
 SemaphoreHandle_t user_log_semaphore = NULL;
+/*
+ * Semaphore to coordinate between users of the transmission statistics.
+ * This is used so we don't accidentally execute simultaneous read/writes
+ */
+SemaphoreHandle_t Stats_semaphore = NULL;
+/*
+ * Semaphore to coordinate between users of the process list.
+ * This is used so we don't accidentally execute simultaneous change bits in
+ * the process list
+ */
+SemaphoreHandle_t Process_semaphore = NULL;
+
+
 
 /*
  * Temporary storage for accelerometer samples to be transmitted
@@ -805,6 +825,10 @@ static int user_write_log_to_flash(USERLOG_ENTRY *pLogData, int *did_an_erase);
 static int get_log_oldest_location(void);
 static int get_log_store_location(void);
 static void log_current_time(UCHAR *PrefixString);
+static void increment_MQTT_stat(unsigned int *stat);
+static void set_process_bit(UINT32 bit);
+static void clr_process_bit(UINT32 bit);
+static UCHAR process_bit_set(UINT32 bit);
 static void timesync_snapshot(void);
 
 
@@ -1094,12 +1118,6 @@ void my_app_mqtt_sub_cb(void)
         my_app_send_to_q(NAME_JOB_MQTT_PERIODIC_PUB_RTC_REGI, NULL, APP_MSG_REGI_RTC, NULL);
     }
 #endif
-}
-
-void user_process_watchdog_cb(void)
-{
-	// if watchdog was requested to stop, execute the callback
-	CLR_PROCESS_BIT(processLists, USER_PROCESS_WATCHDOG_STOP);
 }
 
 
@@ -2772,37 +2790,45 @@ static void user_mqtt_msg_cb (const char *buf, int len, const char *topic)
 
 void user_terminate_transmit(void)
 {
+
 #if defined(__RUNTIME_CALCULATION__) && defined(XIP_CACHE_BOOT)
 	printf_with_run_time("\n===user_terminate_transmit called"); // This might be causing a fault
 #endif
 
-	// disconnect from wlan
-    int ret;
-	UCHAR value_str[128];
-    ret = da16x_cli_reply("disconnect", NULL, value_str);
-	if (ret < 0 || strcmp(value_str, "FAIL") == 0) {
-		PRINTF(" [%s] Failed disconnect from AP 0x%x\n  %s\n", __func__, ret, value_str);
-	}
+	int sys_wdog_id = -1;
+	sys_wdog_id = da16x_sys_watchdog_register(pdFALSE);
+
 
 	// Check if MQTT is running -- if so, shut it down
+	da16x_sys_watchdog_notify(sys_wdog_id);
     if (mqtt_client_is_running() == TRUE) {
         mqtt_client_force_stop();
         mqtt_client_stop();
     }
     vTaskDelay(1);
 
+	// disconnect from wlan
+    int ret;
+	UCHAR value_str[128];
+	da16x_sys_watchdog_notify(sys_wdog_id);
+    ret = da16x_cli_reply("disconnect", NULL, value_str);
+	if (ret < 0 || strcmp(value_str, "FAIL") == 0) {
+		PRINTF(" [%s] Failed disconnect from AP 0x%x\n  %s\n", __func__, ret, value_str);
+	}
+
 	// turn off rf
+    da16x_sys_watchdog_notify(sys_wdog_id);
 	wifi_cs_rf_cntrl(TRUE); // Might need to do this elsewhere
 
 	// Clear system state so LEDs are off, unless there's an alert
 	set_sole_system_state(0);
 
-	// Clear all the transmit process bit so the system can go to sleep
-	CLR_PROCESS_BIT(processLists, USER_PROCESS_MQTT_TRANSMIT);
-	CLR_PROCESS_BIT(processLists, USER_PROCESS_WATCHDOG);
-	CLR_PROCESS_BIT(processLists, USER_PROCESS_WATCHDOG_STOP);
-	vTaskDelay(1);
+	// Clear the transmit process bit so the system can go to sleep
+	clr_process_bit(USER_PROCESS_MQTT_TRANSMIT);
+	clr_process_bit(USER_PROCESS_WATCHDOG);
+	clr_process_bit(USER_PROCESS_WATCHDOG_STOP);
 
+	da16x_sys_watchdog_unregister(sys_wdog_id);
 }
 
 
@@ -2980,22 +3006,32 @@ static int user_mqtt_send_message(void)
 static void user_process_watchdog(void* arg)
 {
 
+	int sys_wdog_id = -1;
+
+	sys_wdog_id = da16x_sys_watchdog_register(pdFALSE);
+
 	int timeout = WATCHDOG_TIMEOUT_SECONDS * 10;
-	while (PROCESS_BIT_SET(processLists, USER_PROCESS_WATCHDOG) && timeout > 0)
+	while (process_bit_set(USER_PROCESS_WATCHDOG) && timeout > 0)
 	{
 		vTaskDelay(pdMS_TO_TICKS(100)); // 100 ms delay
 		timeout--;
+		da16x_sys_watchdog_notify(sys_wdog_id);
 	}
 
 	// The Process bit should have been cleared in user_process_send_MQTT_data()
-	if (PROCESS_BIT_SET(processLists, USER_PROCESS_WATCHDOG)){
-		CLR_PROCESS_BIT(processLists, USER_PROCESS_WATCHDOG);
+	if (process_bit_set(USER_PROCESS_WATCHDOG)){
 		PRINTF ("\n*** WIFI and MQTT Connection Watchdog Timeout ***\n");
+		increment_MQTT_stat(&(pUserData->MQTT_stats_connect_fails));
+		da16x_sys_watchdog_notify(sys_wdog_id);
 		user_terminate_transmit();
 	}
 
 	PRINTF ("\n>>> Stopping Watchdog Task <<<\n");
-	user_process_watchdog_cb();
+	clr_process_bit(USER_PROCESS_WATCHDOG);
+	clr_process_bit(USER_PROCESS_WATCHDOG_STOP);
+
+	da16x_sys_watchdog_unregister(sys_wdog_id);
+
 	user_watchdog_task_handle = NULL;
 	vTaskDelete(NULL);
 }
@@ -3058,49 +3094,49 @@ static int user_process_start_watchdog()
 
 void user_retry_transmit(void)
 {
+	int sys_wdog_id = -1;
+	sys_wdog_id = da16x_sys_watchdog_register(pdFALSE);
+
 #if defined(__RUNTIME_CALCULATION__) && defined(XIP_CACHE_BOOT)
 	printf_with_run_time("\n===user_retry_transmit called");
 #endif
 
+
 	// First, turn off the watchdog -- we'll need to restart it in a bit.
-	SET_PROCESS_BIT(processLists, USER_PROCESS_WATCHDOG_STOP);
-	CLR_PROCESS_BIT(processLists, USER_PROCESS_WATCHDOG);
-	vTaskDelay(1);
+	// if we can't then let the hardware watchdog timeout.
+	// there should be nothing blocking this for very long
+	set_process_bit(USER_PROCESS_WATCHDOG_STOP);
+	clr_process_bit(USER_PROCESS_WATCHDOG);
+	da16x_sys_watchdog_notify(sys_wdog_id);
 
 	// Wait until the watchdog is stopped (these aren't high-priority tasks,
 	// so we may need to wait a bit.
-	// If the watchdog doesn't stop, we want to stop the transmit and move on.
-	int timeout = WATCHDOG_STOP_TIMEOUT_SECONDS * 5;
-	while (PROCESS_BIT_SET(processLists, USER_PROCESS_WATCHDOG_STOP) && timeout > 0){
+	// If the watchdog doesn't stop, we hardware watchdog will handle a reset.
+	while (process_bit_set(USER_PROCESS_WATCHDOG_STOP) != pdFALSE){
 		vTaskDelay(pdMS_TO_TICKS(200));
-		timeout--;
 	}
-	vTaskDelay(1);
-	if (timeout <= 0){
-		PRINTF ("\n*** WATCHDOG STOP TIMEOUT exceeded, terminating transmision ***\n");
-		user_terminate_transmit();
-		return;
-	}
-
+	da16x_sys_watchdog_notify(sys_wdog_id);
 
 	// Check if MQTT is running -- if so, shut it down
     if (mqtt_client_is_running() == TRUE) {
         mqtt_client_force_stop();
         mqtt_client_stop();
     }
-    vTaskDelay(1);
+    da16x_sys_watchdog_notify(sys_wdog_id);
 
 	// Clear system state so LEDs are off, unless there's an alert
 	set_sole_system_state(0);
 
 	// Set the process bits for a clean retry
-	SET_PROCESS_BIT(processLists, USER_PROCESS_MQTT_TRANSMIT);
-	SET_PROCESS_BIT(processLists, USER_PROCESS_WATCHDOG);
-	vTaskDelay(1);
+	set_process_bit(USER_PROCESS_MQTT_TRANSMIT);
+	set_process_bit(USER_PROCESS_WATCHDOG);
 
-	// Restart the watchdog
+	// Restart the application watchdog
+	da16x_sys_watchdog_notify(sys_wdog_id);
 	int ret = 0;
 	ret = user_process_start_watchdog();
+	da16x_sys_watchdog_notify(sys_wdog_id);
+	da16x_sys_watchdog_suspend(sys_wdog_id);
 	if (ret == 0)
 	{
 		// Restart the Transmission
@@ -3109,7 +3145,7 @@ void user_retry_transmit(void)
 	else {
 		user_terminate_transmit(); // Something bad happened with the watchdog setup -- stop transmission
 	}
-
+	da16x_sys_watchdog_unregister(sys_wdog_id);
 }
 
 
@@ -3161,6 +3197,8 @@ static void user_process_send_MQTT_data(void* arg)
 
 	int drop_data_skip_to_loc;		// start location of where we will transmit after dropping data
 
+	int sys_wdog_id = -1;			// watchdog
+
 	UCHAR elapsed_sec_string[40];
 
 #ifdef CFG_USE_RETMEM_WITHOUT_DPM
@@ -3170,11 +3208,14 @@ static void user_process_send_MQTT_data(void* arg)
 	char data_buffer[TCP_CLIENT_TX_BUF_SIZE] = {0x00,};
 #endif
 
+	// Start up watchdog
+	sys_wdog_id = da16x_sys_watchdog_register(pdFALSE);
+
 
 	// We've successfully made it to the transmission task!
 	// Clear the watchdog process bit that was monitoring for this task to start
 	// The watchdog will shutdown itself later regardless.
-	CLR_PROCESS_BIT(processLists, USER_PROCESS_WATCHDOG);
+	clr_process_bit(USER_PROCESS_WATCHDOG);
 	vTaskDelay(1);
 
 
@@ -3186,13 +3227,16 @@ static void user_process_send_MQTT_data(void* arg)
 	// in mosq_sub->unsub_topic prior to starting up.  If we experience a timeout,
 	// kill the transmission cycle.
 	int timeout = MQTT_SUB_TIMEOUT_SECONDS * 10;
+	da16x_sys_watchdog_notify(sys_wdog_id);
 	while (!mqtt_client_check_conn() && timeout > 0){
 		vTaskDelay(pdMS_TO_TICKS(100));
 		timeout--;
+		da16x_sys_watchdog_notify(sys_wdog_id);
 	}
 	if (timeout <= 0){
 		goto end_of_task;
 	}
+
 
 
 	// JW: This is being deprecated now.  Wifi is now started in user_start_data_tx
@@ -3253,6 +3297,7 @@ static void user_process_send_MQTT_data(void* arg)
 	}
 
 	PRINTF("\n\n******  MQTT transmit starting at %d ******\n", transmit_start_loc);
+	da16x_sys_watchdog_notify(sys_wdog_id);
 
 	// So, notionally, we'll be wakened every 5 minutes or so
 	// 5 minutes is 14Hz x 60 x 5 = 4200 AXL samples
@@ -3410,7 +3455,7 @@ static void user_process_send_MQTT_data(void* arg)
 	// *****************************************************************
 	//  MQTT transmission
 	// *****************************************************************
-
+	da16x_sys_watchdog_notify(sys_wdog_id);
 
 	// We are connected to WIFI and MQTT and should have wall clock
 	// time from an SNTP server
@@ -3494,11 +3539,15 @@ static void user_process_send_MQTT_data(void* arg)
 				send_start_addr = 0;
 				//JW: The following line user_set_mid_sent(...) is now deprecated -- to be removed
 				//user_set_mid_sent(pUserData->MQTT_last_message_id); // Probably could/should do this once when creating the MQTT client
+				da16x_sys_watchdog_notify(sys_wdog_id);
+				da16x_sys_watchdog_suspend(sys_wdog_id);
 				status = send_json_packet (send_start_addr, samples_to_send,
 						pUserData->MQTT_message_number, msg_sequence);
+				da16x_sys_watchdog_notify_and_resume(sys_wdog_id);
 				if(status == 0)
 				{
 					// Do stats
+					increment_MQTT_stat(&(pUserData->MQTT_stats_packets_sent));
 					packets_sent++;		// Total packets sent this interval
 					blocks_sent += this_packet_num_blocks;
 					samples_sent += samples_to_send;
@@ -3552,6 +3601,7 @@ static void user_process_send_MQTT_data(void* arg)
 					pUserData->MQTT_tx_attempts_remaining--;
 					request_stop_transmit = pdTRUE; // must set to true to exit loop
 					request_retry_transmit = pdTRUE;
+					increment_MQTT_stat(&(pUserData->MQTT_stats_retry_attempts));
 				}
 				else
 				{
@@ -3563,7 +3613,6 @@ static void user_process_send_MQTT_data(void* arg)
 					user_log_error(user_log_string_temp);
 					PRINTF_RED("\n**** %s\n", user_log_string_temp);
 					request_stop_transmit = pdTRUE;
-					pUserData->MQTT_transmit_fails++;
 				}
 				vTaskDelay(1);
 			} // Able to assemble packets
@@ -3594,6 +3643,7 @@ static void user_process_send_MQTT_data(void* arg)
 #endif
 #endif // TO BE REMOVED -- DEPRECATED
 
+		increment_MQTT_stat(&(pUserData->MQTT_stats_transmit_success));
 		sprintf(user_log_string_temp,
 				"MQTT transmission %d complete.  %d samples in %d JSON packets",
 				pUserData->MQTT_message_number,
@@ -3617,6 +3667,8 @@ static void user_process_send_MQTT_data(void* arg)
 	spi_flash_close(MQTT_SPI_handle);
 #endif
 end_of_task:
+	da16x_sys_watchdog_notify(sys_wdog_id);
+	da16x_sys_watchdog_suspend(sys_wdog_id);
 	if (request_retry_transmit){
 		user_retry_transmit();
 	}
@@ -3625,6 +3677,7 @@ end_of_task:
 		user_terminate_transmit();
 	}
 
+	da16x_sys_watchdog_unregister(sys_wdog_id);
 	user_MQTT_task_handle = NULL;
 	vTaskDelete(NULL);
 
@@ -3690,7 +3743,7 @@ end_of_task:
 
 void user_process_wifi_conn()
 {
-	if (!PROCESS_BIT_SET(processLists, USER_PROCESS_MQTT_TRANSMIT)){
+	if (!process_bit_set(USER_PROCESS_MQTT_TRANSMIT)){
 		PRINTF(">>>>>>> MQTT transmit task already in progress <<<<<<<<<\n");
 		return;
 	}
@@ -3753,8 +3806,7 @@ static void user_start_data_tx(){
 
 	// Specifically, let the other tasks know that the watchdog is turning on,
 	// so we don't sleep
-	SET_PROCESS_BIT(processLists, USER_PROCESS_WATCHDOG);
-	vTaskDelay(1);
+	set_process_bit(USER_PROCESS_WATCHDOG);
 
 	int ret = 0;
 	ret = user_process_start_watchdog();
@@ -3770,7 +3822,7 @@ static void user_start_data_tx(){
 	// (ii) reset the MQTT attempts counter for this TX cycle to zero
 	// Note, the watchdog process (above) will clear before the MQTT transmit completes,
 	// so we need both bits set to stay awake until transmittion is complete
-	SET_PROCESS_BIT(processLists, USER_PROCESS_MQTT_TRANSMIT);
+	set_process_bit(USER_PROCESS_MQTT_TRANSMIT);
 	vTaskDelay(1);
 
 	// Intialize the maximum number of retries here -- this can't be done in
@@ -3798,7 +3850,7 @@ static void user_start_data_tx(){
 static void user_create_MQTT_task()
 {
 
-	if (!PROCESS_BIT_SET(processLists, USER_PROCESS_MQTT_TRANSMIT)){
+	if (!process_bit_set(USER_PROCESS_MQTT_TRANSMIT)){
 		PRINTF(">>>>>>> MQTT transmit task already in progress <<<<<<<<<\n");
 		return;
 	}
@@ -5899,6 +5951,233 @@ int timelen;
 
 }
 
+
+/*
+ * ******************************************************************************
+ * @brief increment the MQTT stats in a safe manner
+ *
+ * ******************************************************************************
+ */
+static void increment_MQTT_stat(unsigned int *stat)
+{
+
+	if(Stats_semaphore != NULL )
+	{
+		/* See if we can obtain the semaphore.  If the semaphore is not
+	        available wait 10 ticks to see if it becomes free. */
+		if( xSemaphoreTake( Stats_semaphore, ( TickType_t ) 10 ) == pdTRUE )
+		{
+			/* We were able to obtain the semaphore and can now access the
+	            shared resource. */
+
+			(*stat)++;
+			/* We have finished accessing the shared resource.  Release the
+	            semaphore. */
+			xSemaphoreGive( Stats_semaphore );
+		}
+		else
+		{
+			Printf("\n ***print stats: Unable to obtain Stats semaphore\n");
+		}
+	}
+	else
+	{
+		Printf("\n ***print stats: Stats semaphore not initialized!\n");
+	}
+
+
+}
+
+/*
+ *  Set process bits in a safe manner (since multiple tasks can change bits)
+ */
+static void set_process_bit(UINT32 bit)
+{
+	int sys_wdog_id = -1;
+	sys_wdog_id = da16x_sys_watchdog_register(pdFALSE);
+	da16x_sys_watchdog_notify(sys_wdog_id);
+
+	if(Process_semaphore != NULL )
+	{
+		// we must wait for these events to occur -- otherwise we need to perform a hard reset
+		// We'll keep trying every 50 ms until we can get through
+		while (1){
+			/* See if we can obtain the semaphore.  If the semaphore is not
+				available wait 10 ticks to see if it becomes free. */
+			if( xSemaphoreTake( Process_semaphore, ( TickType_t ) 10 ) == pdTRUE )
+			{
+				/* We were able to obtain the semaphore and can now access the
+					shared resource. */
+
+				SET_PROCESS_BIT(processLists, bit);
+				/* We have finished accessing the shared resource.  Release the
+					semaphore. */
+				xSemaphoreGive( Process_semaphore );
+				da16x_sys_watchdog_unregister(sys_wdog_id);
+				return;
+			}
+			else
+			{
+				Printf("\n ***set_process_bit: Unable to obtain Process semaphore\n");
+			}
+
+			vTaskDelay(pdMS_TO_TICKS(50));
+		}
+	}
+	else
+	{
+		while(1) {
+			PRINTF("\n ***set_process_bit: Process semaphore not initialized!\n");
+			vTaskDelay(pdMS_TO_TICKS(1000));
+		}
+	}
+}
+
+/*
+ *  Set process bits in a safe manner (since multiple tasks can change bits)
+ */
+static void clr_process_bit(UINT32 bit)
+{
+	int sys_wdog_id = -1;
+	sys_wdog_id = da16x_sys_watchdog_register(pdFALSE);
+	da16x_sys_watchdog_notify(sys_wdog_id);
+
+	if(Process_semaphore != NULL )
+	{
+		// we must wait for these events to occur -- otherwise we need to perform a hard reset
+		// We'll keep trying every 50 ms until we can get through
+		while (1){
+			/* See if we can obtain the semaphore.  If the semaphore is not
+		        available wait 10 ticks to see if it becomes free. */
+			if( xSemaphoreTake( Process_semaphore, ( TickType_t ) 10 ) == pdTRUE )
+			{
+				/* We were able to obtain the semaphore and can now access the
+					shared resource. */
+
+				CLR_PROCESS_BIT(processLists, bit);
+				/* We have finished accessing the shared resource.  Release the
+					semaphore. */
+				xSemaphoreGive( Process_semaphore );
+				da16x_sys_watchdog_unregister(sys_wdog_id);
+				return;
+			}
+			else
+			{
+				PRINTF("\n ***clr_process_bit: Unable to obtain Process semaphore -- trying again\n");
+			}
+
+			vTaskDelay(pdMS_TO_TICKS(50));
+		}
+	}
+	else
+	{
+		while(1) {
+			PRINTF("\n ***clr_process_bit: Process semaphore not initialized!\n");
+			vTaskDelay(pdMS_TO_TICKS(1000));
+		}
+	}
+}
+
+
+/*
+ *  Set process bits in a safe manner (since multiple tasks can change bits)
+ */
+static UCHAR process_bit_set(UINT32 bit)
+{
+	int sys_wdog_id = -1;
+	sys_wdog_id = da16x_sys_watchdog_register(pdFALSE);
+	da16x_sys_watchdog_notify(sys_wdog_id);
+
+	if(Process_semaphore != NULL )
+	{
+		// we must wait for these events to occur -- otherwise we need to perform a hard reset
+		// We'll keep trying every 50 ms until we can get through
+		while (1){
+			/* See if we can obtain the semaphore.  If the semaphore is not
+		        available wait 10 ticks to see if it becomes free. */
+
+			if( xSemaphoreTake( Process_semaphore, ( TickType_t ) 10 ) == pdTRUE )
+			{
+				/* We were able to obtain the semaphore and can now access the
+					shared resource. */
+
+				UCHAR ret;
+				ret = PROCESS_BIT_SET(processLists, bit);
+				/* We have finished accessing the shared resource.  Release the
+					semaphore. */
+				xSemaphoreGive( Process_semaphore );
+				da16x_sys_watchdog_unregister(sys_wdog_id);
+				return ret;
+			}
+			else
+			{
+				PRINTF("\n ***process_bit_set: Unable to obtain Process semaphore -- trying again\n");
+			}
+
+			vTaskDelay(pdMS_TO_TICKS(50));
+		}
+	}
+	else
+	{
+		while(1) {
+			PRINTF("\n ***set_process_bit: Process semaphore not initialized!\n");
+			vTaskDelay(pdMS_TO_TICKS(1000));
+		}
+	}
+	return pdFALSE;
+}
+
+
+
+/*
+ *  Set process bits in a safe manner (since multiple tasks can change bits)
+ */
+static UINT32 copy_processLists(void)
+{
+	int sys_wdog_id = -1;
+	sys_wdog_id = da16x_sys_watchdog_register(pdFALSE);
+	da16x_sys_watchdog_notify(sys_wdog_id);
+
+	if(Process_semaphore != NULL )
+	{
+		// we must wait for these events to occur -- otherwise we need to perform a hard reset
+		// We'll keep trying every 50 ms until we can get through
+		while (1){
+			/* See if we can obtain the semaphore.  If the semaphore is not
+		        available wait 10 ticks to see if it becomes free. */
+
+			if( xSemaphoreTake( Process_semaphore, ( TickType_t ) 10 ) == pdTRUE )
+			{
+				/* We were able to obtain the semaphore and can now access the
+					shared resource. */
+
+				UINT32 temp = processLists;
+				/* We have finished accessing the shared resource.  Release the
+					semaphore. */
+				xSemaphoreGive( Process_semaphore );
+				da16x_sys_watchdog_unregister(sys_wdog_id);
+				return temp;
+			}
+			else
+			{
+				PRINTF("\n ***copy_processLists: Unable to obtain Process semaphore -- trying again\n");
+			}
+
+			vTaskDelay(pdMS_TO_TICKS(50));
+		}
+	}
+	else
+	{
+		while(1) {
+			PRINTF("\n ***copy_processLists: Process semaphore not initialized!\n");
+			vTaskDelay(pdMS_TO_TICKS(1000));
+		}
+	}
+	return 0; // should never happen
+}
+
+
+
 /**
  *******************************************************************************
  * @brief Take a snapshot of "wall clock" time for the JSON timesync field
@@ -5996,17 +6275,45 @@ static void log_operating_info(void)
 		user_log_event(user_log_string_temp);
 	}
 
-	sprintf(user_log_string_temp, "Total MQTT connect attempts             : %d", pUserData->MQTT_connect_attempts);
-	user_log_event(user_log_string_temp);
-	sprintf(user_log_string_temp, "Total MQTT connect fails                : %d", pUserData->MQTT_connect_fails);
-	user_log_event(user_log_string_temp);
-	sprintf(user_log_string_temp, "Total MQTT packet transmit fails        : %d", pUserData->MQTT_transmit_fails);
-	user_log_event(user_log_string_temp);
-	if(pUserData->MQTT_dropped_data_events > 0)
+	if(Stats_semaphore != NULL )
 	{
-		sprintf(user_log_string_temp, "Total times transmit buffer wrapped     : %d", pUserData->MQTT_dropped_data_events);
-		user_log_event(user_log_string_temp);
+		/* See if we can obtain the semaphore.  If the semaphore is not
+	        available wait 10 ticks to see if it becomes free. */
+		if( xSemaphoreTake( Stats_semaphore, ( TickType_t ) 10 ) == pdTRUE )
+		{
+			/* We were able to obtain the semaphore and can now access the
+	            shared resource. */
+
+			sprintf(user_log_string_temp, "Total MQTT connect attempts             : %d", pUserData->MQTT_stats_connect_attempts);
+			user_log_event(user_log_string_temp);
+			sprintf(user_log_string_temp, "Total MQTT connect fails                : %d", pUserData->MQTT_stats_connect_fails);
+			user_log_event(user_log_string_temp);
+			sprintf(user_log_string_temp, "Total MQTT packets sent                 : %d", pUserData->MQTT_stats_packets_sent);
+			user_log_event(user_log_string_temp);
+			sprintf(user_log_string_temp, "Total MQTT retry attempts               : %d", pUserData->MQTT_stats_retry_attempts);
+			user_log_event(user_log_string_temp);
+			sprintf(user_log_string_temp, "Total MQTT transmit success             : %d", pUserData->MQTT_stats_transmit_success);
+			user_log_event(user_log_string_temp);
+			if(pUserData->MQTT_dropped_data_events > 0)
+			{
+				sprintf(user_log_string_temp, "Total times transmit buffer wrapped     : %d", pUserData->MQTT_dropped_data_events);
+				user_log_event(user_log_string_temp);
+			}
+
+			/* We have finished accessing the shared resource.  Release the
+	            semaphore. */
+			xSemaphoreGive( Stats_semaphore );
+		}
+		else
+		{
+			Printf("\n ***print stats: Unable to obtain Stats semaphore\n");
+		}
 	}
+	else
+	{
+		Printf("\n ***print stats: Stats semaphore not initialized!\n");
+	}
+
 	// Battery voltage
 	adcDataFloat = get_battery_voltage();
 	sprintf(user_log_string_temp, "Battery reading : %d",(uint16_t)(adcDataFloat * 100));
@@ -6527,7 +6834,7 @@ static int user_process_read_data(void)
 	int max_display;		// temp to figure out last active "try" position
 
 	// Make known to other processes that we are active
-	SET_PROCESS_BIT(processLists, USER_PROCESS_HANDLE_RTCKEY);
+	set_process_bit(USER_PROCESS_HANDLE_RTCKEY);
 
 //#if defined(__RUNTIME_CALCULATION__) && defined(XIP_CACHE_BOOT)
 //	printf_with_run_time("Read AXL data");
@@ -6738,16 +7045,42 @@ static int user_process_read_data(void)
 			PRINTF(" Total times succeeded on try %d          : %d\n", (i+1), pUserData->erase_attempt_events[i]);
 		}
 	}
-//	PRINTF(" Total times succeeded on first retry    : %d\n", pUserData->erase_retry_events[1]);
-//	PRINTF(" Total times a second retry was needed   : %d\n", pUserData->erase_retry_events[2]);
+
 	PRINTF(" ----------------------------------------\n");
-	PRINTF(" Total MQTT connect attempts             : %d\n", pUserData->MQTT_connect_attempts);
-	PRINTF(" Total MQTT connect fails                : %d\n", pUserData->MQTT_connect_fails);
-	PRINTF(" Total MQTT packet transmit fails        : %d\n", pUserData->MQTT_transmit_fails);
-	if(pUserData->MQTT_dropped_data_events > 0)
+	if(Stats_semaphore != NULL )
 	{
-		PRINTF(" Total times transmit buffer wrapped     : %d\n", pUserData->MQTT_dropped_data_events);
+		/* See if we can obtain the semaphore.  If the semaphore is not
+	        available wait 10 ticks to see if it becomes free. */
+		if( xSemaphoreTake( Stats_semaphore, ( TickType_t ) 10 ) == pdTRUE )
+		{
+			/* We were able to obtain the semaphore and can now access the
+	            shared resource. */
+
+				PRINTF(" Total MQTT connect attempts             : %d\n", pUserData->MQTT_stats_connect_attempts);
+				PRINTF(" Total MQTT connect fails                : %d\n", pUserData->MQTT_stats_connect_fails);
+				PRINTF(" Total MQTT packets sent                 : %d\n", pUserData->MQTT_stats_packets_sent);
+				PRINTF(" Total MQTT retry attempts               : %d\n", pUserData->MQTT_stats_retry_attempts);
+				PRINTF(" Total MQTT transmit success             : %d\n", pUserData->MQTT_stats_transmit_success);
+				if(pUserData->MQTT_dropped_data_events > 0)
+				{
+					PRINTF(" Total times transmit buffer wrapped     : %d\n", pUserData->MQTT_dropped_data_events);
+				}
+
+			/* We have finished accessing the shared resource.  Release the
+	            semaphore. */
+			xSemaphoreGive( Stats_semaphore );
+		}
+		else
+		{
+			Printf("\n ***print stats: Unable to obtain Stats semaphore\n");
+		}
 	}
+	else
+	{
+		Printf("\n ***print stats: Stats semaphore not initialized!\n");
+	}
+
+
 	PRINTF(" ----------------------------------------\n");
 
 	PRINTF(" Total log entries since power on        : %d\n", pUserData->total_log_entries);
@@ -6816,10 +7149,12 @@ static int user_process_read_data(void)
 	if(pUserData->ACCEL_transmit_trigger >= MQTT_TRANSMIT_TRIGGER_FIFO_BUFFERS)
 	{
 		mqtt_started = pdTRUE;
+		increment_MQTT_stat(&(pUserData->MQTT_stats_connect_attempts));
 		// Check if MQTT is still active before starting again
-		if (PROCESS_BIT_SET(processLists, USER_PROCESS_MQTT_TRANSMIT))
+		if (process_bit_set(USER_PROCESS_MQTT_TRANSMIT))
 		{
 			user_log_error("MQTT task still active. Stopping transmission.");
+			increment_MQTT_stat(&(pUserData->MQTT_stats_connect_fails));
 			user_terminate_transmit();
 		}
 		else
@@ -6855,7 +7190,7 @@ static int user_process_read_data(void)
 	// buffered in retention memory to flash.  This should be able
 	// to occur without any other interference.
 	if(!erase_happened
-		&& !PROCESS_BIT_SET(processLists, USER_PROCESS_MQTT_TRANSMIT))
+		&& !process_bit_set(USER_PROCESS_MQTT_TRANSMIT))
 	{
 		archive_status = user_archive_log_messages(pdFALSE);
 	}
@@ -6865,7 +7200,7 @@ static int user_process_read_data(void)
 
 	// Signal that we're finished so we can sleep
 
-	CLR_PROCESS_BIT(processLists, USER_PROCESS_HANDLE_RTCKEY);
+	clr_process_bit(USER_PROCESS_HANDLE_RTCKEY);
 
 	return 0;
 }
@@ -7112,10 +7447,14 @@ printf_with_run_time("Starting boot event process");
 	pUserData->last_FIFO_read_time_ms = 0;
 
 	// Initialize the MQTT statistics
+
+	pUserData->MQTT_stats_connect_attempts = 0;
+	pUserData->MQTT_stats_connect_fails = 0;
+	pUserData->MQTT_stats_packets_sent = 0;
+	pUserData->MQTT_stats_retry_attempts = 0;
+	pUserData->MQTT_stats_transmit_success = 0;
 	pUserData->MQTT_message_number = 0;
-	pUserData->MQTT_connect_attempts = 0;
-	pUserData->MQTT_connect_fails = 0;
-	pUserData->MQTT_transmit_fails = 0;
+
 	pUserData->MQTT_dropped_data_events = 0;
 	pUserData->MQTT_last_message_id = 0;
 
@@ -7210,14 +7549,17 @@ static UCHAR user_process_event(UINT32 event)
 
 
 	if (event & USER_SLEEP_READY_EVENT) {
-		PRINTF("  USER_SLEEP_READY_EVENT: processLists: %d [%x]\n",
-				processLists, processLists);
+
+		UINT32 pl_copy;
+		pl_copy = copy_processLists();
+
+		PRINTF("  USER_SLEEP_READY_EVENT: processLists: 0x%x\n",pl_copy);
 
 #if defined(__RUNTIME_CALCULATION__) && defined(XIP_CACHE_BOOT)
 	printf_with_run_time("===USER SLEEP READY EVENT");
 #endif
 
-		if (processLists == 0) {
+		if (pl_copy == 0) {
 			user_time64_msec_since_poweron(&current_msec_since_boot);
 			awake_time = current_msec_since_boot - pUserData->last_sleep_msec;
 			time64_string (time_string, &awake_time);
@@ -7406,6 +7748,32 @@ static void user_init(void)
 //			PRINTF("\n****** Log holding semaphore created *****\n");
 		}
 
+		/*
+		 * Create a semaphore to make sure each task can have exclusive access to
+		 * the MQTT transmission statistics.  These statistics are printed and logged
+		 * by the user read task and written by the mqtt transmission task
+		 */
+		Stats_semaphore = xSemaphoreCreateMutex();
+		if (Stats_semaphore == NULL)
+		{
+			user_log_error("****** Error creating stats semaphore *****");
+		}
+		else
+		{
+//			PRINTF("\n****** stats semaphore created *****\n");
+		}
+
+		Process_semaphore = xSemaphoreCreateMutex();
+		if (Process_semaphore == NULL)
+		{
+			user_log_error("****** Error creating stats semaphore *****");
+		}
+		else
+		{
+//			PRINTF("\n****** Process semaphore created *****\n");
+		}
+
+
 		// Initialize the FIFO interrupt cycle statistics
 		pUserData->FIFO_reads_this_power_cycle = 0;
 
@@ -7587,7 +7955,9 @@ void tcp_client_sleep2_sample(void *param)
 //		OTP_MAC
 	int MACaddrtype;
 	float adcDataFloat;
+	int sys_wdog_id = -1;
 
+	//sys_wdog_id = da16x_sys_watchdog_register(pdFALSE);
 
 	// MQTT callback setup
     //mqtt_client_set_msg_cb(user_mqtt_msg_cb);
@@ -7646,7 +8016,11 @@ void tcp_client_sleep2_sample(void *param)
 			{
 				break;
 			}
+#if 0
 	//		watch_dog_kicking_example(WATCH_DOG_TIME_1ST, TRUE);	// rescale_time
+#endif // JW: TO BE REMOVED - DEPRECATED
+
+			da16x_sys_watchdog_notify(sys_wdog_id);
 			vTaskDelay(pdMS_TO_TICKS(100));
 		}
 
@@ -7737,6 +8111,7 @@ void tcp_client_sleep2_sample(void *param)
 
 			// If we've received a terminate downlink command, exit
 			// the message processing loop and effectively shut down.
+			da16x_sys_watchdog_notify(sys_wdog_id);
 			quit = (user_process_event(ulNotifiedValue) == PROCESS_EVENT_TERMINATE);
 		}
 		else
@@ -7775,6 +8150,9 @@ void tcp_client_sleep2_sample(void *param)
 
 	/* Un-initialize resources */
 	user_deinit();
+
+	/* Turn off watchdog */
+	da16x_sys_watchdog_unregister(sys_wdog_id);
 
 	/* Delete task */
 	xTask = NULL;
