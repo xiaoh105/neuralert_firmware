@@ -95,8 +95,9 @@
 #define USER_PROCESS_HANDLE_TIMER				(1 << 1)
 #define USER_PROCESS_SEND_DATA					(1 << 2)
 #define USER_PROCESS_MQTT_TRANSMIT				(1 << 3)
-#define USER_PROCESS_WATCHDOG					(1 << 4)
-#define	USER_PROCESS_WATCHDOG_STOP				(1 << 5)
+#define USER_PROCESS_MQTT_STOP					(1 << 4)
+#define USER_PROCESS_WATCHDOG					(1 << 5)
+#define	USER_PROCESS_WATCHDOG_STOP				(1 << 6)
 
 
 // System states for LED management
@@ -323,6 +324,10 @@
 //#define MQTT_TRANSMIT_TRIGGER_FIFO_BUFFERS 176
 //#define MQTT_TRANSMIT_TRIGGER_FIFO_BUFFERS 208
 //#define MQTT_TRANSMIT_TRIGGER_FIFO_BUFFERS 272
+
+// This is how long to wait for MQTT to stop before shutting the wifi down
+// regardless of whether MQTT has cleanly exited.
+#define MQTT_STOP_TIMEOUT_SECONDS 3
 
 // How many accelerometer FIFO blocks to send in each JSON packet
 // (This is arbitrary but limited by the max MQTT packet size)
@@ -670,6 +675,7 @@ enum process_event {
 static UINT32 processLists = 0;					// bitmap of active processes
 static TaskHandle_t xTask = NULL;
 static TaskHandle_t user_MQTT_task_handle = NULL;  // task handle of the user MQTT transmit task
+static TaskHandle_t user_MQTT_stop_task_handle = NULL;  // task handle of the user MQTT stop task
 static TaskHandle_t user_watchdog_task_handle = NULL; // task handle of the user watchdog task
 
 /*
@@ -799,6 +805,7 @@ static UserDataBuffer *pUserData = NULL;
 static int user_process_connect_ap(void);
 //static int check_connection_status(void);
 static void user_create_MQTT_task(void);
+static void user_create_MQTT_stop_task(void);
 static int user_mqtt_send_message(void);
 void user_mqtt_connection_complete_event(void);
 static UCHAR user_process_check_wifi_conn(void);
@@ -2785,14 +2792,18 @@ void user_terminate_transmit(void)
 	int sys_wdog_id = -1;
 	sys_wdog_id = da16x_sys_watchdog_register(pdFALSE);
 
+	// Setup a new task to stop the MQTT client -- it can hang and block the wifi disconnect below
+	SET_PROCESS_BIT(processLists, USER_PROCESS_MQTT_STOP);
+	user_create_MQTT_stop_task();
+	int timeout = MQTT_STOP_TIMEOUT_SECONDS * 10;
+	while (PROCESS_BIT_SET(processLists, USER_PROCESS_MQTT_STOP) && timeout > 0)
+	{
+		vTaskDelay(pdMS_TO_TICKS(100)); // 100 ms delay
+		timeout--;
+		da16x_sys_watchdog_notify(sys_wdog_id);
+	}
+	CLR_PROCESS_BIT(processLists, USER_PROCESS_MQTT_STOP);
 
-	// Check if MQTT is running -- if so, shut it down
-	da16x_sys_watchdog_notify(sys_wdog_id);
-    if (mqtt_client_is_running() == TRUE) {
-        mqtt_client_force_stop();
-        mqtt_client_stop();
-    }
-    vTaskDelay(1);
 
 	// disconnect from wlan
     int ret;
@@ -2812,6 +2823,7 @@ void user_terminate_transmit(void)
 
 	// Clear the transmit process bit so the system can go to sleep
 	CLR_PROCESS_BIT(processLists, USER_PROCESS_MQTT_TRANSMIT);
+	CLR_PROCESS_BIT(processLists, USER_PROCESS_MQTT_STOP);
 	CLR_PROCESS_BIT(processLists, USER_PROCESS_WATCHDOG);
 	CLR_PROCESS_BIT(processLists, USER_PROCESS_WATCHDOG_STOP);
 
@@ -2973,7 +2985,40 @@ static int user_mqtt_send_message(void)
 }
 
 
+/**
+ *******************************************************************************
+ * @brief A task to execute the MQTT stop so it doesn't block turning off wifi
+ *
+ * A new task is needed to cleanly stop the MQTT task.  Basically, we would
+ * prefer to cleanly shut down MQTT.  That process involves first turning off
+ * MQTT, then turning off the wifi.  However, MQTT can get into a state where
+ * it is blocking the wifi disconnect process.  In that scenario, we'll opt for
+ * the nuclear option of disconnecting from wifi and MQTT will stop in it's due
+ * course.  This task's only purpose is to stop MQTT.  It is called by
+ * user_terminate_transmit() -- in that function a timeout exists to stop the
+ * wifi regardless of whether MQTT has shutdown.
+ *
+ * Since this thread is known to hang, don't implement a watchdog -- it is being
+ * monitored by user_terminate_transmit()
+ *
+ *******************************************************************************
+ */
+static void user_process_MQTT_stop(void* arg)
+{
+	PRINTF (">>>>>> Forcibly Stopping MQTT Client <<<<<<<<");
+    if (mqtt_client_is_running() == TRUE) {
+        mqtt_client_force_stop();
+        mqtt_client_stop();
+    }
 
+    CLR_PROCESS_BIT(processLists, USER_PROCESS_MQTT_STOP);
+    vTaskDelay(1);
+
+    PRINTF (">>>>>> MQTT Client Stopped <<<<<<<<");
+
+    user_MQTT_stop_task_handle = NULL;
+    vTaskDelete(NULL);
+}
 
 
 
@@ -3010,7 +3055,9 @@ static void user_process_watchdog(void* arg)
 		PRINTF ("\n*** WIFI and MQTT Connection Watchdog Timeout ***\n");
 		increment_MQTT_stat(&(pUserData->MQTT_stats_connect_fails));
 		da16x_sys_watchdog_notify(sys_wdog_id);
+		da16x_sys_watchdog_suspend(sys_wdog_id);
 		user_terminate_transmit();
+		da16x_sys_watchdog_notify_and_resume(sys_wdog_id);
 	}
 
 	PRINTF ("\n>>> Stopping Watchdog Task <<<\n");
@@ -3830,6 +3877,52 @@ static void user_start_data_tx(){
 
 	return;
 }
+
+
+
+/**
+ *******************************************************************************
+ *@brief  user_create_MQTT_stop_task: create a new task for stopping MQTT
+ *
+ *******************************************************************************
+ */
+static void user_create_MQTT_stop_task()
+{
+
+	if (!PROCESS_BIT_SET(processLists, USER_PROCESS_MQTT_STOP)){
+		PRINTF(">>>>>>> MQTT stop not requested <<<<<<<<<\n");
+		return;
+	}
+
+	BaseType_t create_status;
+
+	create_status = xTaskCreate(
+			user_process_MQTT_stop,
+			"USER_MQTT_STOP", 				// Task name -- TODO: move this to a #define
+			(4*1024),					//JW: need to confirm this size
+			( void * ) NULL,  			// no parameter to pass
+//			(current_task_priority + 1),  // Make this a higher priority than accelerometer
+//			(current_task_priority - 1),  // Make this a lower priority
+//			OS_TASK_PRIORITY_USER + 1,	// Make this higher than accelerometer
+			(OS_TASK_PRIORITY_USER + 2),	// Make this lower than USER_READ task in user_apps.c
+//		  (tskIDLE_PRIORITY + 6), 		// one less than accelerometer
+			&user_MQTT_stop_task_handle);			// save the task handle
+
+	if (create_status == pdPASS)
+	{
+		PRINTF(">>>>>>> MQTT stop task created <<<<<<<<<\n"); // FRSDEBUG
+	}
+	else
+	{
+		user_log_error(">>>>>>> MQTT stop task failed to create <<<<<<<<<");
+	}
+
+	return;
+}
+
+
+
+
 
 /**
  *******************************************************************************
