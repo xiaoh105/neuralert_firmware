@@ -805,7 +805,7 @@ static UserDataBuffer *pUserData = NULL;
  * STATIC FUNCTIONS DEFINITIONS (forward declarations)
  *******************************************************************************
  */
-static void user_process_timer_event(void);
+//static void user_process_timer_event(void); // JW: TO BE REMOVED -- DEPRECATED
 static int user_process_connect_ap(void);
 //static int check_connection_status(void);
 static void user_create_MQTT_task(void);
@@ -829,6 +829,7 @@ static void increment_MQTT_stat(unsigned int *stat);
 static void set_process_bit(UINT32 bit);
 static void clr_process_bit(UINT32 bit);
 static UCHAR process_bit_set(UINT32 bit);
+static UINT32 copy_processLists(void);
 static void timesync_snapshot(void);
 
 
@@ -3105,31 +3106,38 @@ void user_retry_transmit(void)
 	// First, turn off the watchdog -- we'll need to restart it in a bit.
 	// if we can't then let the hardware watchdog timeout.
 	// there should be nothing blocking this for very long
-	set_process_bit(USER_PROCESS_WATCHDOG_STOP);
-	clr_process_bit(USER_PROCESS_WATCHDOG);
+	//set_process_bit(USER_PROCESS_WATCHDOG_STOP);
+	//clr_process_bit(USER_PROCESS_WATCHDOG);
+	SET_PROCESS_BIT(processLists, USER_PROCESS_WATCHDOG_STOP);
+	CLR_PROCESS_BIT(processLists, USER_PROCESS_WATCHDOG);
 	da16x_sys_watchdog_notify(sys_wdog_id);
 
 	// Wait until the watchdog is stopped (these aren't high-priority tasks,
 	// so we may need to wait a bit.
 	// If the watchdog doesn't stop, we hardware watchdog will handle a reset.
-	while (process_bit_set(USER_PROCESS_WATCHDOG_STOP) != pdFALSE){
+
+	//while (!process_bit_set(USER_PROCESS_WATCHDOG_STOP)){
+	while (!PROCESS_BIT_SET(processLists, USER_PROCESS_WATCHDOG_STOP)){
 		vTaskDelay(pdMS_TO_TICKS(200));
 	}
 	da16x_sys_watchdog_notify(sys_wdog_id);
+	da16x_sys_watchdog_suspend(sys_wdog_id);
 
 	// Check if MQTT is running -- if so, shut it down
     if (mqtt_client_is_running() == TRUE) {
         mqtt_client_force_stop();
         mqtt_client_stop();
     }
-    da16x_sys_watchdog_notify(sys_wdog_id);
+    da16x_sys_watchdog_notify_and_resume(sys_wdog_id);
 
 	// Clear system state so LEDs are off, unless there's an alert
 	set_sole_system_state(0);
 
 	// Set the process bits for a clean retry
-	set_process_bit(USER_PROCESS_MQTT_TRANSMIT);
-	set_process_bit(USER_PROCESS_WATCHDOG);
+	//set_process_bit(USER_PROCESS_MQTT_TRANSMIT);
+	//set_process_bit(USER_PROCESS_WATCHDOG);
+	SET_PROCESS_BIT(processLists, USER_PROCESS_MQTT_TRANSMIT);
+	SET_PROCESS_BIT(processLists, USER_PROCESS_WATCHDOG);
 
 	// Restart the application watchdog
 	da16x_sys_watchdog_notify(sys_wdog_id);
@@ -3215,7 +3223,8 @@ static void user_process_send_MQTT_data(void* arg)
 	// We've successfully made it to the transmission task!
 	// Clear the watchdog process bit that was monitoring for this task to start
 	// The watchdog will shutdown itself later regardless.
-	clr_process_bit(USER_PROCESS_WATCHDOG);
+	//clr_process_bit(USER_PROCESS_WATCHDOG);
+	CLR_PROCESS_BIT(processLists, USER_PROCESS_WATCHDOG);
 	vTaskDelay(1);
 
 
@@ -3895,7 +3904,7 @@ static void user_create_MQTT_task()
 }
 
 
-
+#if 0
 /**
  *******************************************************************************
  *  Dummy function during stage5a to keep timer transmit happy
@@ -3912,7 +3921,7 @@ static void user_process_send_data()
 
 	return;
 }
-
+#endif //JW: TO BE REMOVED -- DEPRECATED
 
 
 
@@ -3948,6 +3957,8 @@ static int user_process_connect_ap(void)
 	return ret;
 }
 
+
+#if 0
 /**
  *******************************************************************************
  * @brief Process for the RTC timer event
@@ -3971,6 +3982,8 @@ static void user_process_timer_event(void)
 	}
 #endif
 }
+#endif // JW: TO BE REMOVED -- DEPRECATED
+
 
 /**
  *******************************************************************************
@@ -7189,8 +7202,8 @@ static int user_process_read_data(void)
 	// give the logging mechanism a chance to move any log entries
 	// buffered in retention memory to flash.  This should be able
 	// to occur without any other interference.
-	if(!erase_happened
-		&& !process_bit_set(USER_PROCESS_MQTT_TRANSMIT))
+	//if(!erase_happened && !process_bit_set(USER_PROCESS_MQTT_TRANSMIT))
+	if(!erase_happened && !PROCESS_BIT_SET(processLists, USER_PROCESS_MQTT_TRANSMIT))
 	{
 		archive_status = user_archive_log_messages(pdFALSE);
 	}
@@ -7200,7 +7213,8 @@ static int user_process_read_data(void)
 
 	// Signal that we're finished so we can sleep
 
-	clr_process_bit(USER_PROCESS_HANDLE_RTCKEY);
+	//clr_process_bit(USER_PROCESS_HANDLE_RTCKEY);
+	CLR_PROCESS_BIT(processLists, USER_PROCESS_HANDLE_RTCKEY);
 
 	return 0;
 }
