@@ -494,9 +494,6 @@ typedef struct
 #define MAGIC_SHUTDOWN_KEY 0xFACEBABE
 
 
-// A constant used to complement pdTRUE and pdFALSE.
-// Useful when using semaphores
-#define pdERROR	( ( BaseType_t ) 2 )
 /*
  * User data area in retention memory
  *
@@ -727,13 +724,6 @@ SemaphoreHandle_t user_log_semaphore = NULL;
  * This is used so we don't accidentally execute simultaneous read/writes
  */
 SemaphoreHandle_t Stats_semaphore = NULL;
-/*
- * Semaphore to coordinate between users of the process list.
- * This is used so we don't accidentally execute simultaneous change bits in
- * the process list
- */
-SemaphoreHandle_t Process_semaphore = NULL;
-
 
 
 /*
@@ -826,10 +816,6 @@ static int get_log_oldest_location(void);
 static int get_log_store_location(void);
 static void log_current_time(UCHAR *PrefixString);
 static void increment_MQTT_stat(unsigned int *stat);
-static void set_process_bit(UINT32 bit);
-static void clr_process_bit(UINT32 bit);
-static UCHAR process_bit_set(UINT32 bit);
-static UINT32 copy_processLists(void);
 static void timesync_snapshot(void);
 
 
@@ -2825,9 +2811,9 @@ void user_terminate_transmit(void)
 	set_sole_system_state(0);
 
 	// Clear the transmit process bit so the system can go to sleep
-	clr_process_bit(USER_PROCESS_MQTT_TRANSMIT);
-	clr_process_bit(USER_PROCESS_WATCHDOG);
-	clr_process_bit(USER_PROCESS_WATCHDOG_STOP);
+	CLR_PROCESS_BIT(processLists, USER_PROCESS_MQTT_TRANSMIT);
+	CLR_PROCESS_BIT(processLists, USER_PROCESS_WATCHDOG);
+	CLR_PROCESS_BIT(processLists, USER_PROCESS_WATCHDOG_STOP);
 
 	da16x_sys_watchdog_unregister(sys_wdog_id);
 }
@@ -3012,7 +2998,7 @@ static void user_process_watchdog(void* arg)
 	sys_wdog_id = da16x_sys_watchdog_register(pdFALSE);
 
 	int timeout = WATCHDOG_TIMEOUT_SECONDS * 10;
-	while (process_bit_set(USER_PROCESS_WATCHDOG) && timeout > 0)
+	while (PROCESS_BIT_SET(processLists, USER_PROCESS_WATCHDOG) && timeout > 0)
 	{
 		vTaskDelay(pdMS_TO_TICKS(100)); // 100 ms delay
 		timeout--;
@@ -3020,7 +3006,7 @@ static void user_process_watchdog(void* arg)
 	}
 
 	// The Process bit should have been cleared in user_process_send_MQTT_data()
-	if (process_bit_set(USER_PROCESS_WATCHDOG)){
+	if (PROCESS_BIT_SET(processLists, USER_PROCESS_WATCHDOG)){
 		PRINTF ("\n*** WIFI and MQTT Connection Watchdog Timeout ***\n");
 		increment_MQTT_stat(&(pUserData->MQTT_stats_connect_fails));
 		da16x_sys_watchdog_notify(sys_wdog_id);
@@ -3028,8 +3014,8 @@ static void user_process_watchdog(void* arg)
 	}
 
 	PRINTF ("\n>>> Stopping Watchdog Task <<<\n");
-	clr_process_bit(USER_PROCESS_WATCHDOG);
-	clr_process_bit(USER_PROCESS_WATCHDOG_STOP);
+	CLR_PROCESS_BIT(processLists, USER_PROCESS_WATCHDOG);
+	CLR_PROCESS_BIT(processLists, USER_PROCESS_WATCHDOG_STOP);
 
 	da16x_sys_watchdog_unregister(sys_wdog_id);
 
@@ -3106,8 +3092,6 @@ void user_retry_transmit(void)
 	// First, turn off the watchdog -- we'll need to restart it in a bit.
 	// if we can't then let the hardware watchdog timeout.
 	// there should be nothing blocking this for very long
-	//set_process_bit(USER_PROCESS_WATCHDOG_STOP);
-	//clr_process_bit(USER_PROCESS_WATCHDOG);
 	SET_PROCESS_BIT(processLists, USER_PROCESS_WATCHDOG_STOP);
 	CLR_PROCESS_BIT(processLists, USER_PROCESS_WATCHDOG);
 	da16x_sys_watchdog_notify(sys_wdog_id);
@@ -3116,7 +3100,6 @@ void user_retry_transmit(void)
 	// so we may need to wait a bit.
 	// If the watchdog doesn't stop, we hardware watchdog will handle a reset.
 
-	//while (!process_bit_set(USER_PROCESS_WATCHDOG_STOP)){
 	while (!PROCESS_BIT_SET(processLists, USER_PROCESS_WATCHDOG_STOP)){
 		vTaskDelay(pdMS_TO_TICKS(200));
 	}
@@ -3134,8 +3117,6 @@ void user_retry_transmit(void)
 	set_sole_system_state(0);
 
 	// Set the process bits for a clean retry
-	//set_process_bit(USER_PROCESS_MQTT_TRANSMIT);
-	//set_process_bit(USER_PROCESS_WATCHDOG);
 	SET_PROCESS_BIT(processLists, USER_PROCESS_MQTT_TRANSMIT);
 	SET_PROCESS_BIT(processLists, USER_PROCESS_WATCHDOG);
 
@@ -3223,7 +3204,6 @@ static void user_process_send_MQTT_data(void* arg)
 	// We've successfully made it to the transmission task!
 	// Clear the watchdog process bit that was monitoring for this task to start
 	// The watchdog will shutdown itself later regardless.
-	//clr_process_bit(USER_PROCESS_WATCHDOG);
 	CLR_PROCESS_BIT(processLists, USER_PROCESS_WATCHDOG);
 	vTaskDelay(1);
 
@@ -3752,7 +3732,7 @@ end_of_task:
 
 void user_process_wifi_conn()
 {
-	if (!process_bit_set(USER_PROCESS_MQTT_TRANSMIT)){
+	if (!PROCESS_BIT_SET(processLists, USER_PROCESS_MQTT_TRANSMIT)){
 		PRINTF(">>>>>>> MQTT transmit task already in progress <<<<<<<<<\n");
 		return;
 	}
@@ -3815,7 +3795,7 @@ static void user_start_data_tx(){
 
 	// Specifically, let the other tasks know that the watchdog is turning on,
 	// so we don't sleep
-	set_process_bit(USER_PROCESS_WATCHDOG);
+	SET_PROCESS_BIT(processLists, USER_PROCESS_WATCHDOG);
 
 	int ret = 0;
 	ret = user_process_start_watchdog();
@@ -3831,7 +3811,7 @@ static void user_start_data_tx(){
 	// (ii) reset the MQTT attempts counter for this TX cycle to zero
 	// Note, the watchdog process (above) will clear before the MQTT transmit completes,
 	// so we need both bits set to stay awake until transmittion is complete
-	set_process_bit(USER_PROCESS_MQTT_TRANSMIT);
+	SET_PROCESS_BIT(processLists, USER_PROCESS_MQTT_TRANSMIT);
 	vTaskDelay(1);
 
 	// Intialize the maximum number of retries here -- this can't be done in
@@ -3859,7 +3839,7 @@ static void user_start_data_tx(){
 static void user_create_MQTT_task()
 {
 
-	if (!process_bit_set(USER_PROCESS_MQTT_TRANSMIT)){
+	if (!PROCESS_BIT_SET(processLists, USER_PROCESS_MQTT_TRANSMIT)){
 		PRINTF(">>>>>>> MQTT transmit task already in progress <<<<<<<<<\n");
 		return;
 	}
@@ -6001,195 +5981,6 @@ static void increment_MQTT_stat(unsigned int *stat)
 
 }
 
-/*
- *  Set process bits in a safe manner (since multiple tasks can change bits)
- */
-static void set_process_bit(UINT32 bit)
-{
-	int sys_wdog_id = -1;
-	sys_wdog_id = da16x_sys_watchdog_register(pdFALSE);
-	da16x_sys_watchdog_notify(sys_wdog_id);
-
-	if(Process_semaphore != NULL )
-	{
-		// we must wait for these events to occur -- otherwise we need to perform a hard reset
-		// We'll keep trying every 50 ms until we can get through
-		while (1){
-			/* See if we can obtain the semaphore.  If the semaphore is not
-				available wait 10 ticks to see if it becomes free. */
-			if( xSemaphoreTake( Process_semaphore, ( TickType_t ) 10 ) == pdTRUE )
-			{
-				/* We were able to obtain the semaphore and can now access the
-					shared resource. */
-
-				SET_PROCESS_BIT(processLists, bit);
-				/* We have finished accessing the shared resource.  Release the
-					semaphore. */
-				xSemaphoreGive( Process_semaphore );
-				da16x_sys_watchdog_unregister(sys_wdog_id);
-				return;
-			}
-			else
-			{
-				Printf("\n ***set_process_bit: Unable to obtain Process semaphore\n");
-			}
-
-			vTaskDelay(pdMS_TO_TICKS(50));
-		}
-	}
-	else
-	{
-		while(1) {
-			PRINTF("\n ***set_process_bit: Process semaphore not initialized!\n");
-			vTaskDelay(pdMS_TO_TICKS(1000));
-		}
-	}
-}
-
-/*
- *  Set process bits in a safe manner (since multiple tasks can change bits)
- */
-static void clr_process_bit(UINT32 bit)
-{
-	int sys_wdog_id = -1;
-	sys_wdog_id = da16x_sys_watchdog_register(pdFALSE);
-	da16x_sys_watchdog_notify(sys_wdog_id);
-
-	if(Process_semaphore != NULL )
-	{
-		// we must wait for these events to occur -- otherwise we need to perform a hard reset
-		// We'll keep trying every 50 ms until we can get through
-		while (1){
-			/* See if we can obtain the semaphore.  If the semaphore is not
-		        available wait 10 ticks to see if it becomes free. */
-			if( xSemaphoreTake( Process_semaphore, ( TickType_t ) 10 ) == pdTRUE )
-			{
-				/* We were able to obtain the semaphore and can now access the
-					shared resource. */
-
-				CLR_PROCESS_BIT(processLists, bit);
-				/* We have finished accessing the shared resource.  Release the
-					semaphore. */
-				xSemaphoreGive( Process_semaphore );
-				da16x_sys_watchdog_unregister(sys_wdog_id);
-				return;
-			}
-			else
-			{
-				PRINTF("\n ***clr_process_bit: Unable to obtain Process semaphore -- trying again\n");
-			}
-
-			vTaskDelay(pdMS_TO_TICKS(50));
-		}
-	}
-	else
-	{
-		while(1) {
-			PRINTF("\n ***clr_process_bit: Process semaphore not initialized!\n");
-			vTaskDelay(pdMS_TO_TICKS(1000));
-		}
-	}
-}
-
-
-/*
- *  Set process bits in a safe manner (since multiple tasks can change bits)
- */
-static UCHAR process_bit_set(UINT32 bit)
-{
-	int sys_wdog_id = -1;
-	sys_wdog_id = da16x_sys_watchdog_register(pdFALSE);
-	da16x_sys_watchdog_notify(sys_wdog_id);
-
-	if(Process_semaphore != NULL )
-	{
-		// we must wait for these events to occur -- otherwise we need to perform a hard reset
-		// We'll keep trying every 50 ms until we can get through
-		while (1){
-			/* See if we can obtain the semaphore.  If the semaphore is not
-		        available wait 10 ticks to see if it becomes free. */
-
-			if( xSemaphoreTake( Process_semaphore, ( TickType_t ) 10 ) == pdTRUE )
-			{
-				/* We were able to obtain the semaphore and can now access the
-					shared resource. */
-
-				UCHAR ret;
-				ret = PROCESS_BIT_SET(processLists, bit);
-				/* We have finished accessing the shared resource.  Release the
-					semaphore. */
-				xSemaphoreGive( Process_semaphore );
-				da16x_sys_watchdog_unregister(sys_wdog_id);
-				return ret;
-			}
-			else
-			{
-				PRINTF("\n ***process_bit_set: Unable to obtain Process semaphore -- trying again\n");
-			}
-
-			vTaskDelay(pdMS_TO_TICKS(50));
-		}
-	}
-	else
-	{
-		while(1) {
-			PRINTF("\n ***set_process_bit: Process semaphore not initialized!\n");
-			vTaskDelay(pdMS_TO_TICKS(1000));
-		}
-	}
-	return pdFALSE;
-}
-
-
-
-/*
- *  Set process bits in a safe manner (since multiple tasks can change bits)
- */
-static UINT32 copy_processLists(void)
-{
-	int sys_wdog_id = -1;
-	sys_wdog_id = da16x_sys_watchdog_register(pdFALSE);
-	da16x_sys_watchdog_notify(sys_wdog_id);
-
-	if(Process_semaphore != NULL )
-	{
-		// we must wait for these events to occur -- otherwise we need to perform a hard reset
-		// We'll keep trying every 50 ms until we can get through
-		while (1){
-			/* See if we can obtain the semaphore.  If the semaphore is not
-		        available wait 10 ticks to see if it becomes free. */
-
-			if( xSemaphoreTake( Process_semaphore, ( TickType_t ) 10 ) == pdTRUE )
-			{
-				/* We were able to obtain the semaphore and can now access the
-					shared resource. */
-
-				UINT32 temp = processLists;
-				/* We have finished accessing the shared resource.  Release the
-					semaphore. */
-				xSemaphoreGive( Process_semaphore );
-				da16x_sys_watchdog_unregister(sys_wdog_id);
-				return temp;
-			}
-			else
-			{
-				PRINTF("\n ***copy_processLists: Unable to obtain Process semaphore -- trying again\n");
-			}
-
-			vTaskDelay(pdMS_TO_TICKS(50));
-		}
-	}
-	else
-	{
-		while(1) {
-			PRINTF("\n ***copy_processLists: Process semaphore not initialized!\n");
-			vTaskDelay(pdMS_TO_TICKS(1000));
-		}
-	}
-	return 0; // should never happen
-}
-
-
 
 /**
  *******************************************************************************
@@ -6847,7 +6638,7 @@ static int user_process_read_data(void)
 	int max_display;		// temp to figure out last active "try" position
 
 	// Make known to other processes that we are active
-	set_process_bit(USER_PROCESS_HANDLE_RTCKEY);
+	SET_PROCESS_BIT(processLists, USER_PROCESS_HANDLE_RTCKEY);
 
 //#if defined(__RUNTIME_CALCULATION__) && defined(XIP_CACHE_BOOT)
 //	printf_with_run_time("Read AXL data");
@@ -7164,7 +6955,7 @@ static int user_process_read_data(void)
 		mqtt_started = pdTRUE;
 		increment_MQTT_stat(&(pUserData->MQTT_stats_connect_attempts));
 		// Check if MQTT is still active before starting again
-		if (process_bit_set(USER_PROCESS_MQTT_TRANSMIT))
+		if (PROCESS_BIT_SET(processLists, USER_PROCESS_MQTT_TRANSMIT))
 		{
 			user_log_error("MQTT task still active. Stopping transmission.");
 			increment_MQTT_stat(&(pUserData->MQTT_stats_connect_fails));
@@ -7202,7 +6993,6 @@ static int user_process_read_data(void)
 	// give the logging mechanism a chance to move any log entries
 	// buffered in retention memory to flash.  This should be able
 	// to occur without any other interference.
-	//if(!erase_happened && !process_bit_set(USER_PROCESS_MQTT_TRANSMIT))
 	if(!erase_happened && !PROCESS_BIT_SET(processLists, USER_PROCESS_MQTT_TRANSMIT))
 	{
 		archive_status = user_archive_log_messages(pdFALSE);
@@ -7213,7 +7003,6 @@ static int user_process_read_data(void)
 
 	// Signal that we're finished so we can sleep
 
-	//clr_process_bit(USER_PROCESS_HANDLE_RTCKEY);
 	CLR_PROCESS_BIT(processLists, USER_PROCESS_HANDLE_RTCKEY);
 
 	return 0;
@@ -7564,16 +7353,13 @@ static UCHAR user_process_event(UINT32 event)
 
 	if (event & USER_SLEEP_READY_EVENT) {
 
-		UINT32 pl_copy;
-		pl_copy = copy_processLists();
-
-		PRINTF("  USER_SLEEP_READY_EVENT: processLists: 0x%x\n",pl_copy);
+		PRINTF("  USER_SLEEP_READY_EVENT: processLists: 0x%x\n",processLists);
 
 #if defined(__RUNTIME_CALCULATION__) && defined(XIP_CACHE_BOOT)
 	printf_with_run_time("===USER SLEEP READY EVENT");
 #endif
 
-		if (pl_copy == 0) {
+		if (processLists == 0) {
 			user_time64_msec_since_poweron(&current_msec_since_boot);
 			awake_time = current_msec_since_boot - pUserData->last_sleep_msec;
 			time64_string (time_string, &awake_time);
@@ -7589,7 +7375,9 @@ static UCHAR user_process_event(UINT32 event)
 			// during wake/sleep and then only important ones
 			set_sole_system_state(0);
 
-			dpm_sleep_start_mode_2(TCP_CLIENT_SLP2_PERIOD, TRUE);
+			//dpm_sleep_start_mode_2(TCP_CLIENT_SLP2_PERIOD, TRUE); //JW: This appears to be the way to put to sleep if using dpm -- which we aren't
+			extern void fc80211_da16x_pri_pwr_down(unsigned char retention); //JW: This is probably the correct implemenation
+			fc80211_da16x_pri_pwr_down(TRUE);
 		}
 		else
 		{
@@ -7775,16 +7563,6 @@ static void user_init(void)
 		else
 		{
 //			PRINTF("\n****** stats semaphore created *****\n");
-		}
-
-		Process_semaphore = xSemaphoreCreateMutex();
-		if (Process_semaphore == NULL)
-		{
-			user_log_error("****** Error creating stats semaphore *****");
-		}
-		else
-		{
-//			PRINTF("\n****** Process semaphore created *****\n");
 		}
 
 
