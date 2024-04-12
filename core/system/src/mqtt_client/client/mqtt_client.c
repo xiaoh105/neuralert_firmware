@@ -131,6 +131,7 @@ generate_port:
 		goto generate_port;
 	}
 
+	port = 16384; //JW: DELETE THIS LINE
 	MQTT_DBG_INFO("[%s] Generated port: %d \n", __func__, port);
 
 	mqttParams.my_sub_port_no = port;

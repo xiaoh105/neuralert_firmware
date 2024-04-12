@@ -317,10 +317,10 @@
 // erases the next flash sector before it starts the MQTT task
 // That means that the MQTT task will have 16 AXL interrupt times to
 // operate in before the next erase sector time
-// #define MQTT_TRANSMIT_TRIGGER_FIFO_BUFFERS 32 //JW: use this for testing
+#define MQTT_TRANSMIT_TRIGGER_FIFO_BUFFERS 32 //JW: use this for testing
 //#define MQTT_TRANSMIT_TRIGGER_FIFO_BUFFERS 64
 // 144 = 9 x 16 and just about 5 minutes at 29 samples / FIFO
-#define MQTT_TRANSMIT_TRIGGER_FIFO_BUFFERS 144 // Use this for production
+//#define MQTT_TRANSMIT_TRIGGER_FIFO_BUFFERS 144 // Use this for production
 //#define MQTT_TRANSMIT_TRIGGER_FIFO_BUFFERS 176
 //#define MQTT_TRANSMIT_TRIGGER_FIFO_BUFFERS 208
 //#define MQTT_TRANSMIT_TRIGGER_FIFO_BUFFERS 272
