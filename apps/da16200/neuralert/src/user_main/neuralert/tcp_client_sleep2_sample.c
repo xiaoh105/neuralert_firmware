@@ -299,10 +299,9 @@
 // So 40 minutes = 8 intervals = 144 * 8 = 1152 FIFO buffers per interval
 //#define MAX_FIFO_BUFFERS_PER_TRANSMIT_INTERVAL 288
 // #define MAX_FIFO_BUFFERS_PER_TRANSMIT_INTERVAL 1152
-// JW: We want to send all the data out.  Let's pick a larger value than our
-// expected buffer size (could confirm later)
-// 10 hours = 120 intervals = 144 * 120 = 17280
-#define MAX_FIFO_BUFFERS_PER_TRANSMIT_INTERVAL 17280
+// JW: We want to send all the data out. So we are deprecating this term and using AB_FLASH_MAX_PAGES
+// this represents the entire buffer
+#define MAX_FIFO_BUFFERS_PER_TRANSMIT_INTERVAL AB_FLASH_MAX_PAGES
 
 // Trigger value for the accelerometer to start MQTT transmission
 //  64 ~= 2 minutes
@@ -636,8 +635,11 @@ typedef struct _userData {
 	// *****************************************************
 	int16_t AB_initialized_flag;			// 0 if not initialized; 1 otherwise
 	int8_t MQTT_internal_error;			// A genuine programming error, not transmit
-	AB_INDEX_TYPE next_AB_write_position;
-	AB_INDEX_TYPE next_AB_transmit_position;
+	AB_INDEX_TYPE next_AB_write_position; //TODO: repurpose the use of this variable for LIFO (not FIFO)
+	AB_INDEX_TYPE next_AB_transmit_position; //TODO: deprecate this variable, instead we'll reference it from the head and what hasn't been transmitted
+	uint8_t AB_transmit_map[(AB_FLASH_MAX_PAGES / sizeof(uint8_t)) + 1]; //
+
+
 
 	// *****************************************************
 	// User logging buffer management
@@ -809,10 +811,12 @@ static void user_create_MQTT_stop_task(void);
 static int user_mqtt_send_message(void);
 void user_mqtt_connection_complete_event(void);
 static UCHAR user_process_check_wifi_conn(void);
-static int get_AB_store_location(void);
+static int check_AB_transmit_location(int);
+static int clear_AB_transmit_location(int, int);
+static int get_AB_write_location(void);
 static int get_AB_transmit_location(void);
-static int update_AB_transmit_location(int new_location);
-static int update_AB_write_location(int new_location);
+//static int update_AB_transmit_location(int new_location);
+static int update_AB_write_location(void);
 static int AB_read_block(HANDLE SPI, UINT32 blockaddress, accelBufferStruct *FIFOdata);
 static int flash_write_block(HANDLE SPI, int blockaddress, UCHAR *pagedata, int num_bytes);
 static int get_holding_log_next_write_location(void);
@@ -1848,8 +1852,10 @@ static int user_process_MQTT_wait_for_connection(int max_ms)
  *******************************************************************************
  */
 
-int send_json_packet (int startAdd, int count, int msg_number, int sequence)
+int send_json_packet (int startAdd, packetDataStruct pData, int msg_number, int sequence)
 {
+
+	int count = pData.num_samples;
 
 	int return_status = 0;
 	int transmit_status = 0;
@@ -1974,11 +1980,20 @@ int send_json_packet (int startAdd, int count, int msg_number, int sequence)
 	sprintf(str,"\t\t\t\t\"seq\": %d,\r\n", sequence);
 	strcat(mqttMessage, str);
 	/*
+	 * Meta - flash error code for packet
+	 */
+	sprintf(str,"\t\t\t\t\"errF\": %d,\r\n", pData.flash_error);
+	strcat(mqttMessage, str);
+	/*
+	 * Meta - nvram error code for packet
+	 */
+	sprintf(str,"\t\t\t\t\"errR\": %d,\r\n", pData.nvram_error);
+	strcat(mqttMessage, str);
+	/*
 	 * Meta - Remaining free heap size (to monitor for significant leaks)
 	 */
 	sprintf(str,"\t\t\t\t\"mem\": %d\r\n", xPortGetFreeHeapSize());
 	strcat(mqttMessage, str);
-
 
 	// End meta data field (close bracket)
 	strcat(mqttMessage,"\t\t\t},\r\n");
@@ -2346,6 +2361,203 @@ void calculate_timestamp_for_sample(__time64_t *FIFO_timestamp, int offset, __ti
 }
 #endif // TO BE REMOVED -- DEPRECATED
 
+
+
+/**
+ *******************************************************************************
+ * @brief a helper function to calculate the AB buffer gap between loc and the
+ * next write position.
+ *
+ *returns number of pages between loc and next write position
+ *******************************************************************************
+ */
+static int get_AB_buffer_gap(int loc)
+{
+	int write_loc;
+
+	write_loc = get_AB_write_location();
+
+	if (loc >= write_loc){
+		return loc - write_loc;
+	}
+	else{
+		return AB_FLASH_MAX_PAGES - (write_loc - loc);
+	}
+}
+
+
+/**
+ *******************************************************************************
+ * @brief create a table of accelerometer data for transmission in one packet
+ *
+ * typedef struct
+	{
+		int16_t Xvalue;					//!< X-Value * 1000
+		int16_t Yvalue;					//!< Y-Value * 1000
+		int16_t Zvalue;					//!< Z-Value * 1000
+		__time64_t accelTime;           //!< time when accelerometer data taken
+	} accelDataStruct;
+ *
+ *returns -1 if an error
+ *returns number of samples in data array otherwise
+ *******************************************************************************
+ */
+static packetDataStruct assemble_packet_data (int start_block)
+{
+	int blocknumber;		// 0-based block index in Flash
+	int transmit_flag;
+	ULONG blockaddr;			// physical address in flash
+	int done = pdFALSE;
+	__time64_t block_timestamp;
+	__time64_t block_timestamp_prev;
+	__time64_t sample_timestamp;
+	ULONG sample_timestamp_offset;
+	int block_samples;
+	//int timesource;
+	int timeoffset;
+	accelBufferStruct FIFOblock;
+
+	int i;
+	int retry_count;
+	int timeoffsetindex;   	// +- position from where timestamp is assigned
+	__time64_t inter_sample_period_usec;	// Amount we adjust for each sample in the block
+
+	packetDataStruct packet_data;
+
+	char scaled_time_str[20];
+
+	char block_timestamp_str[20];
+	char sample_timestamp_str[20];
+	HANDLE SPI = NULL;
+
+	// Initialize output
+	packet_data.start_block = start_block;
+	packet_data.end_block = start_block;
+	packet_data.next_start_block = start_block;
+	packet_data.num_blocks = 0;
+	packet_data.num_samples = 0;
+	packet_data.done_flag = pdFALSE;
+	packet_data.nvram_error = pdFALSE;
+	packet_data.flash_error = FLASH_NO_ERROR;
+
+
+	PRINTF("**assembling packet data starting at %d\n", start_block);
+
+	SPI = spi_flash_open(SPI_MASTER_CLK, SPI_MASTER_CS);
+	if (SPI == NULL)
+	{
+		user_log_error("***MQTT transmit: MAJOR SPI ERROR: Unable to open SPI bus handle");
+		packet_data.flash_error = FLASH_OPEN_ERROR;
+		return packet_data;
+	}
+
+	// Note that start_block may be less than or greater than end_block
+	// depending on whether we wrap around or not
+	// If we're only sending one block, then start_block will be
+	// equal to end_block
+	blocknumber = start_block;
+	while (!done)
+	{
+		// Check if the next write is too close for comfort
+		if (get_AB_buffer_gap(blocknumber) <= AB_TRANSMIT_SAFETY_GAP){
+			packet_data.done_flag = pdTRUE;
+			done = pdTRUE;
+			break;
+		}
+
+		// check if the block is ready for transmission
+		transmit_flag = check_AB_transmit_location(blocknumber);
+		if (transmit_flag == -1)
+		{
+			// there was an error in reading the transmit map
+			packet_data.nvram_error = pdTRUE;
+		}
+		else if (transmit_flag == 1)
+		{
+			// The current blocknumber is ready for transmission, Read the block from Flash
+			// For each block, assemble the XYZ data and assign a timestamp
+			// based on the block timestamp and the samples relation to
+			// when that timestamp was taken
+			// Calculate address of next sector to write
+			blockaddr = (ULONG)AB_FLASH_BEGIN_ADDRESS +
+					((ULONG)AB_FLASH_PAGE_SIZE * (ULONG)blocknumber);
+			for (retry_count = 0; retry_count < 3; retry_count++)
+			{
+				if (!AB_read_block(SPI, blockaddr, &FIFOblock))
+				{
+					sprintf(user_log_string_temp, "assemble_packet_data: unable to read block %d addr: %x\n",
+							blocknumber, blockaddr);
+					user_log_error(user_log_string_temp);
+					packet_data.flash_error = FLASH_READ_ERROR;
+				}
+
+				if(FIFOblock.num_samples > 0)
+				{
+					break;
+				}
+
+			}
+			if (retry_count > 0)
+			{
+				PRINTF(" assemble_packet_data: retried read %d times", retry_count);
+			}
+
+			// Only process FIFOblock if the data is real -- otherwise, skip block and proceed.
+			if (FIFOblock.num_samples > 0)
+			{
+				// add the samples to the transmit array
+				packet_data.num_blocks++;
+				block_timestamp = FIFOblock.accelTime;
+				block_timestamp_prev = FIFOblock.accelTime_prev;
+				block_samples = FIFOblock.num_samples;
+				time64_string (block_timestamp_str, &block_timestamp);
+				for (i=0; i<FIFOblock.num_samples; i++)
+				{
+					accelXmitData[packet_data.num_samples].Xvalue = FIFOblock.Xvalue[i];
+					accelXmitData[packet_data.num_samples].Yvalue = FIFOblock.Yvalue[i];
+					accelXmitData[packet_data.num_samples].Zvalue = FIFOblock.Zvalue[i];
+					calculate_timestamp_for_sample(&block_timestamp, &block_timestamp_prev,
+							i, block_samples, &sample_timestamp);
+					accelXmitData[packet_data.num_samples].accelTime = sample_timestamp;
+					packet_data.num_samples++;
+				}
+
+				if (packet_data.num_blocks == FIFO_BLOCKS_PER_PACKET)
+				{
+					done = pdTRUE;
+				}
+			}
+			else
+			{
+				packet_data.flash_error = FLASH_DATA_ERROR;
+			}
+
+
+		} // else if (transmit_flag == 1)
+
+		// step to next block -- during transmission, we go backwards
+		blocknumber--;
+		if (blocknumber < 0) {
+			blocknumber = blocknumber + AB_FLASH_MAX_PAGES;
+		}
+
+	} // while loop for processing data
+
+	spi_flash_close(SPI);
+
+	packet_data.next_start_block = blocknumber;
+	packet_data.end_block = (blocknumber + 1) % AB_FLASH_MAX_PAGES; // Since blocknumber is now the next block
+
+	PRINTF("**Assemble packet data: %d samples assembled from %d blocks\n",
+			packet_data.num_samples, packet_data.num_blocks);
+
+	return packet_data;
+}
+
+
+// JW: Below is the old version of assemble_packet_data that was designed for
+// the FIFO implementation
+#if 0
 /**
  *******************************************************************************
  * @brief create a table of accelerometer data for transmission in one packet
@@ -2546,7 +2758,7 @@ static int assemble_packet_data (HANDLE SPI_handle, int start_block, int end_blo
 
 	return num_samples;
 }
-
+#endif //TO BE REMOVED -- DEPRECATED
 
 
 /**
@@ -3209,14 +3421,14 @@ static void user_process_send_MQTT_data(void* arg)
 	int MQTT_status;
 	int MQTT_client_state;
 	int transmit_start_loc;
-	int transmit_end_loc;
-	int transmit_memory_size;	// last index before wraparound
+	//int transmit_end_loc;
+	//int transmit_memory_size;	// last index before wraparound
 	int next_write_position;	// next place AXL will write a block
 	int last_write_position;	// last place AXL wrote a block
 	int total_blocks_stored;	// total number of blocks available to send when wakened
 	int total_blocks_free;		// total number of blocks AXL has free to write
 	int num_blocks_to_send;		// number of FIFO blocks to transmit this interval
-	int num_blocks_left_to_send;	// Countdown of what we have left to do
+	//int num_blocks_left_to_send;	// Countdown of what we have left to do -- JW: deprecated
 
 	int this_packet_start_block;	// where the current packet starts in AB
 	int this_packet_end_block;		// where the current packet ends in AB
@@ -3225,6 +3437,8 @@ static void user_process_send_MQTT_data(void* arg)
 	int request_stop_transmit = pdFALSE;		// loop control for packet transmit loop
 	int request_retry_transmit = pdFALSE;
 	int packet_count;				// packet send counter
+
+	packetDataStruct packet_data;	// struct to capture packet meta data.
 
 	// stats
 	int packets_sent = 0;		// actually sent during this transmission interval
@@ -3316,15 +3530,17 @@ static void user_process_send_MQTT_data(void* arg)
 #endif
 	vTaskDelay(1);
 
-	// Retrieve the next transmit block location
-	transmit_start_loc = get_AB_transmit_location();
-	transmit_memory_size = AB_FLASH_MAX_PAGES;
+
+	// Retrieve the starting transmit block location
+	transmit_start_loc = get_AB_write_location(); // start where the NEXT write will take place
+	//transmit_start_loc = get_AB_transmit_location(); //JW: deprecated 10.3
+	//transmit_memory_size = AB_FLASH_MAX_PAGES; // JW: deprecated 10.3
 
 	// If there is no valid transmit position, we've been wakened by mistake
 	// or something else has gone wrong
 	if (	(transmit_start_loc == INVALID_AB_ADDRESS)
 			|| (transmit_start_loc < 0)
-			|| (transmit_start_loc >= transmit_memory_size))
+			|| (transmit_start_loc >= AB_FLASH_MAX_PAGES))
 	{
 		sprintf(user_log_string_temp, "MQTT task found invalid transmit start location: %d", transmit_start_loc);
 		user_log_error(user_log_string_temp);
@@ -3332,8 +3548,30 @@ static void user_process_send_MQTT_data(void* arg)
 		goto end_of_task;
 	}
 
+	// Adjust transmit_start_loc to account for get_AB_write_location()
+	// which provides the NEXT write, not previously written
+	transmit_start_loc = transmit_start_loc - 1;
+	if (transmit_start_loc < 0)
+	{
+		// AXL just wrapped around so our last position is the last
+		// place in memory.
+		transmit_start_loc += AB_FLASH_MAX_PAGES;
+	}
+
 	PRINTF("\n\n******  MQTT transmit starting at %d ******\n", transmit_start_loc);
-	da16x_sys_watchdog_notify(sys_wdog_id);
+
+
+
+	// We now know where we're going to start transmission and are ready to begin
+	// the MQTT portion.
+
+
+
+//JW: This chunk of code corresponds to how we're managing the writing/overwriting of data
+// in the new LIMO version, the "write" operation has implicit priority over the "transmit"
+// such that we will transmit until we start getting close to the write location.
+#if 0
+	da16x_sys_watchdog_notify(sys_wdog_id); // JW: don't need this anymore here.
 
 	// So, notionally, we'll be wakened every 5 minutes or so
 	// 5 minutes is 14Hz x 60 x 5 = 4200 AXL samples
@@ -3353,7 +3591,7 @@ static void user_process_send_MQTT_data(void* arg)
 	// We are going to assume that we wouldn't have been wakened if
 	// AXL hasn't already written some blocks to nonvol, so we won't
 	// get carried away double-checking.  The data should be invalid anyway.
-	next_write_position = get_AB_store_location();
+	next_write_position = get_AB_write_location();
 	if (	(next_write_position < 0)
 		|| 	(next_write_position >= transmit_memory_size))
 	{
@@ -3488,6 +3726,10 @@ static void user_process_send_MQTT_data(void* arg)
 
 	// OK - now we know what the plan is.
 
+#endif // JW: Deprecated way of handling transmission staging 10.3
+
+
+
 	// *****************************************************************
 	//  MQTT transmission
 	// *****************************************************************
@@ -3508,6 +3750,11 @@ static void user_process_send_MQTT_data(void* arg)
 	msg_sequence = 0;
 	++pUserData->MQTT_message_number;  // Increment transmission #
 
+	//JW: the old FIFO way worked as if the flash was static during transmission,
+	// the new LIMO way doesn't make this assumption (and is more robust).  Thus,
+	// we are dropping the following calculation of packet sizes since we don't
+	// know how many there will be.
+#if 0
 	// See how big the last packet will be
 	whole_packets_to_send = num_blocks_to_send / FIFO_BLOCKS_PER_PACKET;
 	last_packet_size = num_blocks_to_send - (whole_packets_to_send * FIFO_BLOCKS_PER_PACKET);
@@ -3519,19 +3766,25 @@ static void user_process_send_MQTT_data(void* arg)
 			last_packet_size); // FRSDEBUG
 	}
 	// Construct data to send
+#endif // JW: deprecated
 
 	// Set up transmit loop parameters
-	num_blocks_left_to_send = num_blocks_to_send;
-	this_packet_start_block = transmit_start_loc;
+	//num_blocks_left_to_send = num_blocks_to_send; // JW: deprecated
+	packet_data.next_start_block = transmit_start_loc;
 
 	vTaskDelay(1);
 	request_stop_transmit = pdFALSE;
 	packet_count = 0;
-	while (	(num_blocks_left_to_send > 0)
-			&& (pdFALSE == request_stop_transmit) )
+	//JW: the while statement below used the number of blocks to exit -- this is no longer the case
+	//while (	(num_blocks_left_to_send > 0)
+	//		&& (pdFALSE == request_stop_transmit) )
+	while (pdFALSE == request_stop_transmit)
 	{
 		packet_count++;
 
+		//JW: this chunk of code is deprecate.  It assumed a continous FIFO transmission,
+		// which isn't the case in the new LIMO solution.
+#if 0
 		// how many blocks in this packet
 		if (num_blocks_left_to_send < FIFO_BLOCKS_PER_PACKET)
 		{
@@ -3554,113 +3807,173 @@ static void user_process_send_MQTT_data(void* arg)
 				packet_count, this_packet_start_block, this_packet_end_block,
 				this_packet_num_blocks);
 
+
 		// Assemble data to be transmitted in this packet, including
 		// calculating timestamps
-		samples_to_send = assemble_packet_data(NULL, this_packet_start_block, this_packet_end_block);
-		if (samples_to_send == 0)
+		//samples_to_send = assemble_packet_data(NULL, this_packet_start_block, this_packet_end_block); //JW: deprecated FIFO
+
+		PRINTF("\n**MQTT packet %d:  Start: %d End: %d num blocks: %d\n",
+				packet_count, this_packet_start_block, this_packet_end_block,
+				this_packet_num_blocks);
+#endif //JW: deprecated 10.3
+
+
+		// assemble the packet into the user data
+		packet_data = assemble_packet_data(packet_data.next_start_block);
+
+		PRINTF("\n**MQTT packet %d:  Start: %d End: %d num blocks: %d\n",
+				packet_count, packet_data.start_block, packet_data.end_block,
+				packet_data.num_blocks);
+
+
+
+
+		if (packet_data.num_samples < 0)
 		{
+			user_log_error("** MQTT transmit: error returned from assemble_packet_data - aborting");
 			request_stop_transmit = pdTRUE;
-			user_log_error("** MQTT: no samples found for packet - aborting");
+		}
+		else if (packet_data.num_samples == 0)
+		{
+			goto end_of_task;
 		}
 		else
 		{
-			if (samples_to_send < 0)
+			msg_sequence++;
+			send_start_addr = 0;
+			//JW: The following line user_set_mid_sent(...) is now deprecated -- to be removed
+			//user_set_mid_sent(pUserData->MQTT_last_message_id); // Probably could/should do this once when creating the MQTT client
+			da16x_sys_watchdog_notify(sys_wdog_id);
+			da16x_sys_watchdog_suspend(sys_wdog_id);
+			status = send_json_packet (send_start_addr, packet_data,
+					pUserData->MQTT_message_number, msg_sequence);
+			da16x_sys_watchdog_notify_and_resume(sys_wdog_id);
+			if(status == 0)
 			{
-				user_log_error("** MQTT transmit: error returned from assemble_packet_data - aborting");
-				request_stop_transmit = pdTRUE;
-			}
-			else
-			{
-				msg_sequence++;
-				send_start_addr = 0;
-				//JW: The following line user_set_mid_sent(...) is now deprecated -- to be removed
-				//user_set_mid_sent(pUserData->MQTT_last_message_id); // Probably could/should do this once when creating the MQTT client
-				da16x_sys_watchdog_notify(sys_wdog_id);
-				da16x_sys_watchdog_suspend(sys_wdog_id);
-				status = send_json_packet (send_start_addr, samples_to_send,
-						pUserData->MQTT_message_number, msg_sequence);
-				da16x_sys_watchdog_notify_and_resume(sys_wdog_id);
-				if(status == 0)
+
+				// Clear the transmission map corresponding to blocks in the packet
+				if (packet_data.start_block > packet_data.end_block)
 				{
-					// Do stats
-					increment_MQTT_stat(&(pUserData->MQTT_stats_packets_sent));
-					packets_sent++;		// Total packets sent this interval
-					blocks_sent += this_packet_num_blocks;
-					samples_sent += samples_to_send;
+					// clear from "end" to "start" (because LIMO works backwards through the map)
+					if (!clear_AB_transmit_location(packet_data.end_block, packet_data.start_block))
+					{
+						PRINTF("MQTT: transmit map failed to update\n");
+					}
+
+				}
+				else // there was a "wrap" in the buffer
+				{
+					// clear from "0" to "start" and from "end" to AB_MAX_FLASH_PAGES-1
+					if (!clear_AB_transmit_location(0, packet_data.start_block))
+					{
+						PRINTF("MQTT: transmit map failed to update\n");
+					}
+					if (!clear_AB_transmit_location(packet_data.end_block, AB_FLASH_MAX_PAGES-1))
+					{
+						PRINTF("MQTT: transmit map failed to update\n");
+					}
+				}
+
+
+				// Do stats
+				increment_MQTT_stat(&(pUserData->MQTT_stats_packets_sent));
+				packets_sent++;		// Total packets sent this interval
+				blocks_sent += this_packet_num_blocks;
+				samples_sent += samples_to_send;
 //						PRINTF("**Neuralert: send_data: transmit %d:%d successful\n",
 //								pUserData->MQTT_message_number, msg_sequence); // FRSDEBUG
-	#if defined(__RUNTIME_CALCULATION__) && defined(XIP_CACHE_BOOT)
-		printf_with_run_time("===JSON packet sent");
-	#endif
+#if defined(__RUNTIME_CALCULATION__) && defined(XIP_CACHE_BOOT)
+	printf_with_run_time("===JSON packet sent");
+#endif
 
 // JW: Remove this code in a future release.
 #if 0
-					PRINTF("Starting post-JSON packet transmit delay (%d msec)\n", MQTT_INTER_PACKET_DELAY_MS);
-					// Because MQTT and WIFI activity seems to interfere seriously
-					// with SPI bus activity, put a delay here to allow this
-					// activity to settle down before attempting reading more
-					// data from SPI flash
-					// JW Insight: This interference observed by Inteprod was almost certainly
-					// due to power draw.  The real fix is to not blast large packets all at
-					// once. Adding this delay is a bandaid at best.
-					vTaskDelay(pdMS_TO_TICKS(MQTT_INTER_PACKET_DELAY_MS));
+				PRINTF("Starting post-JSON packet transmit delay (%d msec)\n", MQTT_INTER_PACKET_DELAY_MS);
+				// Because MQTT and WIFI activity seems to interfere seriously
+				// with SPI bus activity, put a delay here to allow this
+				// activity to settle down before attempting reading more
+				// data from SPI flash
+				// JW Insight: This interference observed by Inteprod was almost certainly
+				// due to power draw.  The real fix is to not blast large packets all at
+				// once. Adding this delay is a bandaid at best.
+				vTaskDelay(pdMS_TO_TICKS(MQTT_INTER_PACKET_DELAY_MS));
 #endif // TO BE REMOVED -- DEPRECATED
 
-					// Now that we've transmitted this packet, update the
-					// MQTT transmit pointer to reflect the data transmitted
-					// Note that we believe that we'll never catch up to the
-					// Accelerometer store location because we maintain a sizable
-					// buffer of free space between the two pointers.  See elsewhere
-					// in this function for that logic.
-					next_packet_start_block = this_packet_end_block + 1;
-					if(next_packet_start_block >= transmit_memory_size)
-					{
-						// Wrap around
-						next_packet_start_block -= transmit_memory_size;
-					}
-					if(!update_AB_transmit_location(next_packet_start_block))
-					{
-						user_log_error("** MQTT: Unable to update AB transmit location");
-					}
-					else
-					{
-						PRINTF("\n MQTT: updated AB transmit location: %d ******\n\n",next_packet_start_block);
-					}
+//JW: Remove this code in a future release.  This was for the FIFO implementation.
+// This functionality is now managed through the packet_data structure and the
+// assemble_packet_data function.
+#if 0
+				// Now that we've transmitted this packet, update the
+				// MQTT transmit pointer to reflect the data transmitted
+				// Note that we believe that we'll never catch up to the
+				// Accelerometer store location because we maintain a sizable
+				// buffer of free space between the two pointers.  See elsewhere
+				// in this function for that logic.
+				next_packet_start_block = this_packet_end_block + 1;
+				if(next_packet_start_block >= transmit_memory_size)
+				{
+					// Wrap around
+					next_packet_start_block -= transmit_memory_size;
 				}
-				else if (pUserData->MQTT_tx_attempts_remaining > 0){
-					PRINTF("\nMQTT transmission %d:%d failed. Remaining attempts %d. Retry Transmission",
-							pUserData->MQTT_message_number, msg_sequence, pUserData->MQTT_tx_attempts_remaining);
-
-					sprintf(user_log_string_temp, "MQTT transmission %d:%d failed. Remaining attempts %d. Retry Transmission",
-							pUserData->MQTT_message_number, msg_sequence, pUserData->MQTT_tx_attempts_remaining);
-
-					pUserData->MQTT_tx_attempts_remaining--;
-					request_stop_transmit = pdTRUE; // must set to true to exit loop
-					request_retry_transmit = pdTRUE;
-					increment_MQTT_stat(&(pUserData->MQTT_stats_retry_attempts));
+				if(!update_AB_transmit_location(next_packet_start_block))
+				{
+					user_log_error("** MQTT: Unable to update AB transmit location");
 				}
 				else
 				{
-					PRINTF("\nMQTT transmission %d:%d failed. Remaining attempts %d. Ending Transmission",
-							pUserData->MQTT_message_number, msg_sequence, pUserData->MQTT_tx_attempts_remaining);
-
-					sprintf(user_log_string_temp, "MQTT transmission %d:%d failed. Remaining attempts %d. Ending transmission.",
-							pUserData->MQTT_message_number, msg_sequence, pUserData->MQTT_tx_attempts_remaining);
-					user_log_error(user_log_string_temp);
-					PRINTF_RED("\n**** %s\n", user_log_string_temp);
-					request_stop_transmit = pdTRUE;
+					PRINTF("\n MQTT: updated AB transmit location: %d ******\n\n",next_packet_start_block);
 				}
-				vTaskDelay(1);
-			} // Able to assemble packets
+#endif
 
-			num_blocks_left_to_send -= this_packet_num_blocks;
-			this_packet_start_block = this_packet_end_block + 1;
-			if(this_packet_start_block >= transmit_memory_size)
-			{
-				// Wrap around
-				this_packet_start_block -= transmit_memory_size;
+
 			}
-		} // Samples to send > 0
+			else if (pUserData->MQTT_tx_attempts_remaining > 0){
+				PRINTF("\nMQTT transmission %d:%d failed. Remaining attempts %d. Retry Transmission",
+						pUserData->MQTT_message_number, msg_sequence, pUserData->MQTT_tx_attempts_remaining);
+
+				sprintf(user_log_string_temp, "MQTT transmission %d:%d failed. Remaining attempts %d. Retry Transmission",
+						pUserData->MQTT_message_number, msg_sequence, pUserData->MQTT_tx_attempts_remaining);
+
+				pUserData->MQTT_tx_attempts_remaining--;
+				request_stop_transmit = pdTRUE; // must set to true to exit loop
+				request_retry_transmit = pdTRUE;
+				increment_MQTT_stat(&(pUserData->MQTT_stats_retry_attempts));
+			}
+			else
+			{
+				PRINTF("\nMQTT transmission %d:%d failed. Remaining attempts %d. Ending Transmission",
+						pUserData->MQTT_message_number, msg_sequence, pUserData->MQTT_tx_attempts_remaining);
+
+				sprintf(user_log_string_temp, "MQTT transmission %d:%d failed. Remaining attempts %d. Ending transmission.",
+						pUserData->MQTT_message_number, msg_sequence, pUserData->MQTT_tx_attempts_remaining);
+				user_log_error(user_log_string_temp);
+				PRINTF_RED("\n**** %s\n", user_log_string_temp);
+				request_stop_transmit = pdTRUE;
+			}
+			vTaskDelay(1);
+
+		} // num_samples > 0
+
+
+		PRINTF("\n Packet data flag %d\n", packet_data.done_flag);
+
+		if (packet_data.done_flag == pdTRUE){
+			goto end_of_task; // there is no more data after this packet.
+		}
+
+//JW: This code is now deprecated.  This was for the FIFO implementation. Managing
+// the packet start location is now through the packet_data structure and the
+// assemble_packet_data() function.
+#if 0
+		//num_blocks_left_to_send -= this_packet_num_blocks;
+		this_packet_start_block = this_packet_end_block + 1;
+		if(this_packet_start_block >= transmit_memory_size)
+		{
+			// Wrap around
+			this_packet_start_block -= transmit_memory_size;
+		}
+#endif
+
 	} // while we have stuff to transmit
 
 
@@ -4405,6 +4718,12 @@ static int user_process_initialize_AB(void)
 	// there is something to transmit
 	pUserData->next_AB_transmit_position = INVALID_AB_ADDRESS;
 
+	// Initialize all the positions to not needing transmission
+	for (i = 0; i < AB_TRANSMIT_MAP_SIZE; i++)
+	{
+		pUserData->AB_transmit_map[i] = 0;
+	}
+
 	// Erase the first sector where the first data will be written
 	SectorEraseAddr = (ULONG)AB_FLASH_BEGIN_ADDRESS +
 				((ULONG)AB_FLASH_PAGE_SIZE * (ULONG)pUserData->next_AB_write_position);
@@ -4871,7 +5190,7 @@ static int update_log_store_location(int new_location)
  *
  *******************************************************************************
  */
-static int get_AB_store_location(void)
+static int get_AB_write_location(void)
 {
 	int return_value = -1;
 
@@ -4903,6 +5222,53 @@ static int get_AB_store_location(void)
 	return return_value;
 
 }
+
+/**
+ *******************************************************************************
+ * @brief Process to check the accelerometer buffer management
+ * transmit map location, making sure it's done with exclusive access
+ *  Returns -1 if unable to gain exclusive access
+ *  returns value of transmit bit otherwise (0 or 1)
+ *******************************************************************************
+ */
+static int check_AB_transmit_location(int location)
+{
+	int return_value = -1;
+
+	if(AB_semaphore != NULL )
+	{
+		/* See if we can obtain the semaphore.  If the semaphore is not
+			available wait 10 ticks to see if it becomes free. */
+		if( xSemaphoreTake( AB_semaphore, ( TickType_t ) 10 ) == pdTRUE )
+		{
+
+			// query whether the current location is set for transmission
+			if (POS_AB_SET(pUserData->AB_transmit_map, location)){
+				return_value = 1;
+			} else {
+				return_value = 0;
+			}
+
+			/* We have finished accessing the shared resource.  Release the
+				semaphore. */
+			xSemaphoreGive( AB_semaphore );
+		}
+		else
+		{
+			PRINTF("\n ***Unable to obtain AB semaphore\n");
+		}
+	}
+	else
+	{
+		PRINTF("\n ***AB semaphore not initialized!\n");
+	}
+
+	return return_value;
+}
+
+
+
+
 /**
  *******************************************************************************
  * @brief Process to retrieve the accelerometer buffer management
@@ -4943,6 +5309,52 @@ static int get_AB_transmit_location(void)
 	return return_value;
 
 }
+
+
+/**
+ *******************************************************************************
+ * @brief Process to check the accelerometer buffer management
+ * transmit map location, making sure it's done with exclusive access
+ *  Returns -1 if unable to gain exclusive access
+ *  returns value of transmit bit otherwise (0 or 1)
+ *******************************************************************************
+ */
+static int clear_AB_transmit_location(int start_location, int end_location)
+{
+	int return_value = pdFALSE;
+
+	if(AB_semaphore != NULL )
+	{
+		/* See if we can obtain the semaphore.  If the semaphore is not
+			available wait 10 ticks to see if it becomes free. */
+		if( xSemaphoreTake( AB_semaphore, ( TickType_t ) 10 ) == pdTRUE )
+		{
+
+			// clear transmit map from start to end
+			for (int i=start_location; i<=end_location; i++)
+			{
+				CLR_AB_POS(pUserData->AB_transmit_map, i);
+			}
+
+			/* We have finished accessing the shared resource.  Release the
+				semaphore. */
+			xSemaphoreGive( AB_semaphore );
+			return_value = pdTRUE;
+		}
+		else
+		{
+			PRINTF("\n ***Unable to obtain AB semaphore\n");
+		}
+	}
+	else
+	{
+		PRINTF("\n ***AB semaphore not initialized!\n");
+	}
+
+	return return_value;
+}
+
+
 
 /**
  *******************************************************************************
@@ -4996,6 +5408,72 @@ static int update_AB_transmit_location(int new_location)
 
 }
 
+
+
+/**
+ *******************************************************************************
+ * @brief Process to update the accelerometer buffer management
+ * next-write location, making sure it's done with exclusive access
+ *  Returns FALSE if unable to gain exclusive access
+ *  returns TRUE otherwise
+ *
+ *******************************************************************************
+ */
+static int update_AB_write_location(void)
+{
+	int return_value = pdFALSE;
+
+	// NOTE! this doesn't check to see if the MQTT task is running or
+	// not.  It is expected that this function will be called under
+	// the following circumstances:
+	//   1. MQTT task is not running and we've just read from the AXL
+	//   2. MQTT task is running but is transmitting some data that
+	//      we recorded recently but not including what we've just
+	//      recorded
+	//   3. MQTT task is running but is transmitting old data that
+	//      we recorded a while ago.  This is likely when we lose
+	//      WIFI for a while
+	//    4. (TBD) MQTT task is transmitting data where we plan to
+	//       write or erase.  VERY IMPORTANT THAT WE DON"T LET THIS HAPPEWN
+
+	if(AB_semaphore != NULL )
+	{
+		/* See if we can obtain the semaphore.  If the semaphore is not
+			available wait 10 ticks to see if it becomes free. */
+		if( xSemaphoreTake( AB_semaphore, ( TickType_t ) 10 ) == pdTRUE )
+		{
+//			PRINTF("===update_AB_write_location: new value %d\n", new_location);
+			/* We were able to obtain the semaphore and can now access the
+				shared resource. */
+
+			// Indicate the current write position is ready for transmission
+			SET_AB_POS(pUserData->AB_transmit_map, pUserData->next_AB_write_position);
+
+			// Increment the write position
+			pUserData->next_AB_write_position = ((pUserData->next_AB_write_position + 1) % AB_FLASH_MAX_PAGES);
+
+			/* We have finished accessing the shared resource.  Release the
+				semaphore. */
+			xSemaphoreGive( AB_semaphore );
+			return_value = pdTRUE;
+		}
+		else
+		{
+			PRINTF("\n ***Unable to obtain AB semaphore\n");
+		}
+	}
+	else
+	{
+		PRINTF("\n ***AB semaphore not initialized!\n");
+	}
+
+	return return_value;
+
+}
+
+
+//JW: THe update_AB_write_location below is deprecated in 10.3
+#if 0
 /**
  *******************************************************************************
  * @brief Process to update the accelerometer buffer management
@@ -5032,6 +5510,7 @@ static int update_AB_write_location(int new_location)
 			/* We were able to obtain the semaphore and can now access the
 				shared resource. */
 			pUserData->next_AB_write_position = new_location;
+
 			/* We were able to obtain the semaphore and can now access the
 			    shared resource. */
 
@@ -5053,6 +5532,8 @@ static int update_AB_write_location(int new_location)
 	return return_value;
 
 }
+#endif
+
 #if 0
 /**
  *******************************************************************************
@@ -5767,10 +6248,10 @@ static int user_process_write_to_flash(accelBufferStruct *pFIFOdata, int *did_an
 	// write location
 	// Writes are done to 256-byte pages and so are on addresses that
 	// are multiples of 0x100
-	write_index = get_AB_store_location();
+	write_index = get_AB_write_location();
 	if (write_index < 0)
 	{
-		user_log_error("** Unable to get AB store location **");
+		user_log_error("** Unable to get AB write location **");
 		return FALSE;
 	}
 //	Printf("==Next AB store location: %d\n", write_index);
@@ -5894,6 +6375,10 @@ static int user_process_write_to_flash(accelBufferStruct *pFIFOdata, int *did_an
 		goto end_of_task;
 	}
 
+	//JW: This next chunk of code was for a FIFO implementation of the AB transmission approach.
+	// This is no longer necessary as we will set the transmission index based on the AB write location
+	// so we have a LIFO-like implementation.
+#if 0
 	// If the MQTT transmit pointer is not set yet,
 	// then set it to the place we just wrote
 	// (should be first location in this case)
@@ -5943,8 +6428,13 @@ static int user_process_write_to_flash(accelBufferStruct *pFIFOdata, int *did_an
 		//xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 	}
+#endif
 
 
+	//JW: This way of doing write_index was always intended for incremental updating.
+	//Instead of passing write_index++ to update_AB_write_location, we now let that function
+	// increament the user variable directly.
+#if 0
 	// Set up for the next write
 	write_index++;
 //	Printf(" === Writing to flash next write location: %d\n", write_index);
@@ -5953,7 +6443,10 @@ static int user_process_write_to_flash(accelBufferStruct *pFIFOdata, int *did_an
 				write_index);
 		write_index = 0;
 	}
-	if(!update_AB_write_location(write_index))	{
+#endif
+
+	//if(!update_AB_write_location(write_index)) //JW: to be deleted
+	if(!update_AB_write_location())	{
 		user_log_error("Unable to set AB write location");
 //			goto end_of_task;
 	}	else
@@ -5961,14 +6454,16 @@ static int user_process_write_to_flash(accelBufferStruct *pFIFOdata, int *did_an
 //		Printf(" === Writing to flash next write location updated: %d\n", write_index);
 	}
 
+	// Increament the write index -- this is only for erasing flash below,
+	// so no risk of it affecting the actual AB write location
+	write_index = ((write_index+1) % AB_FLASH_MAX_PAGES);
+
 	//	vTaskDelay(pdMS_TO_TICKS(50));
 
 	// If the next page we're going to write to is the start of a
 	// new sector, we have to erase it to be ready
-
-	if(	((write_index % AB_PAGES_PER_SECTOR ) == 0)
+	if(	((write_index % AB_PAGES_PER_SECTOR) == 0)
 		|| (write_index == 0))
-//	if((pUserData->next_AB_write_position % 4 ) == 0)
 	{
 		*did_an_erase = pdTRUE;
 		// Calculate address of next sector to write

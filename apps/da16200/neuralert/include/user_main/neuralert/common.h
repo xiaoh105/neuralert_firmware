@@ -349,6 +349,23 @@ typedef struct
 } accelBufferStruct;
 
 /*
+ * Data structure where assembled packet information is stored.
+ * This structure is used to capture the stats of each packet
+ */
+typedef struct packetDataStruct
+{
+	int num_samples;
+	int num_blocks;
+	int start_block;
+	int next_start_block;
+	int end_block;
+	int nvram_error;
+	int flash_error;
+	int done_flag;
+} packetDataStruct;
+
+
+/*
  * Data structure where the buffer management pointers are stored.
  * This structure could reside in RETMEM or in Flash
  * "pointers" are actually indexes as offsets, similar to a C array
@@ -386,6 +403,9 @@ typedef struct
 // So, every 16 pages we have to pause and erase the next sector where
 // we will write.
 #define AB_PAGES_PER_SECTOR 16
+// When transmitting, we don't want to run into the erase procedure.
+// So we have a safety gap -- set to twice the erase size (in 10.3, about 4 seconds).
+#define AB_TRANSMIT_SAFETY_GAP (2*AB_PAGES_PER_SECTOR)
 
 // The accelerometer buffer region is designed to hold 2 hours of
 // data, with one FIFO buffer structure per sector.
@@ -405,11 +425,30 @@ typedef struct
 //
 // 3600 pages / 16 = 225 4k sectors
 // 3600 plus 288 guard zone
-#define AB_FLASH_MAX_PAGES 3888
+#define AB_FLASH_MAX_PAGES 3888 //MUST BE LESS THAN 65535 (see definition: uint16_t AB_transmit_stack[AB_FLASH_MAX_PAGES])
 // 640 pages = 40 sectors @ 4K
 // 640 pages = ~1472 seconds = ~24.5 minutes
 // So, for development, this will let us observe all behaviors
 //#define AB_FLASH_MAX_PAGES 640
+
+#define AB_TRANSMIT_MAP_SIZE (AB_FLASH_MAX_PAGES / sizeof(uint8_t) + 1)
+
+// Macros for manipulating buffer bits
+#define POS_TO_BIT(pos)						(1 << (pos % sizeof(uint8_t)))
+#define SET_AB_POS(src, pos)				(src[pos / sizeof(uint8_t)] |= POS_TO_BIT(pos))
+#define CLR_AB_POS(src, pos)				(src[pos / sizeof(uint8_t)] &= (~POS_TO_BIT(pos)))
+#define POS_AB_SET(src, pos)				((src[pos / sizeof(uint8_t)] & POS_TO_BIT(pos)) == POS_TO_BIT(pos))
+
+
+#define FLASH_NO_ERROR 0
+#define FLASH_OPEN_ERROR -1
+#define FLASH_WRITE_ERROR -2
+#define FLASH_READ_ERROR -3
+#define FLASH_DATA_ERROR -4
+
+
+
+
 
 // An empty guard zone is needed between the accelerometer writing location and the
 // MQTT transmit location.  If the MQTT is unable to transmit, the AXL will
@@ -430,7 +469,7 @@ typedef struct
 // to be stored, we need to add this many blocks to the flash buffering
 // area since this is unused space.
 // This is also how many FIFO buffers are discarded when the AXL catches up.
-#define AB_FLASH_OVERLAP_LIMIT 288
+#define AB_FLASH_OVERLAP_LIMIT 288 //JW: Need to check if this is still used in LIMO.
 
 // Define a threshold when we will start to warn the user that
 // storage is running low and they should get to a WIFI hot spot if
