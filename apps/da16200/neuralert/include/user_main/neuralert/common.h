@@ -431,13 +431,16 @@ typedef struct packetDataStruct
 // So, for development, this will let us observe all behaviors
 //#define AB_FLASH_MAX_PAGES 640
 
-#define AB_TRANSMIT_MAP_SIZE (AB_FLASH_MAX_PAGES / sizeof(uint8_t) + 1)
+typedef uint32_t _AB_transmit_map_t;
+
+#define AB_TRANSMIT_MAP_SIZE (AB_FLASH_MAX_PAGES / sizeof(_AB_transmit_map_t) + 1)
+
 
 // Macros for manipulating buffer bits
-#define POS_TO_BIT(pos)						(1 << (pos % sizeof(uint8_t)))
-#define SET_AB_POS(src, pos)				(src[pos / sizeof(uint8_t)] |= POS_TO_BIT(pos))
-#define CLR_AB_POS(src, pos)				(src[pos / sizeof(uint8_t)] &= (~POS_TO_BIT(pos)))
-#define POS_AB_SET(src, pos)				((src[pos / sizeof(uint8_t)] & POS_TO_BIT(pos)) == POS_TO_BIT(pos))
+#define POS_TO_BIT(pos)						(1 << (pos % sizeof(_AB_transmit_map_t)))
+#define SET_AB_POS(src, pos)				(src[pos / sizeof(_AB_transmit_map_t)] |= POS_TO_BIT(pos))
+#define CLR_AB_POS(src, pos)				(src[pos / sizeof(_AB_transmit_map_t)] &= (~POS_TO_BIT(pos)))
+#define POS_AB_SET(src, pos)				((src[pos / sizeof(_AB_transmit_map_t)] & POS_TO_BIT(pos)) == POS_TO_BIT(pos))
 
 
 #define FLASH_NO_ERROR 0

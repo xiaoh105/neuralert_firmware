@@ -104,16 +104,30 @@
 // The intent is that only one state will be active at one
 // time
 // Note that zero is the default "accelerometer wake/sleep" state
+
+
+#define USER_STATE_CLEAR						0
 #define USER_STATE_POWER_ON_BOOTUP				(1 << 0)
-#define USER_STATE_PROVISIONING					(1 << 1)
-#define USER_STATE_WIFI_CONNECTING				(1 << 2)
+#define USER_STATE_WIFI_CONNECTED				(1 << 1)
+#define USER_STATE_WIFI_CONNECT_FAILED			(1 << 2)
+
+
+// JW: These were the old USER states for the LEDs. I have noted the ones that were
+// deprecated.
+#if 0
+#define USER_STATE_POWER_ON_BOOTUP				(1 << 0)
+//#define USER_STATE_PROVISIONING					(1 << 1) //JW: deprecated 10.4
+//#define USER_STATE_WIFI_CONNECTING				(1 << 2) //JW: deprecated 10.4
 #define USER_STATE_WIFI_CONNECTED				(1 << 3)
-#define USER_STATE_WIFI_TRANSMITTING			(1 << 4)
+//#define USER_STATE_WIFI_TRANSMITTING			(1 << 4) //JW: deprecated 10.4
 #define USER_STATE_WIFI_CONNECT_FAILED			(1 << 5)
-#define USER_STATE_BATTERY_EXHAUSTED			(1 << 6)
-#define USER_STATE_INTERNAL_ERROR				(1 << 7)
+//#define USER_STATE_BATTERY_EXHAUSTED			(1 << 6) //JW: deprecated 10.4
+//#define USER_STATE_INTERNAL_ERROR				(1 << 7) //JW: deprecated 10.4
+#endif
 
-
+// JW: This is alerting mechanisms that are outdated and (frankly) wrong.
+// delete in a future a release
+#if 0
 // System alerts for LED management
 // The intent is that more than one condition can occur
 // at the same time and alerts are handled in order of
@@ -130,7 +144,7 @@
 #define USER_ALERT_AB_STORAGE_LOW				(1 << 2)
 #define USER_ALERT_SPARE_2 						(1 << 3)
 #define USER_ALERT_FATAL_ERROR					(1 << 4)
-
+#endif // deprecated 10.4
 
 /* USER RTC Timer */
 //#define USER_DATA_TX_TIMER_SEC					(5 * 60)	// 5 Mins
@@ -510,7 +524,7 @@ typedef struct _userData {
 	// System state information (used to manage LEDs)
 	// *****************************************************
 	UINT32 system_state_map;		// bitmap for different system states
-	UINT32 system_alert_map;		// bitmap for different alerts
+//	UINT32 system_alert_map;		// bitmap for different alerts: JW: this is deprecated 10.4
 
 	UINT32 ServerShutdownRequested;	// Set to a magic value when a terminate downlink is received
 
@@ -637,7 +651,7 @@ typedef struct _userData {
 	int8_t MQTT_internal_error;			// A genuine programming error, not transmit
 	AB_INDEX_TYPE next_AB_write_position; //TODO: repurpose the use of this variable for LIFO (not FIFO)
 	AB_INDEX_TYPE next_AB_transmit_position; //TODO: deprecate this variable, instead we'll reference it from the head and what hasn't been transmitted
-	uint8_t AB_transmit_map[(AB_FLASH_MAX_PAGES / sizeof(uint8_t)) + 1]; //
+	_AB_transmit_map_t AB_transmit_map[AB_TRANSMIT_MAP_SIZE]; //
 
 
 
@@ -773,12 +787,14 @@ static UserDataBuffer *pUserData = NULL;
 #define CLEAR_SYSTEM_STATE_BIT(bit)		(pUserData->system_state_map &= (~bit))
 #define SYSTEM_STATE_BIT_ACTIVE(bit)	((pUserData->system_state_map & bit) == bit)
 
+// JW: deprecated 10.4
+#if 0
 // Macros for setting, clearing, and checking system alerts
 #define SET_SYSTEM_ALERT_BIT(bit)		(pUserData->system_alert_map |= bit)
 #define CLEAR_SYSTEM_ALERT_BIT(bit)		(pUserData->system_alert_map &= (~bit))
 #define SYSTEM_ALERT_BIT_ACTIVE(bit)	((pUserData->system_alert_map & bit) == bit)
 #define ANY_SYSTEM_ALERT_ACTIVE()	(0 != pUserdata->system_alert_map))
-
+#endif
 
 
 #ifdef __TIME64__
@@ -811,7 +827,7 @@ static void user_create_MQTT_stop_task(void);
 static int user_mqtt_send_message(void);
 void user_mqtt_connection_complete_event(void);
 static UCHAR user_process_check_wifi_conn(void);
-static int check_AB_transmit_location(int);
+static int check_AB_transmit_location(int, int);
 static int clear_AB_transmit_location(int, int);
 static int get_AB_write_location(void);
 static int get_AB_transmit_location(void);
@@ -893,6 +909,9 @@ extern void setLEDState(uint8_t number1, uint8_t state1, uint16_t count1, uint8_
 static void notify_user_LED()
 {
 
+	// JW: This functionality has been replaced.  We don't want patients to get alerts
+	// based on device functionality.
+#if 0
 	// First, check for a system alert, since they take
 	// precedence over the basic states
 	if (0 != pUserData->system_alert_map)
@@ -903,6 +922,7 @@ static void notify_user_LED()
 			// Fast red blink
 			setLEDState(RED, LED_FAST, 200, 0, LED_OFF, 0, 200);
 		}
+		JW: This chunk of code is deprecated
 		else if (SYSTEM_ALERT_BIT_ACTIVE(USER_ALERT_BATTERY_LOW))
 		{
 			// Slow yellow blink
@@ -963,7 +983,24 @@ static void notify_user_LED()
 			setLEDState(0, LED_OFF, 0, 0, LED_OFF, 0, 200);
 		}
 	}// system state
+#endif // JW: deprecated 10.4
 
+	if (SYSTEM_STATE_BIT_ACTIVE(USER_STATE_WIFI_CONNECT_FAILED))
+	{
+		setLEDState(YELLOW, LED_FAST, 200, 0, LED_OFF, 0, 200); // fast blink yellow
+	}
+	else if (SYSTEM_STATE_BIT_ACTIVE(USER_STATE_WIFI_CONNECTED))
+	{
+		setLEDState(GREEN, LED_ON, 200, 0, LED_OFF, 0, 200); // steady green
+	}
+	else if (SYSTEM_STATE_BIT_ACTIVE(USER_STATE_POWER_ON_BOOTUP))
+	{
+		setLEDState(BLUE, LED_FAST, 200, 0, LED_OFF, 0, 200); // fast blink blue
+	}
+	else // No known state
+	{
+		setLEDState(0, LED_OFF, 0, 0, LED_OFF, 0, 200);
+	}
 }
 
 /**
@@ -2405,7 +2442,9 @@ static int get_AB_buffer_gap(int loc)
 static packetDataStruct assemble_packet_data (int start_block)
 {
 	int blocknumber;		// 0-based block index in Flash
+	int check_bit_flag;
 	int transmit_flag;
+	unsigned int buffer_gap;
 	ULONG blockaddr;			// physical address in flash
 	int done = pdFALSE;
 	__time64_t block_timestamp;
@@ -2456,90 +2495,114 @@ static packetDataStruct assemble_packet_data (int start_block)
 	// If we're only sending one block, then start_block will be
 	// equal to end_block
 	blocknumber = start_block;
+	check_bit_flag = 1; // always start with the check_bit_flag set to 1
 	while (!done)
 	{
 		// Check if the next write is too close for comfort
-		if (get_AB_buffer_gap(blocknumber) <= AB_TRANSMIT_SAFETY_GAP){
+		buffer_gap = (unsigned int) get_AB_buffer_gap(blocknumber);
+		if (buffer_gap <= AB_TRANSMIT_SAFETY_GAP){
 			packet_data.done_flag = pdTRUE;
 			done = pdTRUE;
 			break;
 		}
 
-		// check if the block is ready for transmission
-		transmit_flag = check_AB_transmit_location(blocknumber);
-		if (transmit_flag == -1)
+		// check if the next sizeof(_AB_transmit_map_t) bits in the transmit queue are zeros
+		// this is done by confirming we are in a new sizeof(_AB_transmit_map_t) chunk of data
+		// the easiest way to do this is to check whether one position higher was the last element
+		// in a chunk of data.  This is because we are traversing the queue in reverse.
+		if ((((blocknumber + 1) % sizeof(_AB_transmit_map_t)) == 0)
+				&& (buffer_gap >= AB_TRANSMIT_SAFETY_GAP + sizeof(_AB_transmit_map_t)))
 		{
-			// there was an error in reading the transmit map
-			packet_data.nvram_error = pdTRUE;
+			check_bit_flag = check_AB_transmit_location(blocknumber / sizeof(_AB_transmit_map_t), pdFALSE);
+			if (check_bit_flag == -1){
+				packet_data.nvram_error = pdTRUE;
+			}
 		}
-		else if (transmit_flag == 1)
+
+		if (check_bit_flag == 0) // the next sizeof(_AB_transmit_map_t) bits are zero
 		{
-			// The current blocknumber is ready for transmission, Read the block from Flash
-			// For each block, assemble the XYZ data and assign a timestamp
-			// based on the block timestamp and the samples relation to
-			// when that timestamp was taken
-			// Calculate address of next sector to write
-			blockaddr = (ULONG)AB_FLASH_BEGIN_ADDRESS +
-					((ULONG)AB_FLASH_PAGE_SIZE * (ULONG)blocknumber);
-			for (retry_count = 0; retry_count < 3; retry_count++)
-			{
-				if (!AB_read_block(SPI, blockaddr, &FIFOblock))
-				{
-					sprintf(user_log_string_temp, "assemble_packet_data: unable to read block %d addr: %x\n",
-							blocknumber, blockaddr);
-					user_log_error(user_log_string_temp);
-					packet_data.flash_error = FLASH_READ_ERROR;
-				}
-
-				if(FIFOblock.num_samples > 0)
-				{
-					break;
-				}
-
+			blocknumber = blocknumber - sizeof(_AB_transmit_map_t);
+			if (blocknumber < 0) {
+				blocknumber = blocknumber + AB_FLASH_MAX_PAGES;
 			}
-			if (retry_count > 0)
-			{
-				PRINTF(" assemble_packet_data: retried read %d times", retry_count);
-			}
-
-			// Only process FIFOblock if the data is real -- otherwise, skip block and proceed.
-			if (FIFOblock.num_samples > 0)
-			{
-				// add the samples to the transmit array
-				packet_data.num_blocks++;
-				block_timestamp = FIFOblock.accelTime;
-				block_timestamp_prev = FIFOblock.accelTime_prev;
-				block_samples = FIFOblock.num_samples;
-				time64_string (block_timestamp_str, &block_timestamp);
-				for (i=0; i<FIFOblock.num_samples; i++)
-				{
-					accelXmitData[packet_data.num_samples].Xvalue = FIFOblock.Xvalue[i];
-					accelXmitData[packet_data.num_samples].Yvalue = FIFOblock.Yvalue[i];
-					accelXmitData[packet_data.num_samples].Zvalue = FIFOblock.Zvalue[i];
-					calculate_timestamp_for_sample(&block_timestamp, &block_timestamp_prev,
-							i, block_samples, &sample_timestamp);
-					accelXmitData[packet_data.num_samples].accelTime = sample_timestamp;
-					packet_data.num_samples++;
-				}
-
-				if (packet_data.num_blocks == FIFO_BLOCKS_PER_PACKET)
-				{
-					done = pdTRUE;
-				}
-			}
-			else
-			{
-				packet_data.flash_error = FLASH_DATA_ERROR;
-			}
-
-
-		} // else if (transmit_flag == 1)
-
-		// step to next block -- during transmission, we go backwards
-		blocknumber--;
-		if (blocknumber < 0) {
-			blocknumber = blocknumber + AB_FLASH_MAX_PAGES;
+			check_bit_flag = 1; // set this flag to one -- to force a check next round
 		}
+		else // check_bit_flag == 1
+		{
+			transmit_flag = check_AB_transmit_location(blocknumber, pdTRUE);
+			if (transmit_flag == -1)
+			{
+				// there was an error in reading the transmit map
+				packet_data.nvram_error = pdTRUE;
+			}
+			else if (transmit_flag == 1)
+			{
+				// The current blocknumber is ready for transmission, Read the block from Flash
+				// For each block, assemble the XYZ data and assign a timestamp
+				// based on the block timestamp and the samples relation to
+				// when that timestamp was taken
+				// Calculate address of next sector to write
+				blockaddr = (ULONG)AB_FLASH_BEGIN_ADDRESS +
+						((ULONG)AB_FLASH_PAGE_SIZE * (ULONG)blocknumber);
+				for (retry_count = 0; retry_count < 3; retry_count++)
+				{
+					if (!AB_read_block(SPI, blockaddr, &FIFOblock))
+					{
+						sprintf(user_log_string_temp, "assemble_packet_data: unable to read block %d addr: %x\n",
+								blocknumber, blockaddr);
+						user_log_error(user_log_string_temp);
+						packet_data.flash_error = FLASH_READ_ERROR;
+					}
+
+					if(FIFOblock.num_samples > 0)
+					{
+						break;
+					}
+
+				}
+				if (retry_count > 0)
+				{
+					PRINTF(" assemble_packet_data: retried read %d times", retry_count);
+				}
+
+				// Only process FIFOblock if the data is real -- otherwise, skip block and proceed.
+				if (FIFOblock.num_samples > 0)
+				{
+					// add the samples to the transmit array
+					packet_data.num_blocks++;
+					block_timestamp = FIFOblock.accelTime;
+					block_timestamp_prev = FIFOblock.accelTime_prev;
+					block_samples = FIFOblock.num_samples;
+					time64_string (block_timestamp_str, &block_timestamp);
+					for (i=0; i<FIFOblock.num_samples; i++)
+					{
+						accelXmitData[packet_data.num_samples].Xvalue = FIFOblock.Xvalue[i];
+						accelXmitData[packet_data.num_samples].Yvalue = FIFOblock.Yvalue[i];
+						accelXmitData[packet_data.num_samples].Zvalue = FIFOblock.Zvalue[i];
+						calculate_timestamp_for_sample(&block_timestamp, &block_timestamp_prev,
+								i, block_samples, &sample_timestamp);
+						accelXmitData[packet_data.num_samples].accelTime = sample_timestamp;
+						packet_data.num_samples++;
+					}
+
+					if (packet_data.num_blocks == FIFO_BLOCKS_PER_PACKET)
+					{
+						done = pdTRUE;
+					}
+				}
+				else
+				{
+					packet_data.flash_error = FLASH_DATA_ERROR;
+				}
+			} // else if (transmit_flag == 1)
+
+			// step to next block -- during transmission, we go backwards
+			blocknumber--;
+			if (blocknumber < 0) {
+				blocknumber = blocknumber + AB_FLASH_MAX_PAGES;
+			}
+
+		} // check_bit_flag == 1
 
 	} // while loop for processing data
 
@@ -3031,7 +3094,7 @@ void user_terminate_transmit(void)
 	wifi_cs_rf_cntrl(TRUE); // Might need to do this elsewhere
 
 	// Clear system state so LEDs are off, unless there's an alert
-	set_sole_system_state(0);
+	set_sole_system_state(USER_STATE_CLEAR);
 
 	// Clear the transmit process bit so the system can go to sleep
 	CLR_PROCESS_BIT(processLists, USER_PROCESS_MQTT_TRANSMIT);
@@ -3544,7 +3607,7 @@ static void user_process_send_MQTT_data(void* arg)
 	{
 		sprintf(user_log_string_temp, "MQTT task found invalid transmit start location: %d", transmit_start_loc);
 		user_log_error(user_log_string_temp);
-		set_sole_system_state(USER_STATE_INTERNAL_ERROR);
+		//set_sole_system_state(USER_STATE_INTERNAL_ERROR); JW: deprecated 10.4 -- no reason to tell the patient
 		goto end_of_task;
 	}
 
@@ -5227,11 +5290,12 @@ static int get_AB_write_location(void)
  *******************************************************************************
  * @brief Process to check the accelerometer buffer management
  * transmit map location, making sure it's done with exclusive access
+ *  bit_flag identifies whether to check by bit, or the AB_transmit_map type (uint32_t)
  *  Returns -1 if unable to gain exclusive access
- *  returns value of transmit bit otherwise (0 or 1)
+ *  returns whether any bit in the range otherwise (0 or 1)
  *******************************************************************************
  */
-static int check_AB_transmit_location(int location)
+static int check_AB_transmit_location(int location, int bit_flag)
 {
 	int return_value = -1;
 
@@ -5242,12 +5306,30 @@ static int check_AB_transmit_location(int location)
 		if( xSemaphoreTake( AB_semaphore, ( TickType_t ) 10 ) == pdTRUE )
 		{
 
-			// query whether the current location is set for transmission
-			if (POS_AB_SET(pUserData->AB_transmit_map, location)){
-				return_value = 1;
-			} else {
-				return_value = 0;
+			if (bit_flag == pdTRUE){
+				// query whether the current location is set for transmission
+				if (POS_AB_SET(pUserData->AB_transmit_map, location))
+				{
+					return_value = 1;
+				}
+				else
+				{
+					return_value = 0;
+				}
 			}
+			else if (bit_flag == pdFALSE)
+			{
+				if (pUserData->AB_transmit_map[location] == 0)
+				{
+					return_value = 0;
+				}
+				else
+				{
+					return_value = 1;
+				}
+
+			}
+
 
 			/* We have finished accessing the shared resource.  Release the
 				semaphore. */
@@ -7773,6 +7855,8 @@ printf_with_run_time("Starting boot event process");
 		log_current_time("Bootup WIFI. ");
 
 		set_sole_system_state(USER_STATE_WIFI_CONNECTED);
+		// Delay to allow it to be seen
+		vTaskDelay(pdMS_TO_TICKS(3000));
 	}
 	else
 	{
@@ -7961,7 +8045,7 @@ static UCHAR user_process_event(UINT32 event)
 			// t\Turn off LEDs to save power while doing sleep/wake cycle
 			// Note the expectation is that only alerts will show
 			// during wake/sleep and then only important ones
-			set_sole_system_state(0);
+			set_sole_system_state(USER_STATE_CLEAR);
 
 			//dpm_sleep_start_mode_2(TCP_CLIENT_SLP2_PERIOD, TRUE); //JW: This appears to be the way to put to sleep if using dpm -- which we aren't
 			extern void fc80211_da16x_pri_pwr_down(unsigned char retention); //JW: This is probably the correct implemenation
@@ -8299,7 +8383,7 @@ static void user_deinit(void)
 	archive_status = user_archive_log_messages(pdTRUE);
 
 	// Turn off LEDs
-	set_sole_system_state(0);
+	set_sole_system_state(USER_STATE_CLEAR);
 
 	vTaskDelay(pdMS_TO_TICKS(2000));
 
@@ -8437,6 +8521,10 @@ void tcp_client_sleep2_sample(void *param)
 	PRINTF(" User data size        : %u bytes\n", sizeof(UserDataBuffer));
     PRINTF(" Battery reading       : %d\n",(uint16_t)(adcDataFloat * 100));
 
+    // JW: we do not want the wrist bands to make a decision to shut down.
+    // They will die as they are exhausted, but not before. This might lead to
+    // some brown-out style behavior, but we can manage that on the backend.
+#if 0
 	if(adcDataFloat < VREF_EXHAUSTED)
 	{
 		// Battery done for - enter terminal battery state
@@ -8460,7 +8548,7 @@ void tcp_client_sleep2_sample(void *param)
 	{
 		clear_system_alert(USER_ALERT_BATTERY_LOW);
 	}
-
+#endif // deprecated 10.4
 
 	/*
 	 * Event loop - this is the main engine of the application
