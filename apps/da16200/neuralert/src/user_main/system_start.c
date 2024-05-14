@@ -73,15 +73,11 @@ void config_customer_console_baudrate(void)
 }
 
 #if defined ( __SET_WAKEUP_HW_RESOURCE__)
-#if defined(__TCP_CLIENT_SLEEP2_SAMPLE__)
-extern void user_rtc_wakeup_key_event_triggered();
-#endif
+
 
 extern UCHAR	runtime_cal_flag;		// system flag that enables runtime timing analysis
 
-extern long long user_accelerometer_interrupt_time; // Save the time of the interrupt for use in the timestamp calculation
-
-
+extern int user_factory_reset_btn_onetouch(void);
 
 /*****************************************************************************/
 /*  The extenal_wakeup_pin can be used for interrupt pin.                    */
@@ -111,13 +107,6 @@ static void rtc_ext_cb(void *data)
 #endif // __SUPPORT_NOTIFY_RTC_WAKEUP__
     }
 
-#if defined(__TCP_CLIENT_SLEEP2_SAMPLE__)
-		// Save the time of the interrupt for use in the timestamp calculation
-		user_accelerometer_interrupt_time = time_old;  // RTC clock ticks
-
-		// Call the user's RTC wakeup event (we are in an interrupt)
-		user_rtc_wakeup_key_event_triggered();
-#endif //__TCP_CLIENT_SLEEP2_SAMPLE__
 
     if (ioctl & RTC_WAKEUP2_STATUS) {
         Printf(">>> rtc2 wakeup interrupt ...\r\n");
@@ -153,25 +142,24 @@ static void rtc_ext_cb(void *data)
 
 static void rtc_ext_intr(void)
 {
+    //INTR_CNTXT_SAVE(); //JW: not sure why this isn't used. (See peripheral_sample_wakeup project)
     INTR_CNTXT_CALL(rtc_ext_cb);
+    //INTR_CNTXT_RESTORE(); //JW: not sure why this isn't used.
 }
 
 void config_ext_wakeup_resource(void)
 {
-    UINT32 intr_src;
+    UINT32 intr_src, ioctldata;
 
     RTC_IOCTL(RTC_GET_RTC_CONTROL_REG, &intr_src);
 #if defined ( __TCP_CLIENT_SLEEP2_SAMPLE__ )
-
-    intr_src &= ~(WAKEUP_INTERRUPT_ENABLE(1));  // Clears the Wakeup interrupt enable bit
-	intr_src &= ~(WAKEUP_POLARITY(1));          // Set polarity to rising edge
+    intr_src &= ~(WAKEUP_INTERRUPT_ENABLE(1));  // Set Wakeup interrupt enable bit (active high)
+	intr_src &= ~(WAKEUP_POLARITY(1));          // Set polarity to rising edge (active high)
 #else
-    RTC_IOCTL(RTC_GET_RTC_CONTROL_REG, &intr_src);
     intr_src |= WAKEUP_INTERRUPT_ENABLE(1) | WAKEUP_POLARITY(1);
 #endif // __TCP_CLIENT_SLEEP2_SAMPLE__
-
-
 	RTC_IOCTL(RTC_SET_RTC_CONTROL_REG, &intr_src);
+
 
     _sys_nvic_write(RTC_ExtWkInt_IRQn, (void *)rtc_ext_intr, 0x7);
 }
@@ -233,7 +221,6 @@ ATTRIBUTE_RAM_FUNC void flash_pin_stuck(void)
 static void rtc_brown_cb(void)
 {
     Printf("BR\r\n" );
-
     // It can make the next bootup as POR
     RTC_CLEAR_RETENTION_FLAG();
     da16x_environ_lock(TRUE);
@@ -398,11 +385,13 @@ void set_customer_softap_config(void)
 
 static void button1_one_touch_cb_fn(void)
 {
+
     /* User application function if needed ... */
 #if defined ( __SUPPORT_WIFI_CONCURRENT__ )
     button1_one_touch_cb = factory_reset_btn_onetouch;
 #else
     button1_one_touch_cb = NULL;
+    //button1_one_touch_cb = user_factory_reset_btn_onetouch;
 #endif // __SUPPORT_WIFI_CONCURRENT__
 }
 

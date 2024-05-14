@@ -857,6 +857,7 @@ extern int fc80211_set_app_keepalivetime(unsigned char tid, unsigned int sec,
 void da16x_time64_sec(__time64_t *p, __time64_t *cur_sec);
 void da16x_time64_msec(__time64_t *p, __time64_t *cur_msec);
 void user_time64_msec_since_poweron(__time64_t *cur_msec);
+extern int get_gpio(UINT);
 
 // SDK MQTT function to set up received messages
 //void mqtt_client_set_msg_cb(void (*user_cb)(const char *buf, int len, const char *topic));
@@ -1562,6 +1563,18 @@ static void user_log_event(const UCHAR *event_message)
 
 /**
  *******************************************************************************
+ * @brief Send factory reset btn pushed once
+ *******************************************************************************
+ */
+int user_factory_reset_btn_onetouch(void)
+{
+	PRINTF("\n\n**** Factory Reset Button One Touch ***\n\n");
+	return pdTRUE;
+}
+
+
+/**
+ *******************************************************************************
  * @brief Send termination event to the user task
  *******************************************************************************
  */
@@ -1694,6 +1707,7 @@ void user_rtc_wakeup_key_event_triggered(void)
 {
 	user_rtckey_event_in_timer_handle();
 }
+
 
 /**
  *******************************************************************************
@@ -3499,13 +3513,14 @@ static void user_process_send_MQTT_data(void* arg)
 	int next_packet_start_block;	// where the subsequent packet will start
 	int request_stop_transmit = pdFALSE;		// loop control for packet transmit loop
 	int request_retry_transmit = pdFALSE;
+	int transmit_complete = pdFALSE;
 	int packet_count;				// packet send counter
 
 	packetDataStruct packet_data;	// struct to capture packet meta data.
 
 	// stats
 	int packets_sent = 0;		// actually sent during this transmission interval
-	int blocks_sent = 0;
+	//int blocks_sent = 0;
 	int samples_sent = 0;
 
 	int drop_data_skip_to_loc;		// start location of where we will transmit after dropping data
@@ -3841,7 +3856,8 @@ static void user_process_send_MQTT_data(void* arg)
 	//JW: the while statement below used the number of blocks to exit -- this is no longer the case
 	//while (	(num_blocks_left_to_send > 0)
 	//		&& (pdFALSE == request_stop_transmit) )
-	while (pdFALSE == request_stop_transmit)
+	while ((request_stop_transmit == pdFALSE)
+			&& (transmit_complete == pdFALSE))
 	{
 		packet_count++;
 
@@ -3898,7 +3914,7 @@ static void user_process_send_MQTT_data(void* arg)
 		}
 		else if (packet_data.num_samples == 0)
 		{
-			goto end_of_task;
+			transmit_complete = pdTRUE;
 		}
 		else
 		{
@@ -3941,8 +3957,8 @@ static void user_process_send_MQTT_data(void* arg)
 				// Do stats
 				increment_MQTT_stat(&(pUserData->MQTT_stats_packets_sent));
 				packets_sent++;		// Total packets sent this interval
-				blocks_sent += this_packet_num_blocks;
-				samples_sent += samples_to_send;
+				//blocks_sent += packet_data.num_blocks; //JW: deprecated 10.4
+				samples_sent += packet_data.num_samples;
 //						PRINTF("**Neuralert: send_data: transmit %d:%d successful\n",
 //								pUserData->MQTT_message_number, msg_sequence); // FRSDEBUG
 #if defined(__RUNTIME_CALCULATION__) && defined(XIP_CACHE_BOOT)
@@ -4018,10 +4034,10 @@ static void user_process_send_MQTT_data(void* arg)
 		} // num_samples > 0
 
 
-		PRINTF("\n Packet data flag %d\n", packet_data.done_flag);
+		//PRINTF("\n Packet data flag = %d\n", packet_data.done_flag);
 
 		if (packet_data.done_flag == pdTRUE){
-			goto end_of_task; // there is no more data after this packet.
+			transmit_complete = pdTRUE; // there is no more data after this packet.
 		}
 
 //JW: This code is now deprecated.  This was for the FIFO implementation. Managing
