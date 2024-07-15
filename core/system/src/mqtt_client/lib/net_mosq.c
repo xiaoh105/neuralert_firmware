@@ -817,7 +817,6 @@ int _mosquitto_packet_read(struct mosquitto *mosq)
 	{
 		// if data recv is a new mqtt packet, read 'command' (1 bytes) from header
 		read_length = _mosquitto_net_read(mosq, &byte, 1);
-
 		if (read_length == 1)
 		{
 			mosq->in_packet.command = byte;

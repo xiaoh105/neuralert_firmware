@@ -183,7 +183,7 @@ Copyright (c) 2019-2022 Modified by Renesas Electronics.
 /// Max length of will message
 #define MQTT_WILL_MSG_MAX_LEN			64
 /// Max length of username for log-in
-#define MQTT_USERNAME_MAX_LEN			64
+#define MQTT_USERNAME_MAX_LEN			128 //64 //JW: To accomadate AWS authenticator
 /// Max length of password for log-in
 #define MQTT_PASSWORD_MAX_LEN			160
 /// Max length of client ID
