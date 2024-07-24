@@ -37,8 +37,6 @@
 /// Features for Generic SDK
 ///
 
-#if defined ( GENERIC_SDK )
-
 // SDK Name
 // Show the kind of SDK displayed by the "sdk" command in the console.
 //
@@ -1002,6 +1000,5 @@
 ///////////////////////////////////////////////////////////////////////
 
 #endif    // GENERIC_SDK  -------------------------------------
-#endif    // __CONFIG_GENERIC_SDK_H__
 
 /* EOF */
