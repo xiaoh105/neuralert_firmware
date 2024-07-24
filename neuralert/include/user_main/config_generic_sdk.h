@@ -74,7 +74,7 @@
     // And it is defined below function :
     //    static void config_gpio_button(void) in ~/apps/da16200/get_started/src/user_main/system_start.c
     //
-    #define __SUPPORT_WPS_BTN__
+    #undef __SUPPORT_WPS_BTN__
 
     //
     // Enable/Disable Factory-Reset button on DA16X00 EVK : Default is GPIOA7
@@ -92,7 +92,7 @@
     //   user can change call-back function
     //    : static void rtc_brown_cb(void) in ~/apps/da16200/get_started/src/user_main/system_start.c
     //
-    #define __SET_BOR_CIRCUIT__
+    #undef __SET_BOR_CIRCUIT__
 
     //
     // Enable/Disable RF antenna share for Wi-Fi & BT co-existence
@@ -134,7 +134,7 @@
     //  When enable this feature,
     //   user can change RTC call-back function
     //    : static void rtc_ext_cb(void *data) in ~/apps/da16200/get_started/src/user_main/system_start.c
-    #undef  __SET_WAKEUP_HW_RESOURCE__
+    #define  __SET_WAKEUP_HW_RESOURCE__
 
 
 //-----------------------
@@ -152,7 +152,7 @@
     //  In this case, Customer-SW have to control for about this one.
     //  If not, battery consumption will increase the same as when DPM is not used.
     //
-    #undef  __DISABLE_DPM_ABNORM__
+    #define  __DISABLE_DPM_ABNORM__
 
     //
     // Enable/Disable DPM Abnormal wakeup User-timer
@@ -188,7 +188,7 @@
     //         60 * 60,       // 8th Wakeup    : 0xdeadbeaf for no-wakeup
     //         0xDEADBEAF     // 9th Wakeup    : 0xdeadbeaf for no-wakeup
     //     };
-    #define __USER_DPM_ABNORM_WU_INTERVAL__
+    #undef __USER_DPM_ABNORM_WU_INTERVAL__
 
     //
     // DPM pTIM Unicast max receiving timeout value
@@ -209,7 +209,7 @@
     //    : #define USER_DPM_TIM_WAKEUP_COUNT
     //   And this value is applied when DPM setting is performed again after SDK is rebuilt.
     //
-    #define __SUPPORT_DPM_DTIM_DFLT__
+    #undef __SUPPORT_DPM_DTIM_DFLT__
 
     //
     // DPM : Unicast packet recevie ready timeout before user network application starting.
@@ -235,7 +235,7 @@
     //
     // DPM Sleep Manager
     //
-    #define __SUPPORT_DPM_MANAGER__
+    #undef __SUPPORT_DPM_MANAGER__
 
     //
     // Watchdog Service
@@ -412,7 +412,7 @@
     //        Refer to AT-CMD user's guide document for how to use it.
     //  Note) This feature is internal feature in ~/library/libsupplicant.a
     //
-    #undef  __SUPPORT_WPA_ENTERPRISE__
+    #define  __SUPPORT_WPA_ENTERPRISE__
 
     //
     // Support Wi-Fi WPA3-Personal features.
@@ -464,7 +464,7 @@
     //        : +WFDAP:0,APBUSY
     //        : +WFDAP:0,OTHER,reason_code
     //
-    #define __SUPPORT_WIFI_CONN_CB__
+    #undef __SUPPORT_WIFI_CONN_CB__
 
     //
     // Support Wi-Fi Concurrent-mode.
@@ -479,7 +479,7 @@
     //      3. Station & SOFT-AP                   <= Wi-Fi Concurrent-mode
     //    MODE ?  [1/2/3/Quit] (Default Station) :
     //
-    #define __SUPPORT_WIFI_CONCURRENT__
+    #undef __SUPPORT_WIFI_CONCURRENT__
 
 
 //-----------------------
@@ -502,7 +502,7 @@
     //
     // Support DHCP Server on the DA16200 Soft-AP mode.
     //
-    #define __SUPPORT_DHCP_SVR__
+    #undef __SUPPORT_DHCP_SVR__
 
     //
     // Support OTA-Update through Wi-Fi connection
@@ -516,7 +516,7 @@
     //  Note) Refer to ATCMD UM, MQTT Programmer guide, or MQTT sample code.
     //       - UM-WI-048_DA16200_DA16600_FreeRTOS_OTA_Update_User_Manual_RevXvY.pdf
     //
-    #define __SUPPORT_OTA__
+    #undef __SUPPORT_OTA__
 
     //
     // Support MQTT Client feature.
@@ -546,7 +546,7 @@
     //
     //  This feature enable Websocket client to communicate with peer Websocket server.
     //
-    #define __SUPPORT_WEBSOCKET_CLIENT__
+    #undef __SUPPORT_WEBSOCKET_CLIENT__
 
     //
     // Support User-format to send HTTP-Client request ( header + body )
@@ -560,7 +560,7 @@
     //
     //  Note) Refer to AT-CMD user's guide document for how to use it.
     //
-    #define __SUPPORT_HTTP_CLIENT_USER_MSG__
+    #undef __SUPPORT_HTTP_CLIENT_USER_MSG__
 
     //
     // Support Zero-Config(mDNS, DNS-SD, and xmDNS) service
@@ -785,7 +785,7 @@
     // User application for "Provisioning" operation
     //   which is matched with DA16200 Mobile-APP.
     //
-    #define __SUPPORT_WIFI_PROVISIONING__
+    #undef __SUPPORT_WIFI_PROVISIONING__
 
     //
     // User Application for "Hello-World" task.
@@ -801,7 +801,7 @@
     //
     // And function body is location in ~/apps/da16200/get_started/src/apps/hello_world.c
     //
-    #define __SUPPORT_HELLO_WORLD__
+    #undef __SUPPORT_HELLO_WORLD__
 
 
 ///////////////////////////////////////////////////////////////////////
@@ -894,7 +894,7 @@
         #define __MQTT_CONN_STATUS__
         #define __MQTT_TLS_OPTIONAL_CONFIG__
 
-        #define __MQTT_CLEAN_SESSION_MODE_SUPPORT__
+        #undef __MQTT_CLEAN_SESSION_MODE_SUPPORT__
             #if defined (__MQTT_CLEAN_SESSION_MODE_SUPPORT__)
                 // Max payload length of a preserved message
                 #define MQTT_MSG_TBL_PRESVD_MAX_PLAYLOAD_LEN    100
@@ -996,6 +996,13 @@
 //
 
 #include "sys_common_features.h"
+
+///////////////////////////////////////////////////////////////////////
+
+#if defined(__TCP_CLIENT_SLEEP2_SAMPLE__)
+#define CFG_USE_RETMEM_WITHOUT_DPM
+#define CFG_USE_SYSTEM_CONTROL
+#endif //__TCP_CLIENT_SLEEP2_SAMPLE__
 
 ///////////////////////////////////////////////////////////////////////
 
