@@ -125,11 +125,6 @@ int user_main(char init_state)
      */
     __GPIO_RETAIN_HIGH_RECOVERY();
 
-#if defined ( __REMOVE_32KHZ_CRYSTAL__ )
-    /* Initialize Alternative RTC counter */
-    ALT_RTC_ENABLE();
-#endif // __REMOVE_32KHZ_CRYSTAL__
-
     /* Entry point for customer main */
     if (init_state == pdTRUE) {
         system_start();

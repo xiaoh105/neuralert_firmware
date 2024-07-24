@@ -344,7 +344,7 @@
     //   per          : lmac per logging
     //   tx           : lmac tx command
     //
-    #define __ENABLE_LMAC_CMD__
+    #undef __ENABLE_LMAC_CMD__
 
     //
     // Support console commands for LMAC.TX test.
@@ -381,7 +381,7 @@
     //   dbg          : debug options
     //   radar        : radar isr
     //
-    #define __ENABLE_LMAC_TX_CMD__
+    #undef __ENABLE_LMAC_TX_CMD__
 
     //
     // Support console commands for RF test.
@@ -395,7 +395,7 @@
     //   iwr          : tuner write cmd
     //   iverify      : tuner write cmd
     //
-    #define __ENABLE_RF_CMD__
+    #undef __ENABLE_RF_CMD__
 
 
 //-----------------------
@@ -719,7 +719,7 @@
     //  Note) Refer to "DA1620_DA16600_FreeRTOS Getting Started Guide" document for more detailed information
     //       - UM-WI-056_DA16200_DA16600_FreeRTOS_Getting_Started_Guide_Rev_XvY.pdf
     //
-    #define __SUPPORT_IPERF__
+    #undef __SUPPORT_IPERF__
 
 
 //-------------------
@@ -787,106 +787,12 @@
     //
     #undef __SUPPORT_WIFI_PROVISIONING__
 
-    //
-    // User Application for "Hello-World" task.
-    //
-    // To implement user application, user can start from here.
-    //
-    // This feature is created in ~/apps/da16200/get_started/src/apps/user_apps.c
-    //
-    //  #if defined ( __SUPPORT_HELLO_WORLD__ )
-    //  { HELLO_WORLD_1, customer_hello_world_1, 512, (OS_TASK_PRIORITY_USER + 1), FALSE, FALSE, UNDEF_PORT, RUN_ALL_MODE },
-    //  { HELLO_WORLD_2, customer_hello_world_2, 512, (OS_TASK_PRIORITY_USER + 1), TRUE, FALSE,  UNDEF_PORT, RUN_ALL_MODE },
-    //  #endif // __SUPPORT_HELLO_WORLD__
-    //
-    // And function body is location in ~/apps/da16200/get_started/src/apps/hello_world.c
-    //
-    #undef __SUPPORT_HELLO_WORLD__
-
 
 ///////////////////////////////////////////////////////////////////////
 //
 // SUB-features for Generic-SDK
 //
 ///////////////////////////////////////////////////////////////////////
-
-    #if defined ( __SUPPORT_ATCMD__ )
-
-        //
-        // Default interface of DA16200 EVK is UART1.
-        // User can change host-interface kind to change as below four-types one.
-        //
-        #define __ATCMD_IF_UART1__                          // AT-CMD over UART1
-        #undef  __ATCMD_IF_UART2__                          // AT-CMD over UART2
-        #undef  __ATCMD_IF_SPI__                            // AT-CMD over SPI
-        #undef  __ATCMD_IF_SDIO__                           // AT-CMD over SDIO
-
-        #undef  __UART1_FLOW_CTRL_ON__                      // flow control of UART1
-
-        #define __SUPPORT_TCP_RECVDATA_HEX_MODE__           // Support AT+TCPDATAMODE command
-        #undef  __ENABLE_TXFIFO_CHK_IN_LOW_BAUDRATE__
-        #define __SUPPORT_NOTIFY_RTC_WAKEUP__
-        #undef  __USER_UART_CONFIG__                        // Support Customer's UART configuration
-
-        #undef  __DPM_TEST_WITHOUT_MCU__                    // For DPM Test on EV Board
-        #define __TRIGGER_DPM_MCU_WAKEUP__                  // MCU Wakeup-triggering when DPM UC wakeup
-        #define __DPM_WAKEUP_NOTICE_ADDITIONAL__            // Report DPM Wakeup RTC/ETC
-        #undef  __SUPPORT_DPM_ABNORM_MSG__                  // Send message to MCU when wake-up from DPM Abnormal state
-        #undef  __WF_CONN_RETRY_CNT_ABN_DPM__               // Wi-Fi reconn retry count at dpm abnormal
-        #define __SUPPORT_DPM_EXT_WU_MON__                  // DPM monitor for External Wakeup
-            #if defined ( __SUPPORT_DPM_EXT_WU_MON__ )
-                #undef  __SUPPORT_UC_WU_MON__               // DPM monitor for UC Wakeup
-            #endif // __SUPPORT_DPM_EXT_WU_MON__
-
-        #undef  __DISABLE_ESC_DATA_ECHO__                   // Echo ESC data input ( Data Tx Mode )
-            #if defined ( __DISABLE_ESC_DATA_ECHO__ )
-                #define __ENABLE_ESC_DATA_DUMP__            // Tx Data dump on UART1
-            #endif // __DISABLE_ESC_DATA_ECHO__
-
-        #define __SUPPORT_HTTP_SERVER_FOR_ATCMD__           // HTTP server
-        #define __SUPPORT_HTTP_SERVER_FOR_CLI__
-        #define __SUPPORT_HTTP_CLIENT_FOR_ATCMD__           // HTTP client
-        #define __SUPPORT_HTTP_CLIENT_FOR_CLI__
-
-        #define __SUPPORT_WPA3_PERSONAL__                   // Wi-Fi WPA3-Personal ( SAE, OWE )
-        #define __SUPPORT_WPA_ENTERPRISE__                  // Wi-Fi WPA Enterprise
-        #define __SUPPORT_FASTCONN__                        // Fast Connection on SLEEP mode 1,2
-
-        //
-        // Support Wi-Fi Passive-SCAN operation. Default is Active-SCAN.
-        //
-        //  Wi-Fi SCAN opeartion is internal function in ~/library/libsupplicant.a
-        //  Customer can change only using AT-CMDs through MCU.
-        //    : AT+WFPSCAN
-        //    : AT+WFPSTOP
-        //    : AT+WFPCDTMAX
-        //    : AT+WFPCDTMIN
-        //
-        //  Note) Refer to AT-CMD user's guide document for how to use it.
-        //
-        #define __SUPPORT_PASSIVE_SCAN__
-
-        #undef  __ENABLE_TRANSFER_MNG__                     // Ring-Buffer for throughput
-        #define __USER_DHCP_HOSTNAME__                      // User DHCP-client hostname
-        #define __SUPPORT_ATCMD_MULTI_SESSION__             // Support multi-session for TCP client, server & UDP session
-
-        #define __SUPPORT_RSSI_CMD__                        // AT+WFRSSI
-        #define __SUPPORT_ATCMD_TLS__                       // TLS session
-        #undef  __SUPPORT_USER_CMD_HELP__                   // User AT-CMD Help
-        #define __SUPPORT_PERI_CTRL__                       // Support LED/I2C/PWM/ADC over AT-CMD
-        #define __SUPPORT_LMAC_RF_CMD__                     // AT-CMDs for LMAC/RF
-        #define __SUPPORT_PERI_CMD__                        // AT-CMDs for peripheral devices 
-
-        // Reconfig for AT-CMD
-        #undef  __SUPPORT_DPM_MANAGER__
-        #define __SUPPORT_ZERO_CONFIG__
-        #undef  __SUPPORT_HELLO_WORLD__
-    #endif // __SUPPORT_ATCMD__
-
-
-    #if defined ( __SUPPORT_OTA__ )
-        #undef  __OTA_UPDATE_MCU_FW__                       // Default disable when undef __SUPPORT_ATCMD__
-    #endif //__SUPPORT_OTA__
 
 
     #if defined ( __SUPPORT_MQTT__ )
@@ -909,21 +815,6 @@
 
     #endif // __SUPPORT_MQTT__
 
-
-    #if defined ( __SUPPORT_ZERO_CONFIG__ )
-        #define __ENABLE_AUTO_START_ZEROCONF__
-        #undef  __SUPPORT_MDNS_CMDS__
-        #undef  __SUPPORT_XMDNS__
-        #undef  __SUPPORT_DNS_SD__
-    #endif // __SUPPORT_ZERO_CONFIG__
-
-
-    #if defined ( __SUPPORT_DPM_MANAGER__ )
-        #define __LIGHT_DPM_MANAGER__                       // Support 1 session & only client.
-        #define __DPM_MNG_SAVE_RTM__
-    #endif // __SUPPORT_DPM_MANAGER__
-
-
     #if defined ( __SUPPORT_WPA_ENTERPRISE__ )
         #define __SUPPORT_WPA3_ENTERPRISE__
 
@@ -931,61 +822,6 @@
             #undef  __SUPPORT_WPA3_ENTERPRISE_192B__        // Unsupported on DA16200
         #endif // __SUPPORT_WPA3_ENTERPRISE__
     #endif /* __SUPPORT_WPA_ENTERPRISE__ */
-
-
-    #if defined ( __SUPPORT_IPERF__ )
-        #undef  __IPERF_BANDWIDTH__                         // Debug only
-        #undef  __IPERF_PRINT_MIB__                         // Print iPerf MIB Info.
-        #undef  __LIB_IPERF_PRINT_MIB__                     // Print iPerf MIB Info.
-    #endif // __SUPPORT_IPERF__
-
-
-///////////////////////////////////////////////////////////////////////
-//
-// DEPENDENT-features for Generic-SDK
-//
-///////////////////////////////////////////////////////////////////////
-
-    #if defined ( __SUPPORT_ATCMD__ )
-        #if defined ( __ATCMD_IF_SDIO__ )
-            #undef  __SUPPORT_WPS_BTN__                     // WPS button
-            #undef  __SUPPORT_FACTORY_RESET_BTN__           // Factory reset Button
-        #endif // __ATCMD_IF_SDIO__
-
-        #if defined ( __SUPPORT_OTA__ )
-            #define __OTA_UPDATE_MCU_FW__                   // Default enable when define __SUPPORT_ATCMD__
-        #endif //__SUPPORT_OTA__
-
-        #if defined ( __SUPPORT_WIFI_PROVISIONING__ )
-            #define __PROVISION_ATCMD__                     // provisioining at cmd
-        #endif // __SUPPORT_WIFI_PROVISIONING__
-
-        #ifdef __SUPPORT_WEBSOCKET_CLIENT__
-            #define __SUPPORT_WEBSOCKET_CLIENT_FOR_ATCMD__
-        #endif    // __SUPPORT_WEBSOCKET_CLIENT__
-
-        #if defined ( __SUPPORT_NOTIFY_RTC_WAKEUP__ )
-            #define __SET_WAKEUP_HW_RESOURCE__
-        #endif // __SUPPORT_NOTIFY_RTC_WAKEUP__
-
-        #if defined ( __SUPPORT_ZERO_CONFIG__ )
-            #define __ENABLE_AUTO_START_ZEROCONF__
-            #define __SUPPORT_MDNS_CMDS__
-            #define __SUPPORT_XMDNS__
-            #define __SUPPORT_DNS_SD__
-        #endif // __SUPPORT_ZERO_CONFIG__
-
-        #if defined ( __SUPPORT_LMAC_RF_CMD__ )
-            #define __ENABLE_LMAC_CMD__
-            #define __ENABLE_LMAC_TX_CMD__
-            #define __ENABLE_RF_CMD__
-        #endif // __SUPPORT_LMAC_RF_CMD__
-    #endif // __SUPPORT_ATCMD__
-
-    #if defined ( __SUPPORT_HTTP_SERVER_FOR_CLI__ ) || defined ( __SUPPORT_HTTP_SERVER_FOR_ATCMD__ )
-        #undef __HTTP_SVR_AUTO_START__
-        #undef __HTTPS_SVR_AUTO_START__
-    #endif // __SUPPORT_HTTP_SERVER_FOR_CLI__ || __SUPPORT_HTTP_SERVER_FOR_ATCMD__
 
 
 ///////////////////////////////////////////////////////////////////////

@@ -39,19 +39,6 @@
 
 
 /******************************************************************************
- * External global functions
- ******************************************************************************/
-#if defined ( __SUPPORT_HELLO_WORLD__ )
-extern void customer_hello_world_1(void *arg);
-extern void customer_hello_world_2(void *arg);
-#endif //( __SUPPORT_HELLO_WORLD__ )
-
-#if defined ( __SUPPORT_WIFI_PROVISIONING__ )
-extern void     softap_provisioning(void* arg);
-#endif    // __SUPPORT_WIFI_PROVISIONING__
-
-
-/******************************************************************************
  * External global variables
  ******************************************************************************/
 #if defined ( __SUPPORT_WIFI_CONN_CB__ ) && !defined ( __ENABLE_SAMPLE_APP__ )
