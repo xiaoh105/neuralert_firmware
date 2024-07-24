@@ -84,26 +84,11 @@ const app_task_info_t    user_apps_table[] = {
  */
 
 /*  Task Name,      Funtion,                Stack Size,      Task Priority, Network, DPM,  Net Port,  Run Sys_Mode  */
-#if !defined ( __ENABLE_SAMPLE_APP__ )
-
 #if defined ( __SUPPORT_WIFI_CONN_CB__ )
   { WIFI_CONN,          user_wifi_conn,         256, (OS_TASK_PRIORITY_USER+1), FALSE, FALSE, UNDEF_PORT, RUN_ALL_MODE    },
   { WIFI_CONN_FAIL,     user_wifi_conn_fail,    256, (OS_TASK_PRIORITY_USER+1), FALSE, FALSE, UNDEF_PORT, RUN_ALL_MODE    },
   { WIFI_DISCONN,       user_wifi_disconn,      256, (OS_TASK_PRIORITY_USER+1), FALSE, FALSE, UNDEF_PORT, RUN_ALL_MODE    },
 #endif  // __SUPPORT_WIFI_CONN_CB__
-
-#if defined ( __SUPPORT_HELLO_WORLD__ )
-  { HELLO_WORLD_1,      customer_hello_world_1, 512, (OS_TASK_PRIORITY_USER+1), FALSE, FALSE, UNDEF_PORT, RUN_ALL_MODE    },
-  { HELLO_WORLD_2,      customer_hello_world_2, 512, (OS_TASK_PRIORITY_USER+1), TRUE,  FALSE, UNDEF_PORT, RUN_ALL_MODE    },
-#endif  // __SUPPORT_HELLO_WORLD__
-
-#endif    /* !__ENABLE_SAMPLE_APP__ */
-
-#if defined (__SUPPORT_WIFI_PROVISIONING__)
-  { CUSTOMER_PROVISION, softap_provisioning,    256, (OS_TASK_PRIORITY_USER+1), TRUE,  FALSE, UNDEF_PORT, (RUN_AP_MODE | RUN_STA_SOFTAP_MODE)    },
-#endif    // __SUPPORT_WIFI_PROVISIONING__
-
-
     { NULL,    NULL,    0, 0, FALSE, FALSE, UNDEF_PORT, 0    }
 };
 
