@@ -6,3 +6,6 @@ tools/build_error.log
 tools/version/genfiles/buildtime.h
 *e2studio_project.prefs
 apps/common/examples/*
+build
+img
+.vscode/settings.json
