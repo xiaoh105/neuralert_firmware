@@ -46,6 +46,10 @@ extern const COMMAND_TREE_TYPE    cmd_user_list[];
 //-----------------------------------------------------------------------
 
 extern void cmd_test(int argc, char *argv[]);
+#if defined(__COAP_CLIENT_SAMPLE__)
+extern void cmd_coap_client(int argc, char *argv[]);
+#endif /* __COAP_CLIENT_SAMPLE__ */
+extern void cmd_txpwr(int argc, char *argv[]);
 
 #endif /* __USER_COMMAND_H__ */
 

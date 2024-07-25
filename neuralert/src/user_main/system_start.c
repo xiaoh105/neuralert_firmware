@@ -49,6 +49,9 @@
 #include "rtc.h"
 #endif // __SET_BOR_CIRCUIT__
 
+#if defined (CFG_USE_RETMEM_WITHOUT_DPM)
+#include "user_retmem.h"
+#endif
 
 /*
  * Config customer's console baud-rate.
@@ -70,6 +73,12 @@ void config_customer_console_baudrate(void)
 }
 
 #if defined ( __SET_WAKEUP_HW_RESOURCE__)
+
+
+extern UCHAR	runtime_cal_flag;		// system flag that enables runtime timing analysis
+
+extern int user_factory_reset_btn_onetouch(void);
+
 /*****************************************************************************/
 /*  The extenal_wakeup_pin can be used for interrupt pin.                    */
 /*  DA16200 6*6 have two external_wakeup_pin And                             */
@@ -97,6 +106,7 @@ static void rtc_ext_cb(void *data)
         rtc_wakeup_intr_chk_flag = pdTRUE;
 #endif // __SUPPORT_NOTIFY_RTC_WAKEUP__
     }
+
 
     if (ioctl & RTC_WAKEUP2_STATUS) {
         Printf(">>> rtc2 wakeup interrupt ...\r\n");
@@ -132,16 +142,24 @@ static void rtc_ext_cb(void *data)
 
 static void rtc_ext_intr(void)
 {
+    //INTR_CNTXT_SAVE(); //JW: not sure why this isn't used. (See peripheral_sample_wakeup project)
     INTR_CNTXT_CALL(rtc_ext_cb);
+    //INTR_CNTXT_RESTORE(); //JW: not sure why this isn't used.
 }
 
 void config_ext_wakeup_resource(void)
 {
-    UINT32 intr_src;
+    UINT32 intr_src, ioctldata;
 
     RTC_IOCTL(RTC_GET_RTC_CONTROL_REG, &intr_src);
+#if defined ( __TCP_CLIENT_SLEEP2_SAMPLE__ )
+    intr_src &= ~(WAKEUP_INTERRUPT_ENABLE(1));  // Set Wakeup interrupt enable bit (active high)
+	intr_src &= ~(WAKEUP_POLARITY(1));          // Set polarity to rising edge (active high)
+#else
     intr_src |= WAKEUP_INTERRUPT_ENABLE(1) | WAKEUP_POLARITY(1);
-    RTC_IOCTL(RTC_SET_RTC_CONTROL_REG, &intr_src);
+#endif // __TCP_CLIENT_SLEEP2_SAMPLE__
+	RTC_IOCTL(RTC_SET_RTC_CONTROL_REG, &intr_src);
+
 
     _sys_nvic_write(RTC_ExtWkInt_IRQn, (void *)rtc_ext_intr, 0x7);
 }
@@ -203,7 +221,6 @@ ATTRIBUTE_RAM_FUNC void flash_pin_stuck(void)
 static void rtc_brown_cb(void)
 {
     Printf("BR\r\n" );
-
     // It can make the next bootup as POR
     RTC_CLEAR_RETENTION_FLAG();
     da16x_environ_lock(TRUE);
@@ -282,6 +299,8 @@ unsigned long long _user_defined_wakeup_interval[DPM_MON_RETRY_CNT] = {
 static void set_dpm_abnorm_user_wakeup_interval(void)
 {
 #if defined ( __USER_DPM_ABNORM_WU_INTERVAL__ )
+	extern unsigned long long *dpm_abnorm_user_wakeup_interval;
+
     dpm_abnorm_user_wakeup_interval = (unsigned long long *)_user_defined_wakeup_interval;
 #endif // __USER_DPM_ABNORM_WU_INTERVAL__
 }
@@ -366,11 +385,13 @@ void set_customer_softap_config(void)
 
 static void button1_one_touch_cb_fn(void)
 {
+
     /* User application function if needed ... */
 #if defined ( __SUPPORT_WIFI_CONCURRENT__ )
     button1_one_touch_cb = factory_reset_btn_onetouch;
 #else
     button1_one_touch_cb = NULL;
+    //button1_one_touch_cb = user_factory_reset_btn_onetouch;
 #endif // __SUPPORT_WIFI_CONCURRENT__
 }
 
@@ -408,6 +429,14 @@ static void config_gpio_button(void)
     }
 #endif  // __TRIGGER_MCU_WAKEUP__
 
+
+	// Configure the LED GPIO pins to be held during sleep2
+	// so LEDs don't flash on while sleeping
+	_da16x_io_pinmux(PIN_UMUX, UMUX_GPIO);
+    //PRINTF("###GPIO_UNIT_C GPIO 6,7,8 retain-high\n");
+    _GPIO_RETAIN_HIGH(GPIO_UNIT_C, GPIO_PIN6);
+    _GPIO_RETAIN_HIGH(GPIO_UNIT_C, GPIO_PIN7);
+    _GPIO_RETAIN_HIGH(GPIO_UNIT_C, GPIO_PIN8);
 }
 
 void trigger_mcu_wakeup_gpio(void)
@@ -490,6 +519,60 @@ static void set_user_dpm_data_rcv_ready_timeout(void)
 }
 #endif // __SUPPORT_USER_DPM_RCV_READY_TO__
 
+
+#ifdef CFG_USE_SYSTEM_CONTROL
+#define USER_RTM_SYS_CTRL_TAG			"sys_ctrl"
+#define SYSTEM_CONTROL_WLAN_DEFAULT		(1)	// 0: Off, 1: On
+
+struct system_control_t {
+	uint8_t wlan_enabled;
+};
+static struct system_control_t *system_control = NULL;
+
+static uint8_t system_control_init(void)
+{
+#ifdef CFG_USE_RETMEM_WITHOUT_DPM
+	/* Create the user retention memory and Initialize. */
+	unsigned int result = user_retmmem_get(USER_RTM_SYS_CTRL_TAG,
+			(UCHAR **)&system_control);
+	if (result == 0) {
+		// created a memory for the user data
+		result = user_retmmem_allocate(USER_RTM_SYS_CTRL_TAG,
+				(void**)&system_control, sizeof(struct system_control_t));
+		if (result == 0) {
+			memset(system_control, 0, sizeof(struct system_control_t));
+			system_control->wlan_enabled = SYSTEM_CONTROL_WLAN_DEFAULT;
+		} else {
+			PRINTF("%s: Failed to allocate retention memory\n", __func__);
+		}
+	}
+
+	return (system_control != NULL);
+#else
+	return pdTRUE;
+#endif
+}
+
+static uint8_t system_control_wlan_enabled(void)
+{
+	if (system_control_init() && system_control) {
+		return system_control->wlan_enabled;
+	} else {
+		return pdTRUE;
+	}
+}
+
+void system_control_wlan_enable(uint8_t onoff)
+{
+	if (system_control) {
+		system_control->wlan_enabled = onoff;
+	} else {
+		PRINTF("%s: System control is not available!\n", __func__);
+	}
+}
+#endif // CFG_USE_SYSTEM_CONTROL
+
+
 void system_start(void)
 {
 #if defined ( __SUPPORT_USER_DPM_RCV_READY_TO__ )
@@ -509,11 +592,23 @@ void system_start(void)
     /* Set paramters for system running */
     set_sys_config();
 
+#if defined (CFG_USE_RETMEM_WITHOUT_DPM)
+	user_retmem_init();
+#endif
+
     /* Register Wi-Fi connect/disconnect status notify call-back functions */
     regist_wifi_notify_cb();
 
     /* Initialize WLAN interface */
-    wlaninit();
+#ifdef CFG_USE_SYSTEM_CONTROL
+	wlaninit(system_control_wlan_enabled());
+#else
+	wlaninit();
+#endif
+
+	if (runtime_cal_flag == pdTRUE) {
+		printf_with_run_time(" return from wlaninit");
+	}
 
 #if defined ( __SUPPORT_BTCOEX__ )
     /* Initialize Wi-Fi & BT/BLE Coexistance for Wi-Fi & BLE Combo module */

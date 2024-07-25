@@ -132,6 +132,10 @@ typedef    struct    _user_run_task_list_ {
 #define APP_AP_TIMER                "SoftAP_timer"
 
 
+/* customer_app_tbl[] */
+#define HELLO_WORLD_1               "helloWorld_1"
+#define HELLO_WORLD_2               "helloWorld_2"
+
 #define WIFI_CONN                   "wifi_conn"
 #define WIFI_CONN_FAIL              "wifi_conn_fail"
 #define WIFI_DISCONN                "wifi_disconn"
@@ -141,8 +145,30 @@ typedef    struct    _user_run_task_list_ {
 #define APP_POLL_STATE              "poll_state"
 #define APP_MONITOR                 "monitor_svc"
 
+/* For OTA Update sample */
+#define APP_OTA_UPDATE              "ota_update"
+#define OTA_UPDATE_MQTT_PORT        1884
+
 #define FAST_SLEEPMODE_MOD          "sleepmode12"
 
+#if defined (__BLE_COMBO_REF__)
+#define APP_GTL_INIT                "gtl_init"
+#define APP_GTL_MAIN                "gtl_main"
+#define APP_GTL_BLE_USR_CMD         "ble_usr_cmd"
+#define APP_COMBO_UDP_CLI           "combo_udp_cli"
+#endif    /* __BLE_COMBO_REF__ */
+
+#ifdef __SUPPORT_PASSIVE_SCAN__
+#define APP_PASSIVE_SCAN            "passive_scan"
+#endif /* __SUPPORT_PASSIVE_SCAN__ */
+
+
+#if defined ( __SUPPORT_DPM_MANAGER__ )
+#define TIMER1_ID                    5    /* TIMER_ID 9.10 error */
+#define TIMER2_ID                    6
+#define TIMER3_ID                    7
+#define TIMER4_ID                    8
+#endif    /* __SUPPORT_DPM_MANAGER__ */
 
 /*
  * Define RTC Timer ID for customer
@@ -182,6 +208,48 @@ typedef    struct    _user_run_task_list_ {
 extern int  get_run_mode(void);
 extern void start_atcmd(void);
 extern int  save_tmp_nvram(void);
+
+#if defined ( __SUPPORT_DPM_EXT_WU_MON__ )
+extern void dpm_ext_wu_mon(void *pvParameters);
+#endif // __SUPPORT_DPM_EXT_WU_MON__
+
+#if defined ( __ENABLE_AUTO_START_ZEROCONF__ )
+extern void zeroconf_auto_start_reg_services(void *params);
+#endif    // __ENABLE_AUTO_START_ZEROCONF__
+
+#if defined ( __SUPPORT_ZERO_CONFIG__ )
+extern void zeroconf_stop_all_service();
+extern void zeroconf_restart_all_service();
+#endif // __SUPPORT_ZERO_CONFIG__
+
+#if defined ( __SUPPORT_APMODE_SHUTDOWN_TIMER__ )
+static void ap_mode_shutdown_tm(void *pvParameters);
+#endif // __SUPPORT_APMODE_SHUTDOWN_TIMER__
+
+#if defined ( __SUPPORT_SIGMA_TEST__ )
+extern void sigma_host_init(void);
+#endif    // __SUPPORT_SIGMA_TEST__
+
+#if defined ( __SUPPORT_FATFS__ )
+extern void init_fs_partition(void);
+#endif    // __SUPPORT_FATFS__
+
+#if defined ( __HTTP_SVR_AUTO_START__ )
+extern void auto_run_http_svr(void *pvParameters);
+#endif // __HTTP_SVR_AUTO_START__
+
+#if defined ( __HTTPS_SVR_AUTO_START__ )
+extern void auto_run_https_svr(void *pvParameters);
+#endif // __HTTPS_SVR_AUTO_START__
+
+#if defined ( __RUNTIME_CALCULATION__ )
+extern void printf_with_run_time(char *string);
+#endif    // __RUNTIME_CALCULATION__
+
+#if defined (__ENABLE_SAMPLE_APP__)
+extern void register_sample_cb(void);
+extern void sample_preconfig(void);
+#endif    // __ENABLE_SAMPLE_APP__
 
 extern err_t dhcp_start(struct netif *netif);
 extern err_t dhcp_renew(struct netif *netif);

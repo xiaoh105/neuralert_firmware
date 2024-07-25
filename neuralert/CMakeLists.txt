@@ -6,12 +6,14 @@ set(NEURALERT_TARGET_INCLUDE
     ${CMAKE_CURRENT_SOURCE_DIR}/include/user_main
     ${CMAKE_CURRENT_SOURCE_DIR}/include/config
     ${CMAKE_CURRENT_SOURCE_DIR}/include/sdk_support
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/drivers
 )
 
 file(GLOB NEURALERT_TARGET_SOURCE LIST_DIRECTORIES false
     src/apps/*.c
     src/user_main/*.c
     src/sdk_support/*.c
+    src/drivers/*.c
 )
 
 add_executable(${NEURALERT_TARGET} ${NEURALERT_TARGET_SOURCE})

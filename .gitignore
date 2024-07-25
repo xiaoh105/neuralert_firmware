@@ -8,3 +8,4 @@ tools/version/genfiles/buildtime.h
 apps/common/examples/*
 build
 img
+.vscode/settings.json

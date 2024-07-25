@@ -37,6 +37,10 @@
 #include "application.h"
 #include "common_def.h"
 
+//#include "sample_defs.h" //JW Added this -- probably could combine
+// by adding the following two lines, I think we can now remove sample_defs.h from our app
+#define USER_READ_DATA						"USER_READ"
+#define USER_TRANSMIT_DATA					"USER_TX"
 
 /******************************************************************************
  * External global variables
@@ -63,6 +67,10 @@ static void user_wifi_conn_fail(void *arg);
 static void user_wifi_disconn(void *arg);
 #endif  // __SUPPORT_WIFI_CONN_CB__ && !( __ENABLE_SAMPLE_APP__ )
 
+extern void	tcp_client_sleep2_sample(void *param);
+extern void user_start_MQTT_client();
+extern void user_terminate_transmit();
+
 /******************************************************************************
  * Local variables
  ******************************************************************************/
@@ -85,9 +93,10 @@ const app_task_info_t    user_apps_table[] = {
 
 /*  Task Name,      Funtion,                Stack Size,      Task Priority, Network, DPM,  Net Port,  Run Sys_Mode  */
 #if defined ( __SUPPORT_WIFI_CONN_CB__ )
-  { WIFI_CONN,          user_wifi_conn,         256, (OS_TASK_PRIORITY_USER+1), FALSE, FALSE, UNDEF_PORT, RUN_ALL_MODE    },
-  { WIFI_CONN_FAIL,     user_wifi_conn_fail,    256, (OS_TASK_PRIORITY_USER+1), FALSE, FALSE, UNDEF_PORT, RUN_ALL_MODE    },
-  { WIFI_DISCONN,       user_wifi_disconn,      256, (OS_TASK_PRIORITY_USER+1), FALSE, FALSE, UNDEF_PORT, RUN_ALL_MODE    },
+  { WIFI_CONN,          user_wifi_conn,             256,    (OS_TASK_PRIORITY_USER+1),      FALSE, FALSE, UNDEF_PORT, RUN_ALL_MODE    },
+  { WIFI_CONN_FAIL,     user_wifi_conn_fail,        256,    (OS_TASK_PRIORITY_USER+1),      FALSE, FALSE, UNDEF_PORT, RUN_ALL_MODE    },
+  { WIFI_DISCONN,       user_wifi_disconn,          256,    (OS_TASK_PRIORITY_USER+1),      FALSE, FALSE, UNDEF_PORT, RUN_ALL_MODE    },
+  { USER_READ_DATA,	    tcp_client_sleep2_sample,   3072,   (OS_TASK_PRIORITY_USER + 3),    FALSE, FALSE, UNDEF_PORT, RUN_ALL_MODE    },
 #endif  // __SUPPORT_WIFI_CONN_CB__
     { NULL,    NULL,    0, 0, FALSE, FALSE, UNDEF_PORT, 0    }
 };
@@ -123,6 +132,9 @@ static void user_wifi_conn(void *arg)
             xEventGroupClearBits(evt_grp_wifi_conn_notify, WIFI_CONN_SUCC_STA);
 
             PRINTF("\n### User Call-back : Success to connect Wi-Fi ...\n");
+
+            user_start_MQTT_client();
+            
        } else if (wifi_conn_ev_bits & WIFI_CONN_SUCC_SOFTAP) {
             xEventGroupClearBits(evt_grp_wifi_conn_notify, WIFI_CONN_SUCC_SOFTAP);
 
