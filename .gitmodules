@@ -1,3 +1,7 @@
 [submodule "da16200_sdk"]
 	path = da16200_sdk
 	url = git@github.com:IoMT-Lab/da16200_sdk.git
+
+[submodule "arm-toolchain"]
+	path = arm-toolchain
+	url = git@github.com:IoMT-Lab/arm-toolchain.git
