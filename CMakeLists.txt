@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
+set(TOOLCHAIN_PATH ${CMAKE_SOURCE_DIR}/arm-toolchain/gcc-arm-none-eabi-10.3-2021.10)
+
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/da16200_sdk/cmake)
 set(CMAKE_TOOLCHAIN_FILE da16200_sdk/cmake/da16200-toolchain.cmake)
 
