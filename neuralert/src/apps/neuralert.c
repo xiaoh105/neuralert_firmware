@@ -848,7 +848,10 @@ static void log_current_time(UCHAR *PrefixString);
 static void increment_MQTT_stat(unsigned int *stat);
 static void timesync_snapshot(void);
 
-
+// Macros for converting from RTC clock ticks (msec * 32768) to microseconds
+// and milliseconds
+#define CLK2US(clk)			((((unsigned long long )clk) * 15625ULL) >> 9ULL)
+#define CLK2MS(clk)			((CLK2US(clk))/1000ULL)
 
 /*
  * EXTERN FUNCTIONS DEFINITIONS
@@ -859,9 +862,18 @@ extern int fc80211_set_app_keepalivetime(unsigned char tid, unsigned int sec,
 										void (*callback_func)(unsigned int tid));
 void da16x_time64_sec(__time64_t *p, __time64_t *cur_sec);
 void da16x_time64_msec(__time64_t *p, __time64_t *cur_msec);
+
 void user_time64_msec_since_poweron(__time64_t *cur_msec) {
-	da16x_time64_msec(NULL, cur_msec);
+	unsigned long long time_ms;
+	unsigned long long rtc;
+
+	rtc = RTC_GET_COUNTER();
+
+	time_ms = CLK2MS(rtc); /* msec. */
+
+	*cur_msec = time_ms; /* msec */
 }
+
 extern int get_gpio(UINT);
 
 // SDK MQTT function to set up received messages
@@ -895,11 +907,6 @@ __time64_t  user_MQTT_start_msec;  // msec since boot when task started
 __time64_t  user_MQTT_end_msec;  // msec since boot when task ended
 ULONG user_MQTT_task_time_msec;   // run time msec
 
-
-// Macros for converting from RTC clock ticks (msec * 32768) to microseconds
-// and milliseconds
-#define CLK2US(clk)			((((unsigned long long )clk) * 15625ULL) >> 9ULL)
-#define CLK2MS(clk)			((CLK2US(clk))/1000ULL)
 
 
 // LED timer and control functions
