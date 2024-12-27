@@ -875,6 +875,7 @@ void user_time64_msec_since_poweron(__time64_t *cur_msec) {
 }
 
 extern int get_gpio(UINT);
+extern unsigned char get_fault_count(void);
 
 // SDK MQTT function to set up received messages
 //void mqtt_client_set_msg_cb(void (*user_cb)(const char *buf, int len, const char *topic));
@@ -1948,6 +1949,7 @@ int send_json_packet (int startAdd, packetDataStruct pData, int msg_number, int 
 	 */
 	uint16_t adcData;
 	float adcDataFloat;
+	unsigned char fault_count;
 
 	uint16_t write_data;
 
@@ -2030,10 +2032,21 @@ int send_json_packet (int startAdd, packetDataStruct pData, int msg_number, int 
 			pUserData->MQTT_timesync_current_time_str, buf);
 	strcat(mqttMessage,str);
 
+	/* get battery value */
+	adcDataFloat = get_battery_voltage();
+	//	    PRINTF("Current ADC Value: %d\n",(uint16_t)(adcDataFloat * 100));
+	// Battery voltage in centivolts
+	sprintf(str,"\t\t\t\"bat\": %d,\r\n",(uint16_t)(adcDataFloat * 100));
+	strcat(mqttMessage,str);
+
 	// META FIELD DEFINITIONS HERE
 	// Meta data field -- a json for whatever we want.
 	strcat(mqttMessage,"\t\t\t\"meta\":\r\n\t\t\t{\r\n");
-
+	/*
+	* Meta - Firmware Version
+	*/
+	sprintf(str,"\t\t\t\t\"ver\": \"%s\",\r\n", USER_VERSION_STRING);
+	strcat(mqttMessage, str);
 	/*
 	 * Meta - Transmission sequence #
 	 */
@@ -2043,6 +2056,17 @@ int send_json_packet (int startAdd, packetDataStruct pData, int msg_number, int 
 	 * Meta - Message sequence this transmission
 	 */
 	sprintf(str,"\t\t\t\t\"seq\": %d,\r\n", sequence);
+	strcat(mqttMessage, str);
+	/*
+	* Meta - Battery value this transmission
+	*/
+	sprintf(str,"\t\t\t\t\"bat\": %d,\r\n",(uint16_t)(adcDataFloat * 100));
+	strcat(mqttMessage, str);
+	/*
+	* Meta - Fault count at this transmission
+	*/
+	fault_count = get_fault_count();
+	sprintf(str,"\t\t\t\t\"fault\": %d,\r\n",(uint16_t)(fault_count));
 	strcat(mqttMessage, str);
 	/*
 	 * Meta - flash error code for packet
@@ -2063,12 +2087,7 @@ int send_json_packet (int startAdd, packetDataStruct pData, int msg_number, int 
 	// End meta data field (close bracket)
 	strcat(mqttMessage,"\t\t\t},\r\n");
 
-	/* get battery value */
-	adcDataFloat = get_battery_voltage();
-//	    PRINTF("Current ADC Value: %d\n",(uint16_t)(adcDataFloat * 100));
-	// Battery voltage in centivolts
-	sprintf(str,"\t\t\t\"bat\": %d,\r\n",(uint16_t)(adcDataFloat * 100));
-	strcat(mqttMessage,str);
+
 
 //	PRINTF(">> JSON preamble: %s\n", mqttMessage); // FRSDEBUG
 
@@ -8178,6 +8197,8 @@ static void user_init(void)
 	int runMode;
 	char *pResultStr = NULL;
 	UINT32 count;
+
+
 
 #if defined(__RUNTIME_CALCULATION__) && defined(XIP_CACHE_BOOT)
 	printf_with_run_time("Start user_init");
