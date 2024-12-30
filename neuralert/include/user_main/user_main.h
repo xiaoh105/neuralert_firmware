@@ -50,7 +50,9 @@ extern int    factory_rst_led;
 extern int    factory_rst_btn_chk_time;
 
 extern int    wps_btn;
+#if defined ( __SUPPORT_EVK_LED__ )
 extern int    wps_led;
+#endif    // __SUPPORT_EVK_LED__
 extern int    wps_btn_chk_time;
 
 #if defined ( __SUPPORT_NOTIFY_RTC_WAKEUP__ )
@@ -169,6 +171,8 @@ extern UINT	wlaninit(void);
  */
 extern void initialize_bt_coex(void);
 
+
+#if defined ( __SUPPORT_EVK_LED__ )
 /*
  ****************************************************************************************
  * @brief      Set Factory-Reset button configuration
@@ -212,6 +216,50 @@ extern UINT    check_factory_button(int btn_gpio_num, int led_gpio_num, int chec
  ****************************************************************************************
  */
 extern UINT    check_wps_button(int btn_gpio_num, int led_gpio_num, int check_time);
+
+#else
+/*
+ ****************************************************************************************
+ * @brief      Set Factory-Reset button configuration
+ * @param[in]  reset_gpio  GPIO pin number for Factory-Reset button
+ * @param[in]  seconds     Checking time for button press ( seconds )
+ * @return     None
+ ****************************************************************************************
+ */
+extern void    config_factory_reset_button(int reset_gpio, int seconds);
+
+/*
+ ****************************************************************************************
+ * @brief      Set Wi-Fi WPS button configuration
+ * @param[in]  reset_gpio  GPIO pin number for Factory-Reset button
+ * @param[in]  seconds     Checking time for button press ( seconds )
+ * @return     None
+ ****************************************************************************************
+ */
+extern void config_wps_button(int wps_gpio, int seconds);
+
+/*
+ ****************************************************************************************
+ * @brief      Check button press status for Factory-Reset button
+ * @param[in]  reset_gpio  GPIO pin number for Factory-Reset button
+ * @param[in]  seconds     Checking time for button press ( seconds )
+ * @return     None
+ ****************************************************************************************
+ */
+extern UINT    check_factory_button(int btn_gpio_num, int check_time);
+
+/*
+ ****************************************************************************************
+ * @brief      Check button press status for Wi-Fi WPS button
+ * @param[in]  wps_gpio    GPIO pin number for Wi-FI WPS button
+ * @param[in]  seconds     Checking time for button press ( seconds )
+ * @return     None
+ ****************************************************************************************
+ */
+extern UINT    check_wps_button(int btn_gpio_num, int check_time);
+
+#endif    // __SUPPORT_EVK_LED__
+
 
 /*
  ****************************************************************************************

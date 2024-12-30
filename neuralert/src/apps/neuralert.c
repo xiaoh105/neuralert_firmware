@@ -591,6 +591,7 @@ typedef struct _userData {
 	unsigned int MQTT_stats_connect_attempts;	// stats: # times we tried
 	unsigned int MQTT_stats_connect_fails;	// # times we've failed to connect
 	unsigned int MQTT_stats_packets_sent;	// # times we've successfully sent a packet
+	unsigned int MQTT_stats_packets_sent_last; // the value of MQTT_stats_packets_sent the last time we chaecked.
 	unsigned int MQTT_stats_retry_attempts; // # times we've attempted a transmit retry
 	unsigned int MQTT_stats_transmit_success;	// # times we were successful at uploading all the data
 	unsigned int MQTT_dropped_data_events;	// # times MQTT had to skip data because it was catching up to AXL
@@ -876,6 +877,7 @@ void user_time64_msec_since_poweron(__time64_t *cur_msec) {
 
 extern int get_gpio(UINT);
 extern unsigned char get_fault_count(void);
+extern void clr_fault_count();
 
 // SDK MQTT function to set up received messages
 //void mqtt_client_set_msg_cb(void (*user_cb)(const char *buf, int len, const char *topic));
@@ -999,21 +1001,27 @@ static void notify_user_LED()
 	}// system state
 #endif // JW: deprecated 10.4
 
-	if (SYSTEM_STATE_BIT_ACTIVE(USER_STATE_WIFI_CONNECT_FAILED))
+
+	if (0 != pUserData->system_state_map)
+		if (SYSTEM_STATE_BIT_ACTIVE(USER_STATE_WIFI_CONNECT_FAILED))
+		{
+			setLEDState(YELLOW, LED_FAST, 200, 0, LED_OFFX, 0, 200); // fast blink yellow
+		}
+		else if (SYSTEM_STATE_BIT_ACTIVE(USER_STATE_WIFI_CONNECTED))
+		{
+			setLEDState(GREEN, LED_ONX, 200, 0, LED_OFFX, 0, 200); // steady green
+		}
+		else if (SYSTEM_STATE_BIT_ACTIVE(USER_STATE_POWER_ON_BOOTUP))
+		{
+			setLEDState(BLUE, LED_FAST, 200, 0, LED_OFFX, 0, 200); // fast blink blue
+		}
+		else // No known state
+		{
+			setLEDState(BLACK, LED_OFFX, 0, 0, LED_OFFX, 0, 200);
+		}
+	else
 	{
-		setLEDState(YELLOW, LED_FAST, 200, 0, LED_OFF, 0, 200); // fast blink yellow
-	}
-	else if (SYSTEM_STATE_BIT_ACTIVE(USER_STATE_WIFI_CONNECTED))
-	{
-		setLEDState(GREEN, LED_ON, 200, 0, LED_OFF, 0, 200); // steady green
-	}
-	else if (SYSTEM_STATE_BIT_ACTIVE(USER_STATE_POWER_ON_BOOTUP))
-	{
-		setLEDState(BLUE, LED_FAST, 200, 0, LED_OFF, 0, 200); // fast blink blue
-	}
-	else // No known state
-	{
-		setLEDState(0, LED_OFF, 0, 0, LED_OFF, 0, 200);
+		setLEDState(BLACK, LED_OFFX, 0, 0, LED_OFFX, 0, 200);
 	}
 }
 
@@ -1052,6 +1060,8 @@ static void set_sole_system_state(UINT32 state_to_set)
 
 }
 
+
+#if 0
 /**
  *******************************************************************************
  * @brief Set a system alert bit and change LED colors
@@ -1067,7 +1077,10 @@ static void set_system_alert(UINT32 alert_to_set)
 	notify_user_LED();
 
 }
+#endif
 
+//JW: deprecated  1.10.11
+#if 0
 /**
  *******************************************************************************
  * @brief Clear a system alert bit and change LED colors
@@ -1082,6 +1095,7 @@ static void clear_system_alert(UINT32 alert_to_clear)
 	// Change the LED color if necessary
 	notify_user_LED();
 }
+#endif
 
 
 /**
@@ -2066,7 +2080,7 @@ int send_json_packet (int startAdd, packetDataStruct pData, int msg_number, int 
 	* Meta - Fault count at this transmission
 	*/
 	fault_count = get_fault_count();
-	sprintf(str,"\t\t\t\t\"fault\": %d,\r\n",(uint16_t)(fault_count));
+	sprintf(str,"\t\t\t\t\"fault\": %d,\r\n", (uint16_t)fault_count);
 	strcat(mqttMessage, str);
 	/*
 	 * Meta - flash error code for packet
@@ -3483,7 +3497,7 @@ void user_retry_transmit(void)
     da16x_sys_watchdog_notify_and_resume(sys_wdog_id);
 
 	// Clear system state so LEDs are off, unless there's an alert
-	set_sole_system_state(0);
+	set_sole_system_state(USER_STATE_CLEAR);
 
 	// Set the process bits for a clean retry
 	SET_PROCESS_BIT(processLists, USER_PROCESS_MQTT_TRANSMIT);
@@ -3860,6 +3874,7 @@ static void user_process_send_MQTT_data(void* arg)
 	// Our transmit extent was calculated above
 	msg_sequence = 0;
 	++pUserData->MQTT_message_number;  // Increment transmission #
+	pUserData->MQTT_inflight = 0; // This is a new transmission, clear any lingering inflight issues
 
 	//JW: the old FIFO way worked as if the flash was static during transmission,
 	// the new LIMO way doesn't make this assumption (and is more robust).  Thus,
@@ -4375,6 +4390,7 @@ static void user_create_MQTT_task()
 	// Prior to starting to transmit data, we need to store the message id state
 	// so we have unique message ids for each client message
 	mosq_sub->last_mid = pUserData->MQTT_last_message_id;
+
 
 	create_status = xTaskCreate(
 			user_process_send_MQTT_data,
@@ -6699,8 +6715,48 @@ static void increment_MQTT_stat(unsigned int *stat)
 	{
 		Printf("\n ***print stats: Stats semaphore not initialized!\n");
 	}
+}
 
 
+/*
+ * ******************************************************************************
+ * @brief check whether data has been transmitted since the last time we checked
+ *
+ * ******************************************************************************
+ */
+static int check_tx_progress(void)
+{
+	int ret = pdFALSE;
+	if(Stats_semaphore != NULL )
+	{
+		/* See if we can obtain the semaphore.  If the semaphore is not
+			available wait 10 ticks to see if it becomes free. */
+		if( xSemaphoreTake( Stats_semaphore, ( TickType_t ) 10 ) == pdTRUE )
+		{
+			/* We were able to obtain the semaphore and can now access the
+				shared resource. */
+
+			if (pUserData->MQTT_stats_packets_sent > pUserData->MQTT_stats_packets_sent_last) {
+				pUserData->MQTT_stats_packets_sent_last = pUserData->MQTT_stats_packets_sent; //
+				ret = pdTRUE;
+			}
+
+			/* We have finished accessing the shared resource.  Release the
+				semaphore. */
+			xSemaphoreGive( Stats_semaphore );
+		}
+		else
+		{
+			Printf("\n ***print stats: Unable to obtain Stats semaphore\n");
+		}
+	}
+	else
+	{
+		Printf("\n ***print stats: Stats semaphore not initialized!\n");
+	}
+
+
+	return ret;
 }
 
 
@@ -7356,7 +7412,7 @@ static int user_process_read_data(void)
 	ULONG ms_since_last_read;
 	int archive_status;
 	int erase_happened;		// tells us if an erase sector has happened
-	int mqtt_started;		// tells us if we started the mqtt task
+	//int mqtt_started;		// tells us if we started the mqtt task
 	int max_display;		// temp to figure out last active "try" position
 
 	// Make known to other processes that we are active
@@ -7657,7 +7713,7 @@ static int user_process_read_data(void)
 
 	PRINTF(" ACCEL log stats trigger: %d of %d\n",
 			pUserData->ACCEL_log_stats_trigger, (int)AXL_LOG_STATS_TRIGGER_COUNT);
-	mqtt_started = pdFALSE;
+	//mqtt_started = pdFALSE;
 	if(pUserData->ACCEL_log_stats_trigger >= AXL_LOG_STATS_TRIGGER_COUNT)
 	{
 		log_operating_info();
@@ -7671,24 +7727,25 @@ static int user_process_read_data(void)
 
 	PRINTF(" ACCEL transmit trigger: %d of %d\n",
 			pUserData->ACCEL_transmit_trigger, (int)MQTT_TRANSMIT_TRIGGER_FIFO_BUFFERS);
-	mqtt_started = pdFALSE;
+	//mqtt_started = pdFALSE;
 	if(pUserData->ACCEL_transmit_trigger >= MQTT_TRANSMIT_TRIGGER_FIFO_BUFFERS)
 	{
-		mqtt_started = pdTRUE;
-		increment_MQTT_stat(&(pUserData->MQTT_stats_connect_attempts));
+
 		// Check if MQTT is still active before starting again
 		if (PROCESS_BIT_SET(processLists, USER_PROCESS_MQTT_TRANSMIT))
 		{
-			user_log_error("MQTT task still active. Stopping transmission.");
-			increment_MQTT_stat(&(pUserData->MQTT_stats_connect_fails));
-			user_terminate_transmit();
+			if (!check_tx_progress())
+			{
+				user_log_error("MQTT task still active and not making progress. Stopping transmission.");
+				user_terminate_transmit();
+			}
+
 		}
 		else
 		{
 			// Send the event that will start the MQTT transmit task
+			increment_MQTT_stat(&(pUserData->MQTT_stats_connect_attempts));
 			user_start_data_tx();
-			//user_create_MQTT_task(); JW: This is called via MQTT connection callback now
-
 		}
 
 		// Reset our transmit trigger counter
@@ -7981,6 +8038,7 @@ printf_with_run_time("Starting boot event process");
 	pUserData->MQTT_stats_retry_attempts = 0;
 	pUserData->MQTT_stats_transmit_success = 0;
 	pUserData->MQTT_message_number = 0;
+	pUserData->MQTT_stats_packets_sent_last = 0;
 
 	pUserData->MQTT_dropped_data_events = 0;
 	pUserData->MQTT_last_message_id = 0;
@@ -8307,8 +8365,9 @@ static void user_init(void)
 		 * woke up
 		 */
 		switch (wakeUpMode) {
-		case WAKEUP_RESET:
 		case WAKEUP_SOURCE_POR:
+			//clr_fault_count(); // JW: The fault counter isn't cleared
+		case WAKEUP_RESET:
 		case WAKEUP_WATCHDOG:
 			// Power-on reset (once when device is activated)
 			isSysNormalBoot = pdTRUE;
@@ -8520,7 +8579,7 @@ void tcp_client_sleep2_sample(void *param)
 	{
 		// State mechanism isn't up and running yet, so
 		// signal LEDs manually
-		setLEDState(CYAN, LED_SLOW, 200, 0, LED_OFF, 0, 200);
+		setLEDState(CYAN, LED_SLOW, 200, 0, LED_OFFX, 0, 200);
 
 		// Allow time for console to settle
 		vTaskDelay(pdMS_TO_TICKS(100));
