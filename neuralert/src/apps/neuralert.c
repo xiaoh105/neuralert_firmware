@@ -8365,20 +8365,22 @@ static void user_init(void)
 		 * woke up
 		 */
 		switch (wakeUpMode) {
-		case WAKEUP_SOURCE_POR:
-			//clr_fault_count(); // JW: The fault counter isn't cleared
-		case WAKEUP_RESET:
-		case WAKEUP_WATCHDOG:
-			// Power-on reset (once when device is activated)
-			isSysNormalBoot = pdTRUE;
-			user_send_bootup_event_message();
-			break;
 
-		case WAKEUP_SOURCE_EXT_SIGNAL:
-		case WAKEUP_EXT_SIG_WITH_RETENTION:
-			// Accelerometer interrupt woke us from sleep
-			user_wakeup_by_rtckey_event();
-			break;
+			case WAKEUP_SOURCE_EXT_SIGNAL:
+			case WAKEUP_EXT_SIG_WITH_RETENTION:
+				// Accelerometer interrupt woke us from sleep
+				user_wakeup_by_rtckey_event();
+				break;
+
+			case WAKEUP_SOURCE_POR:
+				//clr_fault_count(); // JW: The fault counter isn't cleared
+			case WAKEUP_RESET:
+			case WAKEUP_WATCHDOG:
+				// Power-on reset (once when device is activated)
+			default:
+				isSysNormalBoot = pdTRUE;
+				user_send_bootup_event_message();
+				break;
 
 		}
 	} else if (runMode == SYSMODE_AP_ONLY) {
