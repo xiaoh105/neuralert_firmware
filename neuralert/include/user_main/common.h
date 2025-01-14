@@ -125,9 +125,9 @@ enum LEDSTATE
 
 // To get actual voltage reading, use the ration 54/25, which is the
 // ratio of the voltage divider going into the ADC
-#define VREF 1.4
-#define VREF_LOW 1.29
-#define VREF_EXHAUSTED 1.17
+#define VREF 1.4 // 1.4
+#define VREF_LOW 1.29 // 1.29
+#define VREF_EXHAUSTED 1.17 // 1.17
 //#define VREF_EXHAUSTED 1.24
 // Older values originally from Tim
 //#define VREF 3.3
