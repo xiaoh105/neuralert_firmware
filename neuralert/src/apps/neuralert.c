@@ -879,6 +879,7 @@ extern int get_gpio(UINT);
 extern unsigned char get_fault_count(void);
 extern void clr_fault_count();
 
+
 // SDK MQTT function to set up received messages
 //void mqtt_client_set_msg_cb(void (*user_cb)(const char *buf, int len, const char *topic));
 
@@ -2081,6 +2082,7 @@ int send_json_packet (int startAdd, packetDataStruct pData, int msg_number, int 
 	*/
 	fault_count = get_fault_count();
 	sprintf(str,"\t\t\t\t\"fault\": %d,\r\n", (uint16_t)fault_count);
+  
 	strcat(mqttMessage, str);
 	/*
 	 * Meta - flash error code for packet
