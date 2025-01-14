@@ -77,6 +77,7 @@ static void user_wifi_disconn(void *arg);
 extern void	tcp_client_sleep2_sample(void *param);
 extern void user_start_MQTT_client();
 extern void user_terminate_transmit();
+extern UINT8 system_state_clear();
 
 /******************************************************************************
  * Local variables
@@ -139,8 +140,12 @@ static void user_wifi_conn(void *arg)
             xEventGroupClearBits(evt_grp_wifi_conn_notify, WIFI_CONN_SUCC_STA);
 
             PRINTF("\n### User Call-back : Success to connect Wi-Fi ...\n");
+            if (system_state_clear()) {
+                user_start_MQTT_client();
+            } else {
+                PRINTF("\n### System State not clear : Not attempting MQTT connection\n");
+            }
 
-            user_start_MQTT_client();
             
        } else if (wifi_conn_ev_bits & WIFI_CONN_SUCC_SOFTAP) {
             xEventGroupClearBits(evt_grp_wifi_conn_notify, WIFI_CONN_SUCC_SOFTAP);
