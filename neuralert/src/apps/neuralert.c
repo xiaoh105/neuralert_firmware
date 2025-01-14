@@ -80,6 +80,7 @@ extern void user_start_MQTT_client();
 #define SET_PROCESS_BIT(src, bit)				(src |= bit)
 #define CLR_PROCESS_BIT(src, bit)				(src &= (~bit))
 #define PROCESS_BIT_SET(src, bit)				((src & bit) == bit)
+#define USER_STATE_BIT_SET(src, bit)			((src & bit) == bit)
 
 /* Events */
 #define USER_TERMINATE_EVENT					(1 << 0)
@@ -824,6 +825,7 @@ static UserDataBuffer *pUserData = NULL;
  *******************************************************************************
  */
 //static void user_process_timer_event(void); // JW: TO BE REMOVED -- DEPRECATED
+UINT8 system_state_bootup(void);
 static int user_process_connect_ap(void);
 //static int check_connection_status(void);
 static void user_create_MQTT_task(void);
@@ -858,6 +860,7 @@ static void timesync_snapshot(void);
  * EXTERN FUNCTIONS DEFINITIONS
  *******************************************************************************
  */
+extern void system_control_wlan_enable(uint8_t onoff);
 extern void wifi_cs_rf_cntrl(int flag);
 extern int fc80211_set_app_keepalivetime(unsigned char tid, unsigned int sec,
 										void (*callback_func)(unsigned int tid));
@@ -1059,6 +1062,21 @@ static void set_sole_system_state(UINT32 state_to_set)
 	// Change the LED color if necessary
 	notify_user_LED();
 
+}
+
+/**
+ *******************************************************************************
+ * @brief Set a system state bit as the only state and change LED colors
+ *******************************************************************************
+ */
+
+UINT8 system_state_clear()
+{
+	// check if the system state is clear
+	if (pUserData->system_state_map == USER_STATE_CLEAR) {
+		return pdTRUE;
+	}
+	return pdFALSE;
 }
 
 
@@ -7966,8 +7984,6 @@ printf_with_run_time("Starting boot event process");
 		log_current_time("Bootup WIFI. ");
 
 		set_sole_system_state(USER_STATE_WIFI_CONNECTED);
-		// Delay to allow it to be seen
-		vTaskDelay(pdMS_TO_TICKS(3000));
 	}
 	else
 	{
@@ -7978,9 +7994,12 @@ printf_with_run_time("Starting boot event process");
 		// successful internet time connection.
 		log_current_time("Bootup no WIFI. ");
 		set_sole_system_state(USER_STATE_WIFI_CONNECT_FAILED);
-		// Delay to allow it to be seen
-		vTaskDelay(pdMS_TO_TICKS(3000));
 	}
+
+	// Turn off the wifi, we've already established we can connect or not.
+	wifi_cs_rf_cntrl(FALSE); // RF now off
+	vTaskDelay(pdMS_TO_TICKS(1000)); // Delay to allow LEDs to be seen (and to let the wifi turn off)
+	// NOTE: set_sole_system_state(USER_STATE_CLEAR) will be called after the first accelerometer interupt.
 
 	// Whether WIFI is connected or not, see if we can obtain our
 	// MAC address
@@ -8004,7 +8023,7 @@ printf_with_run_time("Starting boot event process");
 	sprintf(user_log_string_temp, "Unique device ID: %s", MACaddr);
 	user_log_event(user_log_string_temp);
 
-
+	// Just in case the autoconnect got turned on, make sure it is off
 	user_process_disable_auto_connection();
 
 	// Initialize the accelerometer buffer external flash
@@ -8052,15 +8071,12 @@ printf_with_run_time("Starting boot event process");
 
 	// Initialize the accelerometer and enable the AXL interrupt
 	user_initialize_accelerometer();
-	
-	// Stop the wifi once bootup is done.
-	user_terminate_transmit();
 
 	// Close the SPI handle opened in AB init
 //	spi_status = flash_close(SPI);
 
 #ifdef CFG_USE_SYSTEM_CONTROL
-	// Disabling WLAN at the next boot. : This is an example.
+	// Disabling WLAN at the next boot.
 	system_control_wlan_enable(FALSE);
 #endif
 
