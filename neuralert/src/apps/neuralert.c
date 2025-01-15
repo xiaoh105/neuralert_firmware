@@ -7998,14 +7998,18 @@ printf_with_run_time("Starting boot event process");
 
 	// Turn off the wifi, we've already established we can connect or not.
 	wifi_cs_rf_cntrl(FALSE); // RF now off
-	vTaskDelay(pdMS_TO_TICKS(1000)); // Delay to allow LEDs to be seen (and to let the wifi turn off)
+	vTaskDelay(pdMS_TO_TICKS(3000)); // Delay to allow LEDs to be seen (and to let the wifi turn off)
 	// NOTE: set_sole_system_state(USER_STATE_CLEAR) will be called after the first accelerometer interupt.
+
+
 
 	// Whether WIFI is connected or not, see if we can obtain our
 	// MAC address
 	// Check our MAC string used as a unique device identifier
 	// ***NOTE*** when we tried to do this earlier in the boot sequence
 	// it caused a hard fault.  It hasn't been tested when WIFI doesn't connect
+	PRINTF("JIM IS BEFORE THE DEVICE ID\n");
+	vTaskDelay(pdMS_TO_TICKS(1000));
 	memset(macstr, 0, 18);
 	memset(MACaddr, 0,7);
 	MACaddrtype = getMACAddrStr(1, macstr);  // Hex digits string together
@@ -8017,8 +8021,13 @@ printf_with_run_time("Starting boot event process");
 	MACaddr[5] = macstr[16];
 	PRINTF(" MAC address - %s (type: %d)\n", macstr, MACaddrtype);
 
+
+	PRINTF("JIM IS BEFORE THE DEVICE ID\n");
+	vTaskDelay(pdMS_TO_TICKS(1000));
 	strcpy (pUserData->Device_ID, MACaddr);
 	PRINTF(" Unique device ID: %s\n", MACaddr);
+	PRINTF("JIM IS AFTER THE DEVICE ID\n");
+	vTaskDelay(pdMS_TO_TICKS(1000));
 
 	sprintf(user_log_string_temp, "Unique device ID: %s", MACaddr);
 	user_log_event(user_log_string_temp);
