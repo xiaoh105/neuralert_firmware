@@ -114,6 +114,7 @@ extern void user_start_MQTT_client();
 #define USER_STATE_POWER_ON_BOOTUP				(1 << 0)
 #define USER_STATE_WIFI_CONNECTED				(1 << 1)
 #define USER_STATE_WIFI_CONNECT_FAILED			(1 << 2)
+#define USER_STATE_NO_DATA_COLLECTION			(1 << 3)
 
 
 // JW: These were the old USER states for the LEDs. I have noted the ones that were
@@ -1013,11 +1014,15 @@ static void notify_user_LED()
 		}
 		else if (SYSTEM_STATE_BIT_ACTIVE(USER_STATE_WIFI_CONNECTED))
 		{
-			setLEDState(GREEN, LED_ONX, 200, 0, LED_OFFX, 0, 200); // steady green
+			setLEDState(GREEN, LED_FAST, 200, 0, LED_OFFX, 0, 200); // fast blink green
 		}
 		else if (SYSTEM_STATE_BIT_ACTIVE(USER_STATE_POWER_ON_BOOTUP))
 		{
 			setLEDState(BLUE, LED_FAST, 200, 0, LED_OFFX, 0, 200); // fast blink blue
+		}
+		else if (SYSTEM_STATE_BIT_ACTIVE(USER_STATE_NO_DATA_COLLECTION))
+		{
+			setLEDState(CYAN, LED_ONX, 200, 0, LED_OFFX, 0, 200); // steady cyan
 		}
 		else // No known state
 		{
@@ -7895,7 +7900,7 @@ static int user_process_bootup_event(void)
 	int spi_status;
 	int status;
 	char MQTT_topic[MQTT_PASSWORD_MAX_LEN] = {0, }; // password has the max length in str type
-	int MACaddrtype;
+	int MACaddrtype = 0;
 	UCHAR time_string[20];
 
 	PRINTF("\n********** Neuralert bootup event ***********\n");
@@ -7963,7 +7968,7 @@ printf_with_run_time("Starting boot event process");
 	// If we're unable to connect, then we should let the user know via
 	// the LEDs
 	PRINTF("\n...Delay for reset and stabilization...\n\n");
-	vTaskDelay(pdMS_TO_TICKS(15000));
+	vTaskDelay(pdMS_TO_TICKS(10000));
 	PRINTF("\n...End stabilization delay...\n\n");
 	
 
@@ -7997,18 +8002,25 @@ printf_with_run_time("Starting boot event process");
 	}
 
 	// Turn off the wifi, we've already established we can connect or not.
-	wifi_cs_rf_cntrl(FALSE); // RF now off
-	vTaskDelay(pdMS_TO_TICKS(1000)); // Delay to allow LEDs to be seen (and to let the wifi turn off)
+	wifi_cs_rf_cntrl(TRUE); // RF now off
+	vTaskDelay(pdMS_TO_TICKS(3000)); // Delay to allow LEDs to be seen (and to let the wifi turn off)
+	set_sole_system_state(USER_STATE_NO_DATA_COLLECTION);
 	// NOTE: set_sole_system_state(USER_STATE_CLEAR) will be called after the first accelerometer interupt.
+
+
 
 	// Whether WIFI is connected or not, see if we can obtain our
 	// MAC address
 	// Check our MAC string used as a unique device identifier
 	// ***NOTE*** when we tried to do this earlier in the boot sequence
 	// it caused a hard fault.  It hasn't been tested when WIFI doesn't connect
+
 	memset(macstr, 0, 18);
 	memset(MACaddr, 0,7);
-	MACaddrtype = getMACAddrStr(1, macstr);  // Hex digits string together
+	while (MACaddrtype == 0) { // we need the MACaddr -- without it, data packets will be wrong.
+		MACaddrtype = getMACAddrStr(1, macstr);  // Hex digits string together
+		vTaskDelay(10);
+	}
 	MACaddr[0] = macstr[9];
 	MACaddr[1] = macstr[10];
 	MACaddr[2] = macstr[12];
@@ -8016,6 +8028,7 @@ printf_with_run_time("Starting boot event process");
 	MACaddr[4] = macstr[15];
 	MACaddr[5] = macstr[16];
 	PRINTF(" MAC address - %s (type: %d)\n", macstr, MACaddrtype);
+	vTaskDelay(10); // Delay needed here to let the print statement finish before strcpy is called next.
 
 	strcpy (pUserData->Device_ID, MACaddr);
 	PRINTF(" Unique device ID: %s\n", MACaddr);
@@ -8028,7 +8041,6 @@ printf_with_run_time("Starting boot event process");
 
 	// Initialize the accelerometer buffer external flash
 	user_process_initialize_AB();
-
 	user_log_event("*** Accelerometer flash buffering initialized");
 
 	pUserData->ACCEL_missed_interrupts = 0;
