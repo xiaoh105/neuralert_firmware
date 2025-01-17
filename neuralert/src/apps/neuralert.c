@@ -102,20 +102,25 @@ extern void user_start_MQTT_client();
 #define USER_PROCESS_MQTT_STOP					(1 << 4)
 #define USER_PROCESS_WATCHDOG					(1 << 5)
 #define	USER_PROCESS_WATCHDOG_STOP				(1 << 6)
+#define USER_PROCESS_BOOTUP						(1 << 7)
+#define USER_PROCESS_BLOCK_MQTT					(1 << 8)
 
 
 // System states for LED management
 // The intent is that only one state will be active at one
 // time
 // Note that zero is the default "accelerometer wake/sleep" state
+// JW: we're now using the processList to control LEDs and don't need user state anymore
 
 
+// JW: These were old USER states for the LEDs -- deprecated in 10.14
+#if 0
 #define USER_STATE_CLEAR						0
 #define USER_STATE_POWER_ON_BOOTUP				(1 << 0)
 #define USER_STATE_WIFI_CONNECTED				(1 << 1)
 #define USER_STATE_WIFI_CONNECT_FAILED			(1 << 2)
 #define USER_STATE_NO_DATA_COLLECTION			(1 << 3)
-
+#endif
 
 // JW: These were the old USER states for the LEDs. I have noted the ones that were
 // deprecated.
@@ -342,6 +347,11 @@ extern void user_start_MQTT_client();
 //#define MQTT_TRANSMIT_TRIGGER_FIFO_BUFFERS 176
 //#define MQTT_TRANSMIT_TRIGGER_FIFO_BUFFERS 208
 //#define MQTT_TRANSMIT_TRIGGER_FIFO_BUFFERS 272
+
+// This value if for the first transmission, which we want to occur relatively quickly after bootup.
+// each FIFO trigger is about 2 seconds, so if the following is set to 5, it will start the transmit
+// process within approximately 10 seconds.
+#define MQTT_FIRST_TRANSMIT_TRIGGER_FIFO_BUFFERS 5
 
 // This is how long to wait for MQTT to stop before shutting the wifi down
 // regardless of whether MQTT has cleanly exited.
@@ -790,6 +800,7 @@ static UserDataBuffer *pUserData = NULL;
 // Macros for setting, clearing, and checking system states
 // Only for use by the set & clear functions, which also
 // make sure the LED reflects the new state information
+#define SET_SYSTEM_STATE_BIT(bit)		(pUserData->system_state_map |= bit)
 #define CLEAR_SYSTEM_STATE_BIT(bit)		(pUserData->system_state_map &= (~bit))
 #define SYSTEM_STATE_BIT_ACTIVE(bit)	((pUserData->system_state_map & bit) == bit)
 
@@ -1006,7 +1017,7 @@ static void notify_user_LED()
 	}// system state
 #endif // JW: deprecated 10.4
 
-
+#if 0
 	if (0 != pUserData->system_state_map)
 		if (SYSTEM_STATE_BIT_ACTIVE(USER_STATE_WIFI_CONNECT_FAILED))
 		{
@@ -1032,6 +1043,22 @@ static void notify_user_LED()
 	{
 		setLEDState(BLACK, LED_OFFX, 0, 0, LED_OFFX, 0, 200);
 	}
+#endif//JW: deprecated 10.14
+
+	if (0 != processLists)
+		if (PROCESS_BIT_SET(processLists, USER_PROCESS_BOOTUP))
+		{
+			setLEDState(YELLOW, LED_SLOW, 200, 0, LED_OFFX, 0, 300); // slow blink yellow
+		}
+		else // No known state
+		{
+			setLEDState(BLACK, LED_OFFX, 0, 0, LED_OFFX, 0, 200);
+		}
+	else
+	{
+		setLEDState(BLACK, LED_OFFX, 0, 0, LED_OFFX, 0, 200);
+	}
+
 }
 
 /**
@@ -1052,6 +1079,9 @@ static void set_system_state(UINT32 state_to_set)
 }
 #endif
 
+
+// JW: deprecated the need for this function as of 10.14
+#if 0
 /**
  *******************************************************************************
  * @brief Set a system state bit as the only state and change LED colors
@@ -1065,20 +1095,21 @@ static void set_sole_system_state(UINT32 state_to_set)
 	pUserData->system_state_map = state_to_set;
 
 	// Change the LED color if necessary
-	notify_user_LED();
+	//notify_user_LED(); //JW: deprecated in 10.14
 
 }
+#endif
 
 /**
  *******************************************************************************
- * @brief Set a system state bit as the only state and change LED colors
+ * @brief Check if the system is in bootup mode
  *******************************************************************************
  */
 
-UINT8 system_state_clear()
+UINT8 check_mqtt_block()
 {
 	// check if the system state is clear
-	if (pUserData->system_state_map == USER_STATE_CLEAR) {
+	if (PROCESS_BIT_SET(processLists, USER_PROCESS_BLOCK_MQTT)) {
 		return pdTRUE;
 	}
 	return pdFALSE;
@@ -2103,9 +2134,18 @@ int send_json_packet (int startAdd, packetDataStruct pData, int msg_number, int 
 	/*
 	* Meta - Fault count at this transmission
 	*/
+	if (PROCESS_BIT_SET(processLists, USER_PROCESS_BOOTUP)) {
+		sprintf(str,"\t\t\t\t\"bootup\": 1,\r\n");
+	} else {
+		sprintf(str,"\t\t\t\t\"bootup\": 0,\r\n");
+	}
+	strcat(mqttMessage, str);
+#if 0
+	/*
+	* Meta - Fault count at this transmission
+	*/
 	fault_count = get_fault_count();
 	sprintf(str,"\t\t\t\t\"fault\": %d,\r\n", (uint16_t)fault_count);
-  
 	strcat(mqttMessage, str);
 	/*
 	 * Meta - flash error code for packet
@@ -2117,6 +2157,7 @@ int send_json_packet (int startAdd, packetDataStruct pData, int msg_number, int 
 	 */
 	sprintf(str,"\t\t\t\t\"errR\": %d,\r\n", pData.nvram_error);
 	strcat(mqttMessage, str);
+#endif
 	/*
 	 * Meta - Remaining free heap size (to monitor for significant leaks)
 	 */
@@ -3179,9 +3220,6 @@ void user_terminate_transmit(void)
     da16x_sys_watchdog_notify(sys_wdog_id);
 	wifi_cs_rf_cntrl(TRUE); // Might need to do this elsewhere
 
-	// Clear system state so LEDs are off, unless there's an alert
-	set_sole_system_state(USER_STATE_CLEAR);
-
 	// Clear the transmit process bit so the system can go to sleep
 	CLR_PROCESS_BIT(processLists, USER_PROCESS_MQTT_TRANSMIT);
 	CLR_PROCESS_BIT(processLists, USER_PROCESS_MQTT_STOP);
@@ -3520,9 +3558,6 @@ void user_retry_transmit(void)
         mqtt_client_stop();
     }
     da16x_sys_watchdog_notify_and_resume(sys_wdog_id);
-
-	// Clear system state so LEDs are off, unless there's an alert
-	set_sole_system_state(USER_STATE_CLEAR);
 
 	// Set the process bits for a clean retry
 	SET_PROCESS_BIT(processLists, USER_PROCESS_MQTT_TRANSMIT);
@@ -4000,8 +4035,10 @@ static void user_process_send_MQTT_data(void* arg)
 			status = send_json_packet (send_start_addr, packet_data,
 					pUserData->MQTT_message_number, msg_sequence);
 			da16x_sys_watchdog_notify_and_resume(sys_wdog_id);
-			if(status == 0)
+			if(status == 0) //Tranmission successful!
 			{
+				CLR_PROCESS_BIT(processLists, USER_PROCESS_BOOTUP); //JW: we have succeeded in a transmission (bootup complete), so clear the process bit.
+				notify_user_LED(); // notify the led
 
 				// Clear the transmission map corresponding to blocks in the packet
 				if (packet_data.start_block > packet_data.end_block)
@@ -4025,7 +4062,6 @@ static void user_process_send_MQTT_data(void* arg)
 						PRINTF("MQTT: transmit map failed to update\n");
 					}
 				}
-
 
 				// Do stats
 				increment_MQTT_stat(&(pUserData->MQTT_stats_packets_sent));
@@ -7755,6 +7791,8 @@ static int user_process_read_data(void)
 	//mqtt_started = pdFALSE;
 	if(pUserData->ACCEL_transmit_trigger >= MQTT_TRANSMIT_TRIGGER_FIFO_BUFFERS)
 	{
+		// kick the LED
+		notify_user_LED();
 
 		// Check if MQTT is still active before starting again
 		if (PROCESS_BIT_SET(processLists, USER_PROCESS_MQTT_TRANSMIT))
@@ -7909,8 +7947,10 @@ static int user_process_bootup_event(void)
 #if defined(__RUNTIME_CALCULATION__) && defined(XIP_CACHE_BOOT)
 printf_with_run_time("Starting boot event process");
 #endif
-
-	set_sole_system_state(USER_STATE_POWER_ON_BOOTUP);
+	SET_PROCESS_BIT(processLists, USER_PROCESS_BOOTUP);
+	SET_PROCESS_BIT(processLists, USER_PROCESS_BLOCK_MQTT);
+	notify_user_LED();
+	// set_sole_system_state(USER_STATE_POWER_ON_BOOTUP); //JW: deprecated 10.14
 
 	// Do early initialization of the intermediate logging area
 	// so that any information during bootup can be captured
@@ -7972,6 +8012,7 @@ printf_with_run_time("Starting boot event process");
 	PRINTF("\n...End stabilization delay...\n\n");
 	
 
+#if 0
 	// So at this point, any network connection activity should have
 	// completed.  If net startup was enabled, it will have attempted
 	// a connection to WIFI.  In that case, we may or may not have WIFI.
@@ -8000,11 +8041,11 @@ printf_with_run_time("Starting boot event process");
 		log_current_time("Bootup no WIFI. ");
 		set_sole_system_state(USER_STATE_WIFI_CONNECT_FAILED);
 	}
+#endif
 
 	// Turn off the wifi, we've already established we can connect or not.
 	wifi_cs_rf_cntrl(TRUE); // RF now off
-	vTaskDelay(pdMS_TO_TICKS(3000)); // Delay to allow LEDs to be seen (and to let the wifi turn off)
-	set_sole_system_state(USER_STATE_NO_DATA_COLLECTION);
+	//set_sole_system_state(USER_STATE_NO_DATA_COLLECTION); //JW: not doing this anymore as of 10.14
 	// NOTE: set_sole_system_state(USER_STATE_CLEAR) will be called after the first accelerometer interupt.
 
 
@@ -8014,6 +8055,7 @@ printf_with_run_time("Starting boot event process");
 	// Check our MAC string used as a unique device identifier
 	// ***NOTE*** when we tried to do this earlier in the boot sequence
 	// it caused a hard fault.  It hasn't been tested when WIFI doesn't connect
+	// JW: fixed bug with strcpy and printf colliding below using vTaskDelay
 
 	memset(macstr, 0, 18);
 	memset(MACaddr, 0,7);
@@ -8044,6 +8086,7 @@ printf_with_run_time("Starting boot event process");
 	user_log_event("*** Accelerometer flash buffering initialized");
 
 	pUserData->ACCEL_missed_interrupts = 0;
+	pUserData->ACCEL_transmit_trigger = MQTT_TRANSMIT_TRIGGER_FIFO_BUFFERS - MQTT_FIRST_TRANSMIT_TRIGGER_FIFO_BUFFERS;
 
 // JW: AXL calibration is deprecated
 #if 0
@@ -8064,7 +8107,6 @@ printf_with_run_time("Starting boot event process");
 	pUserData->last_FIFO_read_time_ms = 0;
 
 	// Initialize the MQTT statistics
-
 	pUserData->MQTT_stats_connect_attempts = 0;
 	pUserData->MQTT_stats_connect_fails = 0;
 	pUserData->MQTT_stats_packets_sent = 0;
@@ -8095,6 +8137,8 @@ printf_with_run_time("Starting boot event process");
 #if defined(__RUNTIME_CALCULATION__) && defined(XIP_CACHE_BOOT)
 printf_with_run_time("Finished boot event process");
 #endif
+
+	CLR_PROCESS_BIT(processLists, USER_PROCESS_BLOCK_MQTT); //stop blocking MQTT
 
 	return ret;
 }
@@ -8185,7 +8229,7 @@ static UCHAR user_process_event(UINT32 event)
 			// t\Turn off LEDs to save power while doing sleep/wake cycle
 			// Note the expectation is that only alerts will show
 			// during wake/sleep and then only important ones
-			set_sole_system_state(USER_STATE_CLEAR);
+			//set_sole_system_state(USER_STATE_CLEAR); //JW: deprecated 10.14
 
 			//dpm_sleep_start_mode_2(TCP_CLIENT_SLP2_PERIOD, TRUE); //JW: This appears to be the way to put to sleep if using dpm -- which we aren't
 			extern void fc80211_da16x_pri_pwr_down(unsigned char retention); //JW: This is probably the correct implemenation
@@ -8522,7 +8566,7 @@ static void user_deinit(void)
 	archive_status = user_archive_log_messages(pdTRUE);
 
 	// Turn off LEDs
-	set_sole_system_state(USER_STATE_CLEAR);
+	//set_sole_system_state(USER_STATE_CLEAR); //JW: deprecated 10.14
 
 	vTaskDelay(pdMS_TO_TICKS(2000));
 
@@ -8611,7 +8655,7 @@ void tcp_client_sleep2_sample(void *param)
 	{
 		// State mechanism isn't up and running yet, so
 		// signal LEDs manually
-		setLEDState(CYAN, LED_SLOW, 200, 0, LED_OFFX, 0, 200);
+		setLEDState(CYAN, LED_SLOW, 200, 0, LED_OFFX, 0, 3600);
 
 		// Allow time for console to settle
 		vTaskDelay(pdMS_TO_TICKS(100));
