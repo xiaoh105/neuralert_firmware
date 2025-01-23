@@ -2108,6 +2108,16 @@ int send_json_packet (int startAdd, packetDataStruct pData, int msg_number, int 
 	sprintf(str,"\t\t\t\"bat\": %d,\r\n",(uint16_t)(adcDataFloat * 100));
 	strcat(mqttMessage,str);
 
+	/*
+	* Bootup - signals whether the device has rebooted
+	*/
+	if (PROCESS_BIT_SET(processLists, USER_PROCESS_BOOTUP)) {
+		sprintf(str,"\t\t\t\"bootup\": 1,\r\n");
+	} else {
+		sprintf(str,"\t\t\t\"bootup\": 0,\r\n");
+	}
+	strcat(mqttMessage, str);
+
 	// META FIELD DEFINITIONS HERE
 	// Meta data field -- a json for whatever we want.
 	strcat(mqttMessage,"\t\t\t\"meta\":\r\n\t\t\t{\r\n");
@@ -2130,15 +2140,6 @@ int send_json_packet (int startAdd, packetDataStruct pData, int msg_number, int 
 	* Meta - Battery value this transmission
 	*/
 	sprintf(str,"\t\t\t\t\"bat\": %d,\r\n",(uint16_t)(adcDataFloat * 100));
-	strcat(mqttMessage, str);
-	/*
-	* Meta - Fault count at this transmission
-	*/
-	if (PROCESS_BIT_SET(processLists, USER_PROCESS_BOOTUP)) {
-		sprintf(str,"\t\t\t\t\"bootup\": 1,\r\n");
-	} else {
-		sprintf(str,"\t\t\t\t\"bootup\": 0,\r\n");
-	}
 	strcat(mqttMessage, str);
 #if 0
 	/*
