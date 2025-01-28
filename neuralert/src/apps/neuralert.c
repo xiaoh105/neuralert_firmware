@@ -356,7 +356,7 @@ extern void user_start_MQTT_client();
 
 // This value is for switching between fast and slow transmit intervals.  When the number of unsuccessful
 // transmissions is less than this value, the fast mode will be used.  Otherwise, the slow mode.
-#define MQTT_TRANSMIT_TRIGGER_FIFO_BUFFERS_TEST 15 // about 15 fast attempts before we revert to slow
+#define MQTT_TRANSMIT_TRIGGER_FIFO_BUFFERS_TEST 10 // about 10 fast attempts before we revert to slow
 
 // This is how long to wait for MQTT to stop before shutting the wifi down
 // regardless of whether MQTT has cleanly exited.
@@ -8495,21 +8495,32 @@ static void user_init(void)
 		 * woke up
 		 */
 		switch (wakeUpMode) {
-
+			// wake up for some reason
 			case WAKEUP_SOURCE_EXT_SIGNAL:
 			case WAKEUP_EXT_SIG_WITH_RETENTION:
 				// Accelerometer interrupt woke us from sleep
 				user_wakeup_by_rtckey_event();
 				break;
 
-			case WAKEUP_SOURCE_POR:
+			//case WAKEUP_SOURCE_POR:
 				//clr_fault_count(); // JW: The fault counter isn't cleared
-			case WAKEUP_RESET:
-			case WAKEUP_WATCHDOG:
+			case WAKEUP_RESET: // This case happens when the device is started
+			//case WAKEUP_WATCHDOG:
 				// Power-on reset (once when device is activated)
-			default:
 				isSysNormalBoot = pdTRUE;
 				user_send_bootup_event_message();
+				break;
+
+			// JW: we are going to force a reboot when any unfamiliar wakup source occurs
+			// This includes watchdog, a fault reset.  The only
+			default:
+				vTaskDelay(10);
+				reboot_func(SYS_REBOOT_POR);
+
+				/* Wait for system-reboot */
+				while (1) {
+					vTaskDelay(10);
+				}
 				break;
 
 		}
