@@ -340,7 +340,8 @@ extern void user_start_MQTT_client();
 // erases the next flash sector before it starts the MQTT task
 // That means that the MQTT task will have 16 AXL interrupt times to
 // operate in before the next erase sector time
-#define MQTT_TRANSMIT_TRIGGER_FIFO_BUFFERS 32 //JW: use this for testing
+#define MQTT_TRANSMIT_TRIGGER_FIFO_BUFFERS_FAST 32
+#define MQTT_TRANSMIT_TRIGGER_FIFO_BUFFERS_SLOW 144
 //#define MQTT_TRANSMIT_TRIGGER_FIFO_BUFFERS 64
 // 144 = 9 x 16 and just about 5 minutes at 29 samples / FIFO
 //#define MQTT_TRANSMIT_TRIGGER_FIFO_BUFFERS 144 // Use this for production
@@ -352,6 +353,10 @@ extern void user_start_MQTT_client();
 // each FIFO trigger is about 2 seconds, so if the following is set to 5, it will start the transmit
 // process within approximately 10 seconds.
 #define MQTT_FIRST_TRANSMIT_TRIGGER_FIFO_BUFFERS 5
+
+// This value is for switching between fast and slow transmit intervals.  When the number of unsuccessful
+// transmissions is less than this value, the fast mode will be used.  Otherwise, the slow mode.
+#define MQTT_TRANSMIT_TRIGGER_FIFO_BUFFERS_TEST 10 // about 10 fast attempts before we revert to slow
 
 // This is how long to wait for MQTT to stop before shutting the wifi down
 // regardless of whether MQTT has cleanly exited.
@@ -603,10 +608,11 @@ typedef struct _userData {
 	unsigned int MQTT_stats_connect_attempts;	// stats: # times we tried
 	unsigned int MQTT_stats_connect_fails;	// # times we've failed to connect
 	unsigned int MQTT_stats_packets_sent;	// # times we've successfully sent a packet
-	unsigned int MQTT_stats_packets_sent_last; // the value of MQTT_stats_packets_sent the last time we chaecked.
+	unsigned int MQTT_stats_packets_sent_last; // the value of MQTT_stats_packets_sent the last time we checked.
 	unsigned int MQTT_stats_retry_attempts; // # times we've attempted a transmit retry
 	unsigned int MQTT_stats_transmit_success;	// # times we were successful at uploading all the data
 	unsigned int MQTT_dropped_data_events;	// # times MQTT had to skip data because it was catching up to AXL
+	unsigned int MQTT_attempts_since_tx_success;  // # times MQTT has consecutively failed to transmit
 	unsigned int MQTT_tx_attempts_remaining; // # times MQTT can attempt to send this packet
 	unsigned int MQTT_inflight;			// indicates the number of inflight messages
 	int MQTT_last_message_id; // indicates the MQTT message ID (ensures uniqueness)
@@ -860,6 +866,7 @@ static int user_write_log_to_flash(USERLOG_ENTRY *pLogData, int *did_an_erase);
 static int get_log_oldest_location(void);
 static int get_log_store_location(void);
 static void log_current_time(UCHAR *PrefixString);
+static void clear_MQTT_stat(unsigned int *stat);
 static void increment_MQTT_stat(unsigned int *stat);
 static void timesync_snapshot(void);
 
@@ -4181,6 +4188,7 @@ static void user_process_send_MQTT_data(void* arg)
 #endif
 #endif // TO BE REMOVED -- DEPRECATED
 
+		clear_MQTT_stat(&(pUserData->MQTT_attempts_since_tx_success));
 		increment_MQTT_stat(&(pUserData->MQTT_stats_transmit_success));
 		sprintf(user_log_string_temp,
 				"MQTT transmission %d complete.  %d samples in %d JSON packets",
@@ -6744,6 +6752,40 @@ int timelen;
 
 }
 
+/*
+ * ******************************************************************************
+ * @brief clear the MQTT stats in a safe manner
+ *
+ * ******************************************************************************
+ */
+static void clear_MQTT_stat(unsigned int *stat)
+{
+
+	if(Stats_semaphore != NULL )
+	{
+		/* See if we can obtain the semaphore.  If the semaphore is not
+			available wait 10 ticks to see if it becomes free. */
+		if( xSemaphoreTake( Stats_semaphore, ( TickType_t ) 10 ) == pdTRUE )
+		{
+			/* We were able to obtain the semaphore and can now access the
+				shared resource. */
+
+			(*stat) = 0;
+			/* We have finished accessing the shared resource.  Release the
+				semaphore. */
+			xSemaphoreGive( Stats_semaphore );
+		}
+		else
+		{
+			Printf("\n ***print stats: Unable to obtain Stats semaphore\n");
+		}
+	}
+	else
+	{
+		Printf("\n ***print stats: Stats semaphore not initialized!\n");
+	}
+}
+
 
 /*
  * ******************************************************************************
@@ -7467,6 +7509,7 @@ static int user_process_read_data(void)
 	INT32 readstatus;
 	int storestatus;
 	int I2Cstatus;
+	unsigned int trigger_value;
 	UINT32 erase_fail_count, write_fail_count;
 	uint8_t ISR_reason;
 	__time64_t assigned_timestamp;		// timestamp to assign to FIFO reading
@@ -7705,6 +7748,7 @@ static int user_process_read_data(void)
 				PRINTF(" Total MQTT packets sent                 : %d\n", pUserData->MQTT_stats_packets_sent);
 				PRINTF(" Total MQTT retry attempts               : %d\n", pUserData->MQTT_stats_retry_attempts);
 				PRINTF(" Total MQTT transmit success             : %d\n", pUserData->MQTT_stats_transmit_success);
+				PRINTF(" MQTT tx attempts since tx success       : %d\n", pUserData->MQTT_attempts_since_tx_success);
 				if(pUserData->MQTT_dropped_data_events > 0)
 				{
 					PRINTF(" Total times transmit buffer wrapped     : %d\n", pUserData->MQTT_dropped_data_events);
@@ -7787,13 +7831,22 @@ static int user_process_read_data(void)
 	// accumulated since the last transmission
 	++pUserData->ACCEL_transmit_trigger;  // Increment FIFO stored
 
+	// Determine the mqtt transmit trigger
+	if (pUserData->MQTT_attempts_since_tx_success <= MQTT_TRANSMIT_TRIGGER_FIFO_BUFFERS_TEST) {
+		trigger_value = MQTT_TRANSMIT_TRIGGER_FIFO_BUFFERS_FAST;
+	} else {
+		trigger_value = MQTT_TRANSMIT_TRIGGER_FIFO_BUFFERS_SLOW;
+	}
 	PRINTF(" ACCEL transmit trigger: %d of %d\n",
-			pUserData->ACCEL_transmit_trigger, (int)MQTT_TRANSMIT_TRIGGER_FIFO_BUFFERS);
+			pUserData->ACCEL_transmit_trigger, trigger_value);
 	//mqtt_started = pdFALSE;
-	if(pUserData->ACCEL_transmit_trigger >= MQTT_TRANSMIT_TRIGGER_FIFO_BUFFERS)
+	if(pUserData->ACCEL_transmit_trigger >= trigger_value)
 	{
 		// kick the LED
 		notify_user_LED();
+
+		// increment MQTT attempt since tx success counter (we're going to try a transmission)
+		increment_MQTT_stat(&(pUserData->MQTT_attempts_since_tx_success));
 
 		// Check if MQTT is still active before starting again
 		if (PROCESS_BIT_SET(processLists, USER_PROCESS_MQTT_TRANSMIT))
@@ -7816,12 +7869,14 @@ static int user_process_read_data(void)
 		pUserData->ACCEL_transmit_trigger = 0;
 	}
 #ifdef CFG_USE_SYSTEM_CONTROL
+#if 0
 	else if (pUserData->ACCEL_transmit_trigger == MQTT_TRANSMIT_TRIGGER_FIFO_BUFFERS - 1)
 	{
 		// Enable WLAN auto start at the next wake from sleep cycle
 		// so that it's ready when we start the MQTT task
 		// system_control_wlan_enable(TRUE); //JW: took this out -- not clear it is needed anymore
 	}
+#endif
 #endif
 
 	// Note - this is here because we had a lot of difficulty getting the
@@ -8087,7 +8142,7 @@ printf_with_run_time("Starting boot event process");
 	user_log_event("*** Accelerometer flash buffering initialized");
 
 	pUserData->ACCEL_missed_interrupts = 0;
-	pUserData->ACCEL_transmit_trigger = MQTT_TRANSMIT_TRIGGER_FIFO_BUFFERS - MQTT_FIRST_TRANSMIT_TRIGGER_FIFO_BUFFERS;
+	pUserData->ACCEL_transmit_trigger = MQTT_TRANSMIT_TRIGGER_FIFO_BUFFERS_FAST - MQTT_FIRST_TRANSMIT_TRIGGER_FIFO_BUFFERS;
 
 // JW: AXL calibration is deprecated
 #if 0
@@ -8440,21 +8495,32 @@ static void user_init(void)
 		 * woke up
 		 */
 		switch (wakeUpMode) {
-
+			// wake up for some reason
 			case WAKEUP_SOURCE_EXT_SIGNAL:
 			case WAKEUP_EXT_SIG_WITH_RETENTION:
 				// Accelerometer interrupt woke us from sleep
 				user_wakeup_by_rtckey_event();
 				break;
 
-			case WAKEUP_SOURCE_POR:
+			//case WAKEUP_SOURCE_POR:
 				//clr_fault_count(); // JW: The fault counter isn't cleared
-			case WAKEUP_RESET:
-			case WAKEUP_WATCHDOG:
+			case WAKEUP_RESET: // This case happens when the device is started
+			//case WAKEUP_WATCHDOG:
 				// Power-on reset (once when device is activated)
-			default:
 				isSysNormalBoot = pdTRUE;
 				user_send_bootup_event_message();
+				break;
+
+			// JW: we are going to force a reboot when any unfamiliar wakup source occurs
+			// This includes watchdog, a fault reset.  The only
+			default:
+				vTaskDelay(10);
+				reboot_func(SYS_REBOOT_POR);
+
+				/* Wait for system-reboot */
+				while (1) {
+					vTaskDelay(10);
+				}
 				break;
 
 		}
