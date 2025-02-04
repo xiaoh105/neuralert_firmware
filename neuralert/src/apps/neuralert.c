@@ -77,10 +77,10 @@ extern void user_start_MQTT_client();
  * MACROS AND DEFINITIONS
  *******************************************************************************
  */
-#define SET_PROCESS_BIT(src, bit)				(src |= bit)
-#define CLR_PROCESS_BIT(src, bit)				(src &= (~bit))
-#define PROCESS_BIT_SET(src, bit)				((src & bit) == bit)
-#define USER_STATE_BIT_SET(src, bit)			((src & bit) == bit)
+#define SET_BIT(src, bit)				(src |= bit)
+#define CLR_BIT(src, bit)				(src &= (~bit))
+#define BIT_SET(src, bit)				((src & bit) == bit)
+
 
 /* Events */
 #define USER_TERMINATE_EVENT					(1 << 0)
@@ -102,8 +102,8 @@ extern void user_start_MQTT_client();
 #define USER_PROCESS_MQTT_STOP					(1 << 4)
 #define USER_PROCESS_WATCHDOG					(1 << 5)
 #define	USER_PROCESS_WATCHDOG_STOP				(1 << 6)
-#define USER_PROCESS_BOOTUP						(1 << 7)
-#define USER_PROCESS_BLOCK_MQTT					(1 << 8)
+#define USER_PROCESS_BLOCK_MQTT					(1 << 7)
+#define USER_PROCESS_BOOTUP						(1 << 8)
 
 
 // System states for LED management
@@ -807,8 +807,8 @@ static UserDataBuffer *pUserData = NULL;
 // Only for use by the set & clear functions, which also
 // make sure the LED reflects the new state information
 #define SET_SYSTEM_STATE_BIT(bit)		(pUserData->system_state_map |= bit)
-#define CLEAR_SYSTEM_STATE_BIT(bit)		(pUserData->system_state_map &= (~bit))
-#define SYSTEM_STATE_BIT_ACTIVE(bit)	((pUserData->system_state_map & bit) == bit)
+#define CLR_SYSTEM_STATE_BIT(bit)		(pUserData->system_state_map &= (~bit))
+#define BIT_SYSTEM_STATE_SET(bit)		((pUserData->system_state_map & bit) == bit)
 
 // JW: deprecated 10.4
 #if 0
@@ -1052,19 +1052,16 @@ static void notify_user_LED()
 	}
 #endif//JW: deprecated 10.14
 
-	if (0 != processLists)
-		if (PROCESS_BIT_SET(processLists, USER_PROCESS_BOOTUP))
-		{
-			setLEDState(YELLOW, LED_SLOW, 200, 0, LED_OFFX, 0, 300); // slow blink yellow
-		}
-		else // No known state
-		{
-			setLEDState(BLACK, LED_OFFX, 0, 0, LED_OFFX, 0, 200);
-		}
-	else
+
+	if (BIT_SET(processLists, USER_PROCESS_BOOTUP))
+	{
+		setLEDState(YELLOW, LED_SLOW, 200, 0, LED_OFFX, 0, 200); // constant yellow
+	}
+	else // No known state
 	{
 		setLEDState(BLACK, LED_OFFX, 0, 0, LED_OFFX, 0, 200);
 	}
+
 
 }
 
@@ -1116,7 +1113,7 @@ static void set_sole_system_state(UINT32 state_to_set)
 UINT8 check_mqtt_block()
 {
 	// check if the system state is clear
-	if (PROCESS_BIT_SET(processLists, USER_PROCESS_BLOCK_MQTT)) {
+	if (BIT_SET(processLists, USER_PROCESS_BLOCK_MQTT)) {
 		return pdTRUE;
 	}
 	return pdFALSE;
@@ -2115,16 +2112,6 @@ int send_json_packet (int startAdd, packetDataStruct pData, int msg_number, int 
 	sprintf(str,"\t\t\t\"bat\": %d,\r\n",(uint16_t)(adcDataFloat * 100));
 	strcat(mqttMessage,str);
 
-	/*
-	* Bootup - signals whether the device has rebooted
-	*/
-	if (PROCESS_BIT_SET(processLists, USER_PROCESS_BOOTUP)) {
-		sprintf(str,"\t\t\t\"bootup\": 1,\r\n");
-	} else {
-		sprintf(str,"\t\t\t\"bootup\": 0,\r\n");
-	}
-	strcat(mqttMessage, str);
-
 	// META FIELD DEFINITIONS HERE
 	// Meta data field -- a json for whatever we want.
 	strcat(mqttMessage,"\t\t\t\"meta\":\r\n\t\t\t{\r\n");
@@ -2148,13 +2135,14 @@ int send_json_packet (int startAdd, packetDataStruct pData, int msg_number, int 
 	*/
 	sprintf(str,"\t\t\t\t\"bat\": %d,\r\n",(uint16_t)(adcDataFloat * 100));
 	strcat(mqttMessage, str);
-#if 0
+
 	/*
 	* Meta - Fault count at this transmission
 	*/
 	fault_count = get_fault_count();
-	sprintf(str,"\t\t\t\t\"fault\": %d,\r\n", (uint16_t)fault_count);
+	sprintf(str,"\t\t\t\t\"count\": %d,\r\n", (uint16_t)fault_count);
 	strcat(mqttMessage, str);
+#if 0
 	/*
 	 * Meta - flash error code for packet
 	 */
@@ -3203,36 +3191,46 @@ void user_terminate_transmit(void)
 	sys_wdog_id = da16x_sys_watchdog_register(pdFALSE);
 
 	// Setup a new task to stop the MQTT client -- it can hang and block the wifi disconnect below
-	SET_PROCESS_BIT(processLists, USER_PROCESS_MQTT_STOP);
+	SET_BIT(processLists, USER_PROCESS_MQTT_STOP);
 	user_create_MQTT_stop_task();
 	int timeout = MQTT_STOP_TIMEOUT_SECONDS * 10;
-	while (PROCESS_BIT_SET(processLists, USER_PROCESS_MQTT_STOP) && timeout > 0)
+	while (BIT_SET(processLists, USER_PROCESS_MQTT_STOP) && timeout > 0)
 	{
 		vTaskDelay(pdMS_TO_TICKS(100)); // 100 ms delay
 		timeout--;
 		da16x_sys_watchdog_notify(sys_wdog_id);
 	}
-	CLR_PROCESS_BIT(processLists, USER_PROCESS_MQTT_STOP);
-
-
-	// disconnect from wlan
-    int ret;
-	UCHAR value_str[128];
+	CLR_BIT(processLists, USER_PROCESS_MQTT_STOP);
 	da16x_sys_watchdog_notify(sys_wdog_id);
-    ret = da16x_cli_reply("disconnect", NULL, value_str);
-	if (ret < 0 || strcmp(value_str, "FAIL") == 0) {
+
+
+	// disconnect from wlan -- keep trying until a watchdog timeout.
+	// note, the da16x_cli_reply command should work regardless, and if it doesn't a reboot (via watchdog timeout)
+	// is probably necessary.
+	UCHAR value_str[128];
+    int ret = da16x_cli_reply("disconnect", NULL, value_str);
+	while (ret < 0 || strcmp(value_str, "FAIL") == 0) {
 		PRINTF(" [%s] Failed disconnect from AP 0x%x\n  %s\n", __func__, ret, value_str);
+		vTaskDelay(pdMS_TO_TICKS(10));
+		ret = da16x_cli_reply("disconnect", NULL, value_str);
 	}
+	da16x_sys_watchdog_notify(sys_wdog_id);
+
+	system_control_wlan_enable(FALSE);
+	// The following delay is necessary to prevent an LmacMain hard fault.  LmacMain is generated in a pre-compile
+	// library in the sdk. It seems like the wifi disconnect returns before all the resources are shutdown, and if
+	// we proceed without delay to triggering a sleep event, a hard fault will result.
+	vTaskDelay(10); // This delay is NECESSARY -- DO NOT REMOVE (see description above)
 
 	// turn off rf
     da16x_sys_watchdog_notify(sys_wdog_id);
 	wifi_cs_rf_cntrl(TRUE); // Might need to do this elsewhere
 
 	// Clear the transmit process bit so the system can go to sleep
-	CLR_PROCESS_BIT(processLists, USER_PROCESS_MQTT_TRANSMIT);
-	CLR_PROCESS_BIT(processLists, USER_PROCESS_MQTT_STOP);
-	CLR_PROCESS_BIT(processLists, USER_PROCESS_WATCHDOG);
-	CLR_PROCESS_BIT(processLists, USER_PROCESS_WATCHDOG_STOP);
+	CLR_BIT(processLists, USER_PROCESS_MQTT_TRANSMIT);
+	CLR_BIT(processLists, USER_PROCESS_MQTT_STOP);
+	CLR_BIT(processLists, USER_PROCESS_WATCHDOG);
+	CLR_BIT(processLists, USER_PROCESS_WATCHDOG_STOP);
 
 	da16x_sys_watchdog_unregister(sys_wdog_id);
 }
@@ -3392,6 +3390,7 @@ static int user_mqtt_send_message(void)
 }
 
 
+
 /**
  *******************************************************************************
  * @brief A task to execute the MQTT stop so it doesn't block turning off wifi
@@ -3418,7 +3417,7 @@ static void user_process_MQTT_stop(void* arg)
         mqtt_client_stop();
     }
 
-    CLR_PROCESS_BIT(processLists, USER_PROCESS_MQTT_STOP);
+    CLR_BIT(processLists, USER_PROCESS_MQTT_STOP);
     vTaskDelay(1);
 
     PRINTF (">>>>>> MQTT Client Stopped <<<<<<<<");
@@ -3450,7 +3449,7 @@ static void user_process_watchdog(void* arg)
 	sys_wdog_id = da16x_sys_watchdog_register(pdFALSE);
 
 	int timeout = WATCHDOG_TIMEOUT_SECONDS * 10;
-	while (PROCESS_BIT_SET(processLists, USER_PROCESS_WATCHDOG) && timeout > 0)
+	while (BIT_SET(processLists, USER_PROCESS_WATCHDOG) && timeout > 0)
 	{
 		vTaskDelay(pdMS_TO_TICKS(100)); // 100 ms delay
 		timeout--;
@@ -3458,7 +3457,7 @@ static void user_process_watchdog(void* arg)
 	}
 
 	// The Process bit should have been cleared in user_process_send_MQTT_data()
-	if (PROCESS_BIT_SET(processLists, USER_PROCESS_WATCHDOG)){
+	if (BIT_SET(processLists, USER_PROCESS_WATCHDOG)){
 		PRINTF ("\n*** WIFI and MQTT Connection Watchdog Timeout ***\n");
 		increment_MQTT_stat(&(pUserData->MQTT_stats_connect_fails));
 		da16x_sys_watchdog_notify(sys_wdog_id);
@@ -3468,8 +3467,8 @@ static void user_process_watchdog(void* arg)
 	}
 
 	PRINTF ("\n>>> Stopping Watchdog Task <<<\n");
-	CLR_PROCESS_BIT(processLists, USER_PROCESS_WATCHDOG);
-	CLR_PROCESS_BIT(processLists, USER_PROCESS_WATCHDOG_STOP);
+	CLR_BIT(processLists, USER_PROCESS_WATCHDOG);
+	CLR_BIT(processLists, USER_PROCESS_WATCHDOG_STOP);
 
 	da16x_sys_watchdog_unregister(sys_wdog_id);
 
@@ -3546,15 +3545,15 @@ void user_retry_transmit(void)
 	// First, turn off the watchdog -- we'll need to restart it in a bit.
 	// if we can't then let the hardware watchdog timeout.
 	// there should be nothing blocking this for very long
-	SET_PROCESS_BIT(processLists, USER_PROCESS_WATCHDOG_STOP);
-	CLR_PROCESS_BIT(processLists, USER_PROCESS_WATCHDOG);
+	SET_BIT(processLists, USER_PROCESS_WATCHDOG_STOP);
+	CLR_BIT(processLists, USER_PROCESS_WATCHDOG);
 	da16x_sys_watchdog_notify(sys_wdog_id);
 
 	// Wait until the watchdog is stopped (these aren't high-priority tasks,
 	// so we may need to wait a bit.
 	// If the watchdog doesn't stop, we hardware watchdog will handle a reset.
 
-	while (!PROCESS_BIT_SET(processLists, USER_PROCESS_WATCHDOG_STOP)){
+	while (!BIT_SET(processLists, USER_PROCESS_WATCHDOG_STOP)){
 		vTaskDelay(pdMS_TO_TICKS(200));
 	}
 	da16x_sys_watchdog_notify(sys_wdog_id);
@@ -3568,8 +3567,8 @@ void user_retry_transmit(void)
     da16x_sys_watchdog_notify_and_resume(sys_wdog_id);
 
 	// Set the process bits for a clean retry
-	SET_PROCESS_BIT(processLists, USER_PROCESS_MQTT_TRANSMIT);
-	SET_PROCESS_BIT(processLists, USER_PROCESS_WATCHDOG);
+	SET_BIT(processLists, USER_PROCESS_MQTT_TRANSMIT);
+	SET_BIT(processLists, USER_PROCESS_WATCHDOG);
 
 	// Restart the application watchdog
 	da16x_sys_watchdog_notify(sys_wdog_id);
@@ -3658,7 +3657,7 @@ static void user_process_send_MQTT_data(void* arg)
 	// We've successfully made it to the transmission task!
 	// Clear the watchdog process bit that was monitoring for this task to start
 	// The watchdog will shutdown itself later regardless.
-	CLR_PROCESS_BIT(processLists, USER_PROCESS_WATCHDOG);
+	CLR_BIT(processLists, USER_PROCESS_WATCHDOG);
 	vTaskDelay(1);
 
 
@@ -4045,7 +4044,7 @@ static void user_process_send_MQTT_data(void* arg)
 			da16x_sys_watchdog_notify_and_resume(sys_wdog_id);
 			if(status == 0) //Tranmission successful!
 			{
-				CLR_PROCESS_BIT(processLists, USER_PROCESS_BOOTUP); //JW: we have succeeded in a transmission (bootup complete), so clear the process bit.
+				CLR_BIT(processLists, USER_PROCESS_BOOTUP); //JW: we have succeeded in a transmission (bootup complete), so clear the bootup state bit.
 				notify_user_LED(); // notify the led
 
 				// Clear the transmission map corresponding to blocks in the packet
@@ -4262,7 +4261,7 @@ end_of_task:
 		}
 	}
 
-	CLR_PROCESS_BIT(processLists, USER_PROCESS_MQTT_TRANSMIT);
+	CLR_BIT(processLists, USER_PROCESS_MQTT_TRANSMIT);
 	vTaskDelay(1);
 
 	// Get our end time, elapsed time, and log it
@@ -4289,7 +4288,7 @@ end_of_task:
 
 void user_process_wifi_conn()
 {
-	if (!PROCESS_BIT_SET(processLists, USER_PROCESS_MQTT_TRANSMIT)){
+	if (!BIT_SET(processLists, USER_PROCESS_MQTT_TRANSMIT)){
 		PRINTF(">>>>>>> MQTT transmit task already in progress <<<<<<<<<\n");
 		return;
 	}
@@ -4352,7 +4351,7 @@ static void user_start_data_tx(){
 
 	// Specifically, let the other tasks know that the watchdog is turning on,
 	// so we don't sleep
-	SET_PROCESS_BIT(processLists, USER_PROCESS_WATCHDOG);
+	SET_BIT(processLists, USER_PROCESS_WATCHDOG);
 
 	int ret = 0;
 	ret = user_process_start_watchdog();
@@ -4368,7 +4367,7 @@ static void user_start_data_tx(){
 	// (ii) reset the MQTT attempts counter for this TX cycle to zero
 	// Note, the watchdog process (above) will clear before the MQTT transmit completes,
 	// so we need both bits set to stay awake until transmittion is complete
-	SET_PROCESS_BIT(processLists, USER_PROCESS_MQTT_TRANSMIT);
+	SET_BIT(processLists, USER_PROCESS_MQTT_TRANSMIT);
 	vTaskDelay(1);
 
 	// Intialize the maximum number of retries here -- this can't be done in
@@ -4381,9 +4380,12 @@ static void user_start_data_tx(){
 	// Start the RF section power up
 	wifi_cs_rf_cntrl(FALSE);
 
+	// JW: switched this to system_control_wlan_enable in 1.10.16
 	char value_str[128] = {0, };
 	ret = da16x_cli_reply("select_network 0", NULL, value_str);
-	//TODO: Implement a check for the select network execution.  If it fails, call termination
+
+	//system_control_wlan_enable(TRUE);
+
 
 	return;
 }
@@ -4399,7 +4401,7 @@ static void user_start_data_tx(){
 static void user_create_MQTT_stop_task()
 {
 
-	if (!PROCESS_BIT_SET(processLists, USER_PROCESS_MQTT_STOP)){
+	if (!BIT_SET(processLists, USER_PROCESS_MQTT_STOP)){
 		PRINTF(">>>>>>> MQTT stop not requested <<<<<<<<<\n");
 		return;
 	}
@@ -4442,7 +4444,7 @@ static void user_create_MQTT_stop_task()
 static void user_create_MQTT_task()
 {
 
-	if (!PROCESS_BIT_SET(processLists, USER_PROCESS_MQTT_TRANSMIT)){
+	if (!BIT_SET(processLists, USER_PROCESS_MQTT_TRANSMIT)){
 		PRINTF(">>>>>>> MQTT transmit task already in progress <<<<<<<<<\n");
 		return;
 	}
@@ -4518,7 +4520,7 @@ static void user_process_send_data()
 static int user_process_connect_ap(void)
 {
 	int	ret = 0;
-	char value_str[128] = {0, };
+
 	
 
 	PRINTF("\n**Neuralert: %s\n", __func__); // FRSDEBUG
@@ -4533,10 +4535,15 @@ static int user_process_connect_ap(void)
 
 	// use the internal command line interface to connect
 	PRINTF("\n**Neuralert: user_process_connect_ap() attempting connection\n"); // FRSDEBUG
+
+	//JW: changed this to system_control_wlan_enable(TRUE) in 1.10.16
+	char value_str[128] = {0, };
 	ret = da16x_cli_reply("select_network 0", NULL, value_str);
 	if (ret < 0 || strcmp(value_str, "FAIL") == 0) {
 		PRINTF(" [%s] Failed connect to AP 0x%x\n", __func__, ret, value_str);
 	}
+
+	//system_control_wlan_enable(TRUE);
 
 	return ret;
 }
@@ -7521,7 +7528,7 @@ static int user_process_read_data(void)
 	int max_display;		// temp to figure out last active "try" position
 
 	// Make known to other processes that we are active
-	SET_PROCESS_BIT(processLists, USER_PROCESS_HANDLE_RTCKEY);
+	SET_BIT(processLists, USER_PROCESS_HANDLE_RTCKEY);
 
 //#if defined(__RUNTIME_CALCULATION__) && defined(XIP_CACHE_BOOT)
 //	printf_with_run_time("Read AXL data");
@@ -7842,14 +7849,12 @@ static int user_process_read_data(void)
 	//mqtt_started = pdFALSE;
 	if(pUserData->ACCEL_transmit_trigger >= trigger_value)
 	{
-		// kick the LED
-		notify_user_LED();
 
 		// increment MQTT attempt since tx success counter (we're going to try a transmission)
 		increment_MQTT_stat(&(pUserData->MQTT_attempts_since_tx_success));
 
 		// Check if MQTT is still active before starting again
-		if (PROCESS_BIT_SET(processLists, USER_PROCESS_MQTT_TRANSMIT))
+		if (BIT_SET(processLists, USER_PROCESS_MQTT_TRANSMIT))
 		{
 			if (!check_tx_progress())
 			{
@@ -7891,7 +7896,7 @@ static int user_process_read_data(void)
 	// give the logging mechanism a chance to move any log entries
 	// buffered in retention memory to flash.  This should be able
 	// to occur without any other interference.
-	if(!erase_happened && !PROCESS_BIT_SET(processLists, USER_PROCESS_MQTT_TRANSMIT))
+	if(!erase_happened && !BIT_SET(processLists, USER_PROCESS_MQTT_TRANSMIT))
 	{
 		archive_status = user_archive_log_messages(pdFALSE);
 	}
@@ -7901,7 +7906,7 @@ static int user_process_read_data(void)
 
 	// Signal that we're finished so we can sleep
 
-	CLR_PROCESS_BIT(processLists, USER_PROCESS_HANDLE_RTCKEY);
+	CLR_BIT(processLists, USER_PROCESS_HANDLE_RTCKEY);
 
 	return 0;
 }
@@ -8003,8 +8008,8 @@ static int user_process_bootup_event(void)
 #if defined(__RUNTIME_CALCULATION__) && defined(XIP_CACHE_BOOT)
 printf_with_run_time("Starting boot event process");
 #endif
-	SET_PROCESS_BIT(processLists, USER_PROCESS_BOOTUP);
-	SET_PROCESS_BIT(processLists, USER_PROCESS_BLOCK_MQTT);
+	SET_BIT(processLists, USER_PROCESS_BOOTUP);
+	SET_BIT(processLists, USER_PROCESS_BLOCK_MQTT);
 	notify_user_LED();
 	// set_sole_system_state(USER_STATE_POWER_ON_BOOTUP); //JW: deprecated 10.14
 
@@ -8194,7 +8199,7 @@ printf_with_run_time("Starting boot event process");
 printf_with_run_time("Finished boot event process");
 #endif
 
-	CLR_PROCESS_BIT(processLists, USER_PROCESS_BLOCK_MQTT); //stop blocking MQTT
+	CLR_BIT(processLists, USER_PROCESS_BLOCK_MQTT); //stop blocking MQTT
 
 	return ret;
 }
@@ -8208,11 +8213,17 @@ printf_with_run_time("Finished boot event process");
  */
 static UCHAR user_process_event(UINT32 event)
 {
-	PRINTF("%s: Event: [%d]\n", __func__, event);
-
 	__time64_t awake_time;
 	__time64_t current_msec_since_boot;
 	UCHAR time_string[20];
+
+	user_time64_msec_since_poweron(&current_msec_since_boot);
+	awake_time = current_msec_since_boot - pUserData->last_sleep_msec;
+	time64_string (time_string, &awake_time);
+	//			time64_string (time_string, &pUserData->last_sleep_msec);
+
+	PRINTF("%s: Event: [%d]\n", __func__, event);
+
 
 	// Power-on boot
 	// This is only expected to happen once when the device is
@@ -8254,7 +8265,6 @@ static UCHAR user_process_event(UINT32 event)
 	if (event & USER_MISSED_RTCKEY_EVENT) {
 		PRINTF("** %s RTCKEY in TIMER event\n", __func__); // FRSDEBUG
 
-
 		// Accelerometer interrupt while we're transmitting
 		// Read the data
 		user_process_read_data();
@@ -8272,15 +8282,13 @@ static UCHAR user_process_event(UINT32 event)
 #endif
 
 		if (processLists == 0) {
-			user_time64_msec_since_poweron(&current_msec_since_boot);
-			awake_time = current_msec_since_boot - pUserData->last_sleep_msec;
-			time64_string (time_string, &awake_time);
-//			time64_string (time_string, &pUserData->last_sleep_msec);
-			PRINTF("Entering sleep2. msec since last sleep %s \n\n", time_string);
+
+			PRINTF("Entering sleep1. msec since last sleep %s \n\n", time_string);
 			vTaskDelay(3);
+
 			// Get relative time since power on from the RTC time counter register
 			user_time64_msec_since_poweron(&pUserData->last_sleep_msec);
-//			PRINTF("\n*** Milliseconds since boot now: %u\n", nowrawmsec);
+			//			PRINTF("\n*** Milliseconds since boot now: %u\n", nowrawmsec);
 
 			// t\Turn off LEDs to save power while doing sleep/wake cycle
 			// Note the expectation is that only alerts will show
@@ -8502,17 +8510,16 @@ static void user_init(void)
 				user_wakeup_by_rtckey_event();
 				break;
 
-			//case WAKEUP_SOURCE_POR:
-				//clr_fault_count(); // JW: The fault counter isn't cleared
-			case WAKEUP_RESET: // This case happens when the device is started
-			//case WAKEUP_WATCHDOG:
-				// Power-on reset (once when device is activated)
+			// wake up from a software reboot.
+			case WAKEUP_RESET:
 				isSysNormalBoot = pdTRUE;
 				user_send_bootup_event_message();
 				break;
 
-			// JW: we are going to force a reboot when any unfamiliar wakup source occurs
-			// This includes watchdog, a fault reset.  The only
+			// A WAKEUP_SOURCE_POR will trigger this on the first bootup.  We don't know what will happen during
+			// brownout and there are fears it could trigger a WAKEUP_SOURCE_POR.  If that happens, we want a clean
+			// reboot.  Also, in case of a WATCHDOG or hard fault, we want a clean reboot.  The default case below
+			// executes a software reboot (which will trigger a WAKEUP_RESET -- see above).
 			default:
 				vTaskDelay(10);
 				reboot_func(SYS_REBOOT_POR);
@@ -8526,7 +8533,7 @@ static void user_init(void)
 		}
 	} else if (runMode == SYSMODE_AP_ONLY) {
 		wifi_cs_rf_cntrl(FALSE);
-		// TODO: ???
+		// This should never happen. If it does the system is configured wrong and we don't care what happens.
 	}
 }
 
