@@ -83,15 +83,14 @@ extern void user_start_MQTT_client();
 
 
 /* Events */
-#define USER_TERMINATE_EVENT					(1 << 0)
-#define USER_TERMINATE_TRANSMISSION_EVENT		(1 << 1)
-#define USER_BOOTUP_EVENT						(1 << 2)
-#define USER_WAKEUP_BY_RTCKEY_EVENT				(1 << 3)
-#define USER_MISSED_RTCKEY_EVENT				(1 << 4)
-#define USER_ATTEMPT_TRANSMIT_EVENT				(1 << 5)
-#define USER_WIFI_CONNECT_COMPLETE_EVENT		(1 << 6)
-#define USER_MQTT_CONNECT_COMPLETE_EVENT		(1 << 7)
-#define USER_SLEEP_READY_EVENT					(1 << 8)
+#define USER_TERMINATE_TRANSMISSION_EVENT		(1 << 0)
+#define USER_BOOTUP_EVENT						(1 << 1)
+#define USER_WAKEUP_BY_RTCKEY_EVENT				(1 << 2)
+#define USER_MISSED_RTCKEY_EVENT				(1 << 3)
+#define USER_ATTEMPT_TRANSMIT_EVENT				(1 << 4)
+#define USER_WIFI_CONNECT_COMPLETE_EVENT		(1 << 5)
+#define USER_MQTT_CONNECT_COMPLETE_EVENT		(1 << 6)
+#define USER_SLEEP_READY_EVENT					(1 << 7)
 
 
 /* Process list */
@@ -423,6 +422,7 @@ extern void user_start_MQTT_client();
 #define MQTT_POST_RF_POWER_OFF_DELAY_MS 0 // Release 1.10
 #endif // TO BE REMOVED -- DEPRECATED
 
+#if 0 //JW: deprecated logging in 1.10.16
 // Global area for building system error messages that
 // will be logged
 static UCHAR user_log_string_temp[USERLOG_STRING_MAX_LEN];
@@ -467,7 +467,7 @@ static UCHAR user_log_string_temp[USERLOG_STRING_MAX_LEN];
 // we know that we'll keep up with log production, so we don't need
 // to archive too much per cycle.
 #define MAX_LOG_ENTRIES_PER_ARCHIVE_INTERVAL 5
-
+#endif
 
 //#define SPI_FLASH_TXDATA_SIZE 256
 //#define SPI_FLASH_RXDATA_SIZE 256
@@ -638,7 +638,7 @@ typedef struct _userData {
 	unsigned int ACCEL_read_count;			// how many FIFO reads total
 	unsigned int ACCEL_transmit_trigger;	// count of FIFOs to start transmit
 	unsigned int ACCEL_missed_interrupts;	// How many times we detected full FIFO by polling
-	unsigned int ACCEL_log_stats_trigger;	// count of FIFOs to log stats
+	//unsigned int ACCEL_log_stats_trigger;	// count of FIFOs to log stats
 	// *****************************************************
 	// External data flash (AB memory) statistics
 	// *****************************************************
@@ -651,6 +651,7 @@ typedef struct _userData {
 	unsigned int erase_retry_count;		// # of times we needed to retry the erase since power up
 	unsigned int erase_attempt_events[AB_ERASE_MAX_ATTEMPTS];	// histogram of how often we had to retry
 
+#if 0 // JW: deprecated logging in 1.10.16
 	// *****************************************************
 	// System log statistics (external flash)
 	// *****************************************************
@@ -663,7 +664,7 @@ typedef struct _userData {
 	unsigned int log_erase_fault_count;		// # of times we failed to verify flash erase since power up
 	unsigned int log_erase_retry_count;		// # of times we needed to retry the erase since power up
 	unsigned int log_erase_attempt_events[USERLOG_WRITE_MAX_ATTEMPTS];	// histogram of how often we had to retry
-
+#endif
 
 
 	// *****************************************************
@@ -687,11 +688,11 @@ typedef struct _userData {
 	AB_INDEX_TYPE next_log_entry_write_position;
 	AB_INDEX_TYPE oldest_log_entry_position;
 
-
+#if 0
 	// User logging holding area
 	// circular buffer with pointers as above
 	USERLOG_ENTRY	user_log_entry[USERLOG_MAX_HOLD_ENTRIES];
-
+#endif
 
 } UserDataBuffer;
 #endif
@@ -1244,7 +1245,7 @@ void my_app_mqtt_sub_cb(void)
 }
 
 
-
+#if 0 //JW: logging deprecated in 1.10.16
 /**
  *******************************************************************************
  * @brief Process to transfer log messages from the holding area
@@ -1645,7 +1646,7 @@ static void user_log_event(const UCHAR *event_message)
 		user_write_log_holding_entry(USERLOG_TYPE_INFORMATION, event_message);
 	}
 }
-
+#endif
 
 
 /**
@@ -1659,7 +1660,7 @@ int user_factory_reset_btn_onetouch(void)
 	return pdTRUE;
 }
 
-
+#if 0 //JW: deprecated in 1.10.16 -- not used ever.
 /**
  *******************************************************************************
  * @brief Send termination event to the user task
@@ -1671,7 +1672,7 @@ static void user_terminate_event(void)
 		xTaskNotifyIndexed(xTask, 0, USER_TERMINATE_EVENT, eSetBits);
 	}
 }
-
+#endif
 
 /**
  *******************************************************************************
@@ -2063,13 +2064,9 @@ int send_json_packet (int startAdd, packetDataStruct pData, int msg_number, int 
 	statusCheck = mqtt_client_check_conn();
 	if (!statusCheck)
 	{
-		user_log_error("**send_json_packet: MQTT connection down - aborting");
+		PRINTF("\nNeuralert: [%s] MQTT connection down - aborting", __func__);
 		return -1;
 	}
-
-
-//	PRINTF("**Neuralert: send_json_packet: %d samples starting at %d\n",
-//			 count, startAdd); // FRSDEBUG
 
 	/*
 	 * JSON preamble
@@ -2264,9 +2261,7 @@ int send_json_packet (int startAdd, packetDataStruct pData, int msg_number, int 
 	// without increasing buffer size
 	if (packet_len > MAX_JSON_STRING_SIZE)
 	{
-		sprintf(user_log_string_temp, "** JSON packet size too big: %d with limit %d",
-				packet_len, (int)MAX_JSON_STRING_SIZE );
-		user_log_error(user_log_string_temp);
+		PRINTF("\nNeuralert: [%s] JSON packet size too big: %d with limit %d", __func__, packet_len, (int)MAX_JSON_STRING_SIZE);
 	}
 
 	// Transmit with publish topic from NVRAM
@@ -2283,16 +2278,11 @@ int send_json_packet (int startAdd, packetDataStruct pData, int msg_number, int 
 
 	if(transmit_status == 0)
 	{
-		PRINTF(" ==== send_json_packet: transmit %d:%d successful\n",
-				msg_number, sequence); // FRSDEBUG
+		PRINTF("\n Neuralert: [%s], transmit %d:%d successful", __func__, msg_number, sequence);
 	}
 	else
 	{
-		PRINTF(" ==== send_json_packet: transmit %d:%d unsuccessful\n",
-				msg_number, sequence); // FRSDEBUG
-		sprintf(user_log_string_temp, "**send_json_packet: transmit %d:%d failed (%d)",
-				msg_number, sequence, transmit_status);
-		user_log_error(user_log_string_temp);
+		PRINTF("\n Neuralert: [%s] transmit %d:%d unsuccessful", __func__, msg_number, sequence);
 	}
 
 	return_status = transmit_status;
@@ -2603,12 +2593,12 @@ static packetDataStruct assemble_packet_data (int start_block)
 	packet_data.flash_error = FLASH_NO_ERROR;
 
 
-	PRINTF("**assembling packet data starting at %d\n", start_block);
+	PRINTF("\n Neuralert: [%s] assembling packet data starting at %d", __func__, start_block);
 
 	SPI = flash_open(SPI_MASTER_CLK, SPI_MASTER_CS);
 	if (SPI == NULL)
 	{
-		user_log_error("***MQTT transmit: MAJOR SPI ERROR: Unable to open SPI bus handle");
+		PRINTF("\n Neuralert: [%s] MAJOR SPI ERROR: Unable to open SPI bus handle", __func__);
 		packet_data.flash_error = FLASH_OPEN_ERROR;
 		return packet_data;
 	}
@@ -2671,9 +2661,7 @@ static packetDataStruct assemble_packet_data (int start_block)
 				{
 					if (!AB_read_block(SPI, blockaddr, &FIFOblock))
 					{
-						sprintf(user_log_string_temp, "assemble_packet_data: unable to read block %d addr: %x\n",
-								blocknumber, blockaddr);
-						user_log_error(user_log_string_temp);
+						PRINTF("\n Neuralert: [%s] unable to read block %d addr: %x\n", __func__, blocknumber, blockaddr);
 						packet_data.flash_error = FLASH_READ_ERROR;
 					}
 
@@ -3069,8 +3057,7 @@ int parseDownlink(char *buf, int len)
 	}
 	if(strcmp(str1,"message") != 0)
 	{
-		sprintf(user_log_string_temp, "** message keyword missing in downlink command! %s",str1);
-		user_log_error(user_log_string_temp);
+		PRINTF("Neuralert: [%s] message keyword missing in downlink command! %s", __func__, str1);
 		return (FALSE);
 	}
 
@@ -3109,13 +3096,13 @@ int parseDownlink(char *buf, int len)
 	{
 		if(argc < 2)
 		{
-			user_log_error("  ** terminate command received without device identifier\n");
+
+			PRINTF("\n Neuralert: [%s] terminate command received without device identifier", __func__);
 		}
 		else if (strcmp(pUserData->Device_ID, &commands[1][0]) != 0)
 		{
-			sprintf(user_log_string_temp, "** terminate command with wrong device identifier: %s",
+			PRINTF("\n Neuralert: [%s] terminate command with wrong device identifier: %s", __func__,
 					&commands[1][0]);
-			user_log_error(user_log_string_temp);
 		}
 		else
 		{
@@ -3161,9 +3148,7 @@ int parseDownlink(char *buf, int len)
 static void user_mqtt_msg_cb (const char *buf, int len, const char *topic)
 {
 	MQTT_DBG_PRINT("\n  user_mqtt_msg_cb called %s %d topic: %s\r\n\n",buf, len, topic);
-
-	user_log_event("Downlink command received");
-	user_log_event(buf);
+	PRINTF("\n Neuralert: [%s] Downlink command received", __func__);
 	parseDownlink((char *)buf, len);
 }
 
@@ -3491,7 +3476,7 @@ static int user_process_start_watchdog()
 {
 
 	if (user_watchdog_task_handle != NULL){
-		user_log_error(">>>>>>> Watchdog task already running -- Not starting transmission <<<<<<<<<");
+		PRINTF("\n Neuralert: [%s] Watchdog task already running -- Not starting transmission", __func__);
 		return -2; //TODO: remove hard coding
 	}
 
@@ -3508,12 +3493,12 @@ static int user_process_start_watchdog()
 
 	if (create_status == pdPASS)
 	{
-		PRINTF(">>>>>>> Watchdog task created <<<<<<<<<\n"); // FRSDEBUG
+		PRINTF("\n Neuralert: [%s] Watchdog task created\n", __func__);
 		return 0; // TODO: remove hardcoding
 	}
 	else
 	{
-		user_log_error(">>>>>>> Watchdog task failed to create -- Not starting transmission <<<<<<<<<");
+		PRINTF("\n Neuralert: [%s] Watchdog task failed to create -- Not starting transmission", __func__);
 		return -1; // TODO: remove hardcoding
 	}
 
@@ -3734,8 +3719,7 @@ static void user_process_send_MQTT_data(void* arg)
 			|| (transmit_start_loc < 0)
 			|| (transmit_start_loc >= AB_FLASH_MAX_PAGES))
 	{
-		sprintf(user_log_string_temp, "MQTT task found invalid transmit start location: %d", transmit_start_loc);
-		user_log_error(user_log_string_temp);
+		PRINTF("\n Neuralert: [%s] MQTT task found invalid transmit start location: %d", __func__, transmit_start_loc);
 		//set_sole_system_state(USER_STATE_INTERNAL_ERROR); JW: deprecated 10.4 -- no reason to tell the patient
 		goto end_of_task;
 	}
@@ -4024,7 +4008,7 @@ static void user_process_send_MQTT_data(void* arg)
 
 		if (packet_data.num_samples < 0)
 		{
-			user_log_error("** MQTT transmit: error returned from assemble_packet_data - aborting");
+			PRINTF("\n Neuralert: [%s] MQTT transmit: error returned from assemble_packet_data - aborting", __func__);
 			request_stop_transmit = pdTRUE;
 		}
 		else if (packet_data.num_samples == 0)
@@ -4123,12 +4107,8 @@ static void user_process_send_MQTT_data(void* arg)
 
 			}
 			else if (pUserData->MQTT_tx_attempts_remaining > 0){
-				PRINTF("\nMQTT transmission %d:%d failed. Remaining attempts %d. Retry Transmission",
-						pUserData->MQTT_message_number, msg_sequence, pUserData->MQTT_tx_attempts_remaining);
-
-				sprintf(user_log_string_temp, "MQTT transmission %d:%d failed. Remaining attempts %d. Retry Transmission",
-						pUserData->MQTT_message_number, msg_sequence, pUserData->MQTT_tx_attempts_remaining);
-
+				PRINTF("\n Neuralert: [%s] MQTT transmission %d:%d failed. Remaining attempts %d. Retry Transmission",
+						__func__, pUserData->MQTT_message_number, msg_sequence, pUserData->MQTT_tx_attempts_remaining);
 				pUserData->MQTT_tx_attempts_remaining--;
 				request_stop_transmit = pdTRUE; // must set to true to exit loop
 				request_retry_transmit = pdTRUE;
@@ -4136,13 +4116,8 @@ static void user_process_send_MQTT_data(void* arg)
 			}
 			else
 			{
-				PRINTF("\nMQTT transmission %d:%d failed. Remaining attempts %d. Ending Transmission",
-						pUserData->MQTT_message_number, msg_sequence, pUserData->MQTT_tx_attempts_remaining);
-
-				sprintf(user_log_string_temp, "MQTT transmission %d:%d failed. Remaining attempts %d. Ending transmission.",
-						pUserData->MQTT_message_number, msg_sequence, pUserData->MQTT_tx_attempts_remaining);
-				user_log_error(user_log_string_temp);
-				PRINTF_RED("\n**** %s\n", user_log_string_temp);
+				PRINTF("\nNeuralert: [%s] MQTT transmission %d:%d failed. Remaining attempts %d. Ending Transmission",
+						__func__, pUserData->MQTT_message_number, msg_sequence, pUserData->MQTT_tx_attempts_remaining);
 				request_stop_transmit = pdTRUE;
 			}
 			vTaskDelay(1);
@@ -4189,12 +4164,8 @@ static void user_process_send_MQTT_data(void* arg)
 
 		clear_MQTT_stat(&(pUserData->MQTT_attempts_since_tx_success));
 		increment_MQTT_stat(&(pUserData->MQTT_stats_transmit_success));
-		sprintf(user_log_string_temp,
-				"MQTT transmission %d complete.  %d samples in %d JSON packets",
-				pUserData->MQTT_message_number,
-				samples_sent,
-				packets_sent);
-		user_log_event(user_log_string_temp);
+		PRINTF("\n Neuralert: [%s] MQTT transmission %d complete.  %d samples in %d JSON packets",
+				__func__, pUserData->MQTT_message_number, samples_sent, packets_sent);
 	}
 
 
@@ -4422,11 +4393,11 @@ static void user_create_MQTT_stop_task()
 
 	if (create_status == pdPASS)
 	{
-		PRINTF(">>>>>>> MQTT stop task created <<<<<<<<<\n"); // FRSDEBUG
+		PRINTF("\n Neuralert: [%s] MQTT stop task created", __func__);
 	}
 	else
 	{
-		user_log_error(">>>>>>> MQTT stop task failed to create <<<<<<<<<");
+		PRINTF("\n Neuralert: [%s] MQTT stop task failed to created", __func__);
 	}
 
 	return;
@@ -4479,11 +4450,11 @@ static void user_create_MQTT_task()
 
 	if (create_status == pdPASS)
 	{
-		PRINTF(">>>>>>> MQTT transmit task created <<<<<<<<<\n"); // FRSDEBUG
+		PRINTF("\n Neuralert: [%s] MQTT transmit task created", __func__);
 	}
 	else
 	{
-		user_log_error(">>>>>>> MQTT transmit task failed to create <<<<<<<<<");
+		PRINTF("\n Neuralert: [%s] MQTT transmit task failed to create", __func__);
 	}
 
 	return;
@@ -4676,6 +4647,7 @@ static int user_process_initialize_user_log(void)
 	PRINTF(">>>Initializing user log in flash\n");
 	vTaskDelay(pdMS_TO_TICKS(100));
 
+#if 0 //JW: logging deprecated 1.10.16
 	pUserData->log_write_fault_count = 0;
 	pUserData->log_write_retry_count = 0;
 	pUserData->log_erase_attempts = 0;
@@ -4686,6 +4658,8 @@ static int user_process_initialize_user_log(void)
 		pUserData->log_write_attempt_events[i] = 0;
 		pUserData->log_erase_attempt_events[i] = 0;
 	}
+#endif
+
 	/*
 	 * Initialize the SPI bus
 	 */
@@ -5062,8 +5036,7 @@ static int user_process_clear_AB(void)
 	// As of 9/29/22, there are 3888 pages
 	// 3888 pages / 16 sectors per page = 243 4k sectors
 	max_sectors = AB_FLASH_MAX_PAGES / 16;
-	sprintf(user_log_string_temp, "**** Shutting down - erasing %d sectors", max_sectors);
-	user_log_event(user_log_string_temp);
+	PRINTF("\n Neuralert: [%s] Shutting down - erasing %d sectors", __func__, max_sectors);
 	for(	next_AB_clear_position = 0;
 			next_AB_clear_position < max_sectors;
 			next_AB_clear_position++)
@@ -5086,7 +5059,7 @@ static int user_process_clear_AB(void)
 #if defined(__RUNTIME_CALCULATION__) && defined(XIP_CACHE_BOOT)
 	printf_with_run_time("== Finished clearing data buffering area");
 #endif
-	user_log_event("Finished clearing data buffering area");
+	PRINTF("Neuralert: [%s] Finished clearing data buffering area", __func__);
 	spi_status = flash_close(SPIhandle);
 	return clear_status;
 
@@ -6154,7 +6127,7 @@ end_of_task:
 	return erase_status;
 }
 
-
+#if 0 //JW logging deprecated in 1.10.16
 /**
  *******************************************************************************
  * @brief Process for writing one log entry to external data Flash
@@ -6203,6 +6176,7 @@ static int user_write_log_to_flash(USERLOG_ENTRY *pLogData, int *did_an_erase)
 		PRINTF("\n Unable to get flash log store location\n");
 		return FALSE;
 	}
+
 
 	// Remember how many entries we wrote to flash
 	pUserData->total_log_entries++;
@@ -6423,7 +6397,7 @@ end_of_task:
 	flash_close(SPI);  // See comments about SPI closing above
 	return write_status;
 }
-
+#endif
 
 /**
  *******************************************************************************
@@ -6475,7 +6449,7 @@ static int user_process_write_to_flash(accelBufferStruct *pFIFOdata, int *did_an
 	write_index = get_AB_write_location();
 	if (write_index < 0)
 	{
-		user_log_error("** Unable to get AB write location **");
+		PRINTF("\n Neuralert [%s] Unable to get AB write location", __func__);
 		return FALSE;
 	}
 //	Printf("==Next AB store location: %d\n", write_index);
@@ -6497,7 +6471,7 @@ static int user_process_write_to_flash(accelBufferStruct *pFIFOdata, int *did_an
 	SPI = flash_open(SPI_MASTER_CLK, SPI_MASTER_CS);
 	if (SPI == NULL)
 	{
-		user_log_error("***MAJOR SPI ERROR: Unable to open SPI bus handle");
+		PRINTF("\nNeuralert: [%s] MAJOR SPI ERROR: Unable to open SPI bus handle", __func__);
 		fault_happened = 1;
 	}
 
@@ -6521,8 +6495,7 @@ static int user_process_write_to_flash(accelBufferStruct *pFIFOdata, int *did_an
 
 			if(!AB_write_block(SPI, NextWriteAddr, pFIFOdata))
 			{
-				sprintf(user_log_string_temp, "** Flash Write error %x", NextWriteAddr); //Fault error indication here
-				user_log_error(user_log_string_temp);
+				PRINTF("\n Neuralert: [%s] Flash Write error %x", __func__, NextWriteAddr); //Fault error indication here
 			}
 			else
 			{
@@ -6595,7 +6568,7 @@ static int user_process_write_to_flash(accelBufferStruct *pFIFOdata, int *did_an
 
 	if(faultFlag != 0)
 	{
-		user_log_error("***** FIFO DATA WRITE FAILURE - SKIPPING POINTER UPDATE *****");
+		PRINTF("\n Neuralert: [%s] FIFO DATA WRITE FAILURE - SKIPPING POINTER UPDATE", __func__);
 		goto end_of_task;
 	}
 
@@ -6673,7 +6646,7 @@ static int user_process_write_to_flash(accelBufferStruct *pFIFOdata, int *did_an
 	//if(!update_AB_write_location(write_index)) //JW: to be deleted
 	if(!update_AB_write_location())
 	{
-		user_log_error("Unable to set AB write location");
+		PRINTF("\n Neuralert: [%s] Unable to set AB write location", __func__);
 //			goto end_of_task;
 	}
 	else
@@ -6713,7 +6686,7 @@ static int user_process_write_to_flash(accelBufferStruct *pFIFOdata, int *did_an
 #endif
 		if(!erase_status)
 		{
-			user_log_error("********* SPI erase error *********");
+			PRINTF("\n Neuralert: [%s] SPI erase error", __func__);
 			write_status = FALSE;
 		}
 	} // if need to erase next sector
@@ -6746,16 +6719,15 @@ int timelen;
 	len = strlen(PrefixString);
 	if ((len > 0) + (timelen + len < USERLOG_STRING_MAX_LEN))
 	{
-		sprintf(user_log_string_temp, "%s Current Time : %s (GMT %+02d:%02d)",
-				PrefixString, buf,   da16x_Tzoff() / 3600,   da16x_Tzoff() % 3600);
+		PRINTF("\n Neuralert: [%s] %s Current Time : %s (GMT %+02d:%02d)",
+				__func__, PrefixString, buf,   da16x_Tzoff() / 3600,   da16x_Tzoff() % 3600);
 	}
 	else
 	{
-		sprintf(user_log_string_temp, "Current Time : %s (GMT %+02d:%02d)",
-				buf,   da16x_Tzoff() / 3600,   da16x_Tzoff() % 3600);
+		PRINTF("\n Neuralert: [%s] Current Time : %s (GMT %+02d:%02d)",
+				__func__, buf,   da16x_Tzoff() / 3600,   da16x_Tzoff() % 3600);
 	}
 
-	user_log_event(user_log_string_temp);
 
 }
 
@@ -6931,7 +6903,7 @@ __time64_t cur_sec;
 	return;
 }
 
-
+#if 0 //JW: logging deprecated in 1.10.16
 /**
  *******************************************************************************
  * @brief Periodically log operation information
@@ -7012,7 +6984,7 @@ static void log_operating_info(void)
 	sprintf(user_log_string_temp, "Battery reading : %d",(uint16_t)(adcDataFloat * 100));
 	user_log_event(user_log_string_temp);
 }
-
+#endif
 
 
 
@@ -7778,6 +7750,7 @@ static int user_process_read_data(void)
 
 	PRINTF(" ----------------------------------------\n");
 
+#if 0 //JW: logging deprecated in 1.10.16
 	PRINTF(" Total log entries since power on        : %d\n", pUserData->total_log_entries);
 	if(pUserData->log_write_fault_count > 0)
 	{
@@ -7833,6 +7806,7 @@ static int user_process_read_data(void)
 		// Reset our trigger counter
 		pUserData->ACCEL_log_stats_trigger = 0;
 	}
+#endif
 
 	// See if it's time to transmit data, based on how many FIFO buffers we've
 	// accumulated since the last transmission
@@ -7858,7 +7832,8 @@ static int user_process_read_data(void)
 		{
 			if (!check_tx_progress())
 			{
-				user_log_error("MQTT task still active and not making progress. Stopping transmission.");
+				PRINTF("\n Neuralert: [%s] MQTT task still active and not making progress. Stopping transmission.",
+					__func__);
 				user_terminate_transmit();
 			}
 
@@ -7890,6 +7865,7 @@ static int user_process_read_data(void)
 	// was moved here.
 //	flash_close(SPI);
 
+#if 0 //JW: logging deprecated in 1.10.16
 	// If we are at the end of the wake part of a wake/sleep cycle
 	// and haven't done an accelerometer buffer sector erase in this
 	// cycle and the MQTT task isn't running, then
@@ -7901,9 +7877,10 @@ static int user_process_read_data(void)
 		archive_status = user_archive_log_messages(pdFALSE);
 	}
 
+
 // Delay to make sure that statistics show up on the console log
 	vTaskDelay(pdMS_TO_TICKS(50));
-
+#endif
 	// Signal that we're finished so we can sleep
 
 	CLR_BIT(processLists, USER_PROCESS_HANDLE_RTCKEY);
@@ -7984,7 +7961,7 @@ uint8_t ISR_reason;
 	printf_with_run_time("End AXL init");
 	#endif
 
-	user_log_event("Accelerometer initialized");
+	PRINTF("\n Neuralert: [%s] Accelerometer initialized", __func__);
 
 	return;
 }
@@ -8021,19 +7998,10 @@ printf_with_run_time("Starting boot event process");
 // very soon after hardware initialization.  This is just to understand
 // what the RTC clock says that early in the process.
 	time64_string (time_string, &user_raw_launch_time_msec);
-	sprintf(user_log_string_temp, "***Bootup event: time snapshot from main() %s ms",
-				time_string);
-	PRINTF("\n%s\n", user_log_string_temp);
-
-	user_log_event(user_log_string_temp);
-
-	sprintf(user_log_string_temp, "Software part number  :    %s", USER_SOFTWARE_PART_NUMBER_STRING);
-	user_log_event(user_log_string_temp);
-	sprintf(user_log_string_temp, "Software version      :    %s", USER_VERSION_STRING);
-	user_log_event(user_log_string_temp);
-	sprintf(user_log_string_temp, "Software build time   : %s %s", __DATE__ , __TIME__ );
-	user_log_event(user_log_string_temp);
-
+	PRINTF("\n Neuralert: [%s] Bootup event: time snapshot from main() %s ms", __func__, time_string);
+	PRINTF("\n Software part number  :    %s", USER_SOFTWARE_PART_NUMBER_STRING);
+	PRINTF("\n Software version      :    %s", USER_VERSION_STRING);
+	PRINTF("\n Software build time   : %s %s", __DATE__ , __TIME__ );
 
 	// Enable WIFI on initial bootup.  This allows us to find out if
 	// WIFI is available, if we want to.
@@ -8136,15 +8104,13 @@ printf_with_run_time("Starting boot event process");
 	strcpy (pUserData->Device_ID, MACaddr);
 	PRINTF(" Unique device ID: %s\n", MACaddr);
 
-	sprintf(user_log_string_temp, "Unique device ID: %s", MACaddr);
-	user_log_event(user_log_string_temp);
 
 	// Just in case the autoconnect got turned on, make sure it is off
 	user_process_disable_auto_connection();
 
 	// Initialize the accelerometer buffer external flash
 	user_process_initialize_AB();
-	user_log_event("*** Accelerometer flash buffering initialized");
+	PRINTF("\n Neuralert: [%s] Accelerometer flash buffering initialized", __func__);
 
 	pUserData->ACCEL_missed_interrupts = 0;
 	pUserData->ACCEL_transmit_trigger = MQTT_TRANSMIT_TRIGGER_FIFO_BUFFERS_FAST - MQTT_FIRST_TRANSMIT_TRIGGER_FIFO_BUFFERS;
@@ -8307,12 +8273,13 @@ static UCHAR user_process_event(UINT32 event)
 		}
 	}
 
+#if 0 //JW: we never terminate except via POR -- deprecated in 1.10.16
 	if (event & USER_TERMINATE_EVENT) {
-		PRINTF("\n**Neuralert: %s USER TERMINATE event\n", __func__); // FRSDEBUG
-		user_log_event("**** USER TERMINATE EVENT ****");
+		PRINTF("\n Neuralert: [%s] USER TERMINATE event", __func__);
 		/* Terminate the process*/
 		return PROCESS_EVENT_TERMINATE;
 	}
+#endif
 
 	/* Continue in process */
 	return PROCESS_EVENT_CONTINUE;
@@ -8420,8 +8387,7 @@ static void user_init(void)
 			if (result == 0) {
 				memset(pUserData, 0, sizeof(UserDataBuffer));
 			} else {
-				PRINTF("%s: Failed to allocate retention memory\n", __func__);
-				user_log_error("Failed to allocate retention memory");
+				PRINTF("\n Neuralert [%s]: Failed to allocate retention memory", __func__);
 			}
 		}
 		else
@@ -8438,7 +8404,7 @@ static void user_init(void)
 		AB_semaphore = xSemaphoreCreateMutex();
 		if (AB_semaphore == NULL)
 		{
-			user_log_error("****** Error creating AB semaphore *****");
+			PRINTF("\n Neuralert: [%s] Error creating AB semaphore", __func__);
 		}
 		else
 		{
@@ -8452,12 +8418,14 @@ static void user_init(void)
 		Flash_semaphore = xSemaphoreCreateMutex();
 		if (Flash_semaphore == NULL)
 		{
-			user_log_error("****** Error creating Flash semaphore *****");
+			PRINTF("\n Neuralert: [%s] Error creating Flash semaphore", __func__);
 		}
 		else
 		{
 //			PRINTF("\n****** Flash semaphore created *****\n");
 		}
+
+#if 0 //JW: logging deprecated in 1.10.16
 		/*
 		 * Create a semaphore to make sure each task can have exclusive
 		 * access to the log holding area in retention memory
@@ -8471,6 +8439,7 @@ static void user_init(void)
 		{
 //			PRINTF("\n****** Log holding semaphore created *****\n");
 		}
+#endif
 
 		/*
 		 * Create a semaphore to make sure each task can have exclusive access to
@@ -8480,7 +8449,7 @@ static void user_init(void)
 		Stats_semaphore = xSemaphoreCreateMutex();
 		if (Stats_semaphore == NULL)
 		{
-			user_log_error("****** Error creating stats semaphore *****");
+			PRINTF("\n Neuralert: [%s] Error creating stats semaphore", __func__);
 		}
 		else
 		{
@@ -8537,6 +8506,7 @@ static void user_init(void)
 	}
 }
 
+#if 0 //JW: logging deprecated in 1.10.16
 void user_log_run_time(void)
 {
 	__time64_t nowrawmsec;
@@ -8560,6 +8530,7 @@ void user_log_run_time(void)
 	time_since_boot_minutes = time_since_boot_minutes % (ULONG)60;
 	time_since_boot_hours = time_since_boot_hours % (ULONG)24;
 
+
 	sprintf(user_log_string_temp,
 			"*** Time since power on: %u Days plus %02u:%02u:%02u.%03u",
 			time_since_boot_days,
@@ -8570,7 +8541,9 @@ void user_log_run_time(void)
 	user_log_event(user_log_string_temp);
 
 }
+#endif
 
+#if 0 //JW: deinit is not used ever -- removed in 1.10.16
 /**
  ****************************************************************************************
  * @brief Shutdown event - either by downlink command or by
@@ -8594,8 +8567,10 @@ static void user_deinit(void)
 	/* Delete all resources */
 	PRINTF("%s\n", __func__);
 
+#if 0 //JW: logging deprecated in 1.10.16
 	// Put total run time in the log
 	user_log_run_time();
+#endif
 
 	// Disconnect from WIFI
 	ret = da16x_cli_reply("disconnect", NULL, value_str);
@@ -8659,6 +8634,7 @@ static void user_deinit(void)
 //	dpm_sleep_start_mode_2(TCP_CLIENT_SLP2_PERIOD, TRUE);
 
 }
+#endif
 
 void tcp_client_sleep2_sample(void *param)
 {
@@ -8840,7 +8816,8 @@ void tcp_client_sleep2_sample(void *param)
 			// If we've received a terminate downlink command, exit
 			// the message processing loop and effectively shut down.
 			da16x_sys_watchdog_notify(sys_wdog_id);
-			quit = (user_process_event(ulNotifiedValue) == PROCESS_EVENT_TERMINATE);
+			//quit = (user_process_event(ulNotifiedValue) == PROCESS_EVENT_TERMINATE); //JW: no more terminate event
+			user_process_event(ulNotifiedValue);
 		}
 		else
 		{
@@ -8877,7 +8854,7 @@ void tcp_client_sleep2_sample(void *param)
 	} // while (quit == FALSE)
 
 	/* Un-initialize resources */
-	user_deinit();
+	//user_deinit();
 
 	/* Turn off watchdog */
 	da16x_sys_watchdog_unregister(sys_wdog_id);
