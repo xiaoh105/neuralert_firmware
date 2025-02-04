@@ -663,8 +663,10 @@ int mc36xx_init(void)
 //	set_range_resolution(MC36XX_RANGE_2G,MC36XX_RESOLUTION_10BIT);// 2^10bit / (2*2G) = 2^7 =128 . Here ,128 = 1G .
 	/*now using lowpower mode in this function*/
 //	set_wake_rate(MC36XX_CWAKE_SR_LP_54Hz);
-	set_wake_rate(MC36XX_CWAKE_SR_LP_14Hz);
-	set_sniff_rate(MC36XX_SNIFF_SR_LP_13Hz);
+//	set_wake_rate(MC36XX_CWAKE_SR_LP_14Hz); JW: Changed sampling rate to 7 Hz in 1.10.16 (must be at least 5 Hz)
+	set_wake_rate(MC36XX_CWAKE_SR_LP_7Hz);
+//	set_sniff_rate(MC36XX_SNIFF_SR_LP_13Hz); JW: Changed sniff rate to 6 Hz in 1.10.16 (must be at least 4 Hz)
+	set_sniff_rate(MC36XX_SNIFF_SR_LP_6Hz);
 //	set_sniff_rate(MC36XX_SNIFF_SR_LP_50Hz);
 
 	set_clear_Intmethod(); // write 0x09 to clear intr state

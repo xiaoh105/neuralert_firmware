@@ -340,8 +340,8 @@ extern void user_start_MQTT_client();
 // erases the next flash sector before it starts the MQTT task
 // That means that the MQTT task will have 16 AXL interrupt times to
 // operate in before the next erase sector time
-#define MQTT_TRANSMIT_TRIGGER_FIFO_BUFFERS_FAST 32
-#define MQTT_TRANSMIT_TRIGGER_FIFO_BUFFERS_SLOW 144
+#define MQTT_TRANSMIT_TRIGGER_FIFO_BUFFERS_FAST 16 // 1 minute (assuming 7 Hz AXL sampling rate)
+#define MQTT_TRANSMIT_TRIGGER_FIFO_BUFFERS_SLOW 80 // 5 minutes (assuming 7 Hz AXL sampling rate)
 //#define MQTT_TRANSMIT_TRIGGER_FIFO_BUFFERS 64
 // 144 = 9 x 16 and just about 5 minutes at 29 samples / FIFO
 //#define MQTT_TRANSMIT_TRIGGER_FIFO_BUFFERS 144 // Use this for production
@@ -350,9 +350,9 @@ extern void user_start_MQTT_client();
 //#define MQTT_TRANSMIT_TRIGGER_FIFO_BUFFERS 272
 
 // This value if for the first transmission, which we want to occur relatively quickly after bootup.
-// each FIFO trigger is about 2 seconds, so if the following is set to 5, it will start the transmit
-// process within approximately 10 seconds.
-#define MQTT_FIRST_TRANSMIT_TRIGGER_FIFO_BUFFERS 5
+// each FIFO trigger is about 4 seconds, so if the following is set to 3, it will start the transmit
+// process within approximately 12 seconds.
+#define MQTT_FIRST_TRANSMIT_TRIGGER_FIFO_BUFFERS 3
 
 // This value is for switching between fast and slow transmit intervals.  When the number of unsuccessful
 // transmissions is less than this value, the fast mode will be used.  Otherwise, the slow mode.
