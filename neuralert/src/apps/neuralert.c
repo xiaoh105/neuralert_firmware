@@ -4028,6 +4028,7 @@ static void user_process_send_MQTT_data(void* arg)
 			da16x_sys_watchdog_notify_and_resume(sys_wdog_id);
 			if(status == 0) //Tranmission successful!
 			{
+				clear_MQTT_stat(&(pUserData->MQTT_attempts_since_tx_success));
 				CLR_BIT(processLists, USER_PROCESS_BOOTUP); //JW: we have succeeded in a transmission (bootup complete), so clear the bootup state bit.
 				notify_user_LED(); // notify the led
 
@@ -4055,6 +4056,7 @@ static void user_process_send_MQTT_data(void* arg)
 				}
 
 				// Do stats
+
 				increment_MQTT_stat(&(pUserData->MQTT_stats_packets_sent));
 				packets_sent++;		// Total packets sent this interval
 				//blocks_sent += packet_data.num_blocks; //JW: deprecated 10.4
@@ -4162,7 +4164,6 @@ static void user_process_send_MQTT_data(void* arg)
 #endif
 #endif // TO BE REMOVED -- DEPRECATED
 
-		clear_MQTT_stat(&(pUserData->MQTT_attempts_since_tx_success));
 		increment_MQTT_stat(&(pUserData->MQTT_stats_transmit_success));
 		PRINTF("\n Neuralert: [%s] MQTT transmission %d complete.  %d samples in %d JSON packets",
 				__func__, pUserData->MQTT_message_number, samples_sent, packets_sent);
