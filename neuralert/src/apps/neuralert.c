@@ -105,55 +105,7 @@ extern void user_start_MQTT_client();
 #define USER_PROCESS_BOOTUP						(1 << 8)
 
 
-// System states for LED management
-// The intent is that only one state will be active at one
-// time
-// Note that zero is the default "accelerometer wake/sleep" state
-// JW: we're now using the processList to control LEDs and don't need user state anymore
 
-
-// JW: These were old USER states for the LEDs -- deprecated in 10.14
-#if 0
-#define USER_STATE_CLEAR						0
-#define USER_STATE_POWER_ON_BOOTUP				(1 << 0)
-#define USER_STATE_WIFI_CONNECTED				(1 << 1)
-#define USER_STATE_WIFI_CONNECT_FAILED			(1 << 2)
-#define USER_STATE_NO_DATA_COLLECTION			(1 << 3)
-#endif
-
-// JW: These were the old USER states for the LEDs. I have noted the ones that were
-// deprecated.
-#if 0
-#define USER_STATE_POWER_ON_BOOTUP				(1 << 0)
-//#define USER_STATE_PROVISIONING					(1 << 1) //JW: deprecated 10.4
-//#define USER_STATE_WIFI_CONNECTING				(1 << 2) //JW: deprecated 10.4
-#define USER_STATE_WIFI_CONNECTED				(1 << 3)
-//#define USER_STATE_WIFI_TRANSMITTING			(1 << 4) //JW: deprecated 10.4
-#define USER_STATE_WIFI_CONNECT_FAILED			(1 << 5)
-//#define USER_STATE_BATTERY_EXHAUSTED			(1 << 6) //JW: deprecated 10.4
-//#define USER_STATE_INTERNAL_ERROR				(1 << 7) //JW: deprecated 10.4
-#endif
-
-// JW: This is alerting mechanisms that are outdated and (frankly) wrong.
-// delete in a future a release
-#if 0
-// System alerts for LED management
-// The intent is that more than one condition can occur
-// at the same time and alerts are handled in order of
-// increasing precedence.  So a higher-precedence alert will
-// be displayed rather than a lower-precedence bit
-//
-// Note that, in general, alerts will take
-// precedence over user state.
-// So, for instance, if the battery is low,
-// the LED will announce that rather than
-// a WIFI connect state
-//#define USER_ALERT_UNABLE_TO_CONNECT			(1 << 0)
-#define USER_ALERT_BATTERY_LOW 					(1 << 1)
-#define USER_ALERT_AB_STORAGE_LOW				(1 << 2)
-#define USER_ALERT_SPARE_2 						(1 << 3)
-#define USER_ALERT_FATAL_ERROR					(1 << 4)
-#endif // deprecated 10.4
 
 /* USER RTC Timer */
 //#define USER_DATA_TX_TIMER_SEC					(5 * 60)	// 5 Mins
@@ -163,26 +115,10 @@ extern void user_start_MQTT_client();
 #define USER_RTC_TIMER_ID						(5)
 #define USER_RTC_TIMER_ID_MIN					(5)
 
-/*
- * Accelerometer configuration
- */
-// The accelerometer threshold sets the point at which the accelerometer
-// will trigger an interrupt
-//#define ACCEL_FIFO_threshold 30
-
 
 /* TCP Server Information */
-#if 0
-#define TCP_CLIENT_DEF_PORT						10192
-#define TCP_CLIENT_DEF_BUF_SIZE					(1024 * 1)
-#define TCP_CLIENT_DEF_SERVER_IP_ADDR			"192.168.0.2"
-#define TCP_CLIENT_DEF_SERVER_PORT				TCP_CLI_TEST_PORT
-#endif
+
 #define TCP_CLIENT_SLP2_PERIOD					((USER_DATA_TX_TIMER_SEC + 60) * 1000000)  // USER_DATA_TX_TIMER_SEC + 1 min
-#if 0
-#define TCP_CLIENT_TX_BUF_SIZE 					1024
-#define USER_IP_ADDR_LEN						(32)
-#endif
 
 /* NVRAM Items */
 #define SERVER_IP_NAME							"SERVER_IP"
@@ -398,77 +334,6 @@ extern void user_start_MQTT_client();
 
 
 
-// JW: Remove this chunk of code in a future release
-#if 0
-// How long to sleep after each JSON packet is sent to allow MQTT and WIFI
-// activity to settle before attempting to read SPI bus again
-// Note that at Release 1.7 (Dec 2022) we lowered this to 1/2 second and
-// it caused problems with reliable transmission to AWS, as reported by
-// Bricksimple.  So Release 1.8 restored it to 2 seconds.
-// #define MQTT_INTER_PACKET_DELAY_MS 500
-// #define MQTT_INTER_PACKET_DELAY_MS 2000 // Release 1.9 -- JW: trying to deprecate this delay
-// JW: The problem wasn't that a delay was needed, it was that there was a race condition
-// in sub_client.c -- I fixed this.
-#define MQTT_INTER_PACKET_DELAY_MS 0 // Release 1.10
-// How long to sleep after completing MQTT transmission to allow cloud to respond
-// and/or let transmission to complete
-// JW: Again, a delay isn't needed -- it was a race condition in sub_client.c that Inteprod didn't diagnose.
-// #define MQTT_POST_TRANSMISSION_DELAY_MS 2000 // Release 1.9
-#define MQTT_POST_TRANSMISSION_DELAY_MS 0 // Release 1.10
-
-// How long to sleep after powering down the RF section before allowing sleep
-// Again, this isn't necessary now that the race condition is fixed in Release 1.10.
-//#define MQTT_POST_RF_POWER_OFF_DELAY_MS 1000 // Release 1.9
-#define MQTT_POST_RF_POWER_OFF_DELAY_MS 0 // Release 1.10
-#endif // TO BE REMOVED -- DEPRECATED
-
-#if 0 //JW: deprecated logging in 1.10.16
-// Global area for building system error messages that
-// will be logged
-static UCHAR user_log_string_temp[USERLOG_STRING_MAX_LEN];
-// How often to record statistics about operation.
-// In accelerometer interrupt counts.  Interrupts happen
-// about every 2.1 seconds.  Note that there is a limit to
-// how many log entries are moved to flash every wake/sleep
-// cycle.
-// 28 == about every 1 minute (testing only)
-// 140 = about every 5 minutes
-#define AXL_LOG_STATS_TRIGGER_COUNT 144
-// # of times the write function will attempt the write/verify cycle
- // This includes the first try and subsequent retries
- #define USERLOG_WRITE_MAX_ATTEMPTS 4
- // # of times the erase sector function will attempt the erase/verify cycle
- // On 9/13/22 the erase attempt was happening around 220 msec after wakeup
- // and taking about 100 msec per erase/read cycle.  Soso in the worst
- // case, 7 x 100 = 700 msec, which is still only about half the entire
- // AXL FIFO interrupt time.
-#define USERLOG_ERASE_MAX_ATTEMPTS 3
- // Max entries to be held in retention memory
-#define USERLOG_MAX_HOLD_ENTRIES 25
-// Max number of log entries to write to flash each time we try to do this
-// Note - this needs to take the write cycle time into account and the dynamics
-// of the system and it's use of the SPI bus for Flash.
-// We want to keep up with the frequency of logging so that we don't
-// run out of space in retention memory, but we also don't want to
-// tie up the system for too long so that we minimize our effect on the
-// accelerometer task gathering data
-// The million dollar question is where to insert the archiving
-// function in the system.  It could possibly be a separate task, but
-// until we sort out SPI bus interference, it seems safer to do it
-// during an accelerometer interval when no erasing is being done
-// and when no MQTT task is active.  So just tack it onto the end
-// of the accelerometer wake/sleep cycle when we could otherwise go
-// back to sleep.  As of this writing - 10/14/22 - the wake time is
-// about 250-300 msec out of an approximately 2 second cycle.
-// So if it's not an erase cycle or an MQTT cycle, we have at least
-// one second to use for archiving things.  We also have to erase
-// ahead, similar to the accelerometer task, so we have to allow
-// time for that.  If we're going to be trying every cycle, then
-// we know that we'll keep up with log production, so we don't need
-// to archive too much per cycle.
-#define MAX_LOG_ENTRIES_PER_ARCHIVE_INTERVAL 5
-#endif
-
 //#define SPI_FLASH_TXDATA_SIZE 256
 //#define SPI_FLASH_RXDATA_SIZE 256
 //#define SPI_FLASH_INPUT_DATA_SIZE 64
@@ -476,26 +341,7 @@ static UCHAR user_log_string_temp[USERLOG_STRING_MAX_LEN];
 //#define SPI_SFLASH_ADDRESS 0x1000
 
 #define	TEST_DBG_DUMP(tag, buf, siz)	thread_peripheral_dump( # buf , buf , siz)
-#if 0
-static void thread_peripheral_dump(const char *title, unsigned char *buf,
-		size_t len) {
-	size_t i;
 
-	PRINTF("%s (%d, %p)", title, len, buf);
-	for (i = 0; i < len; i++) {
-		if ((i % 32) == 0) {
-			PRINTF("\n\t");
-		} else if ((i % 4) == 2) {
-			PRINTF("_");
-		} else if ((i % 4) == 0) {
-			PRINTF(" ");
-		}
-		PRINTF("%c%c", "0123456789ABCDEF"[buf[i] / 16],
-				"0123456789ABCDEF"[buf[i] % 16]);
-	}
-	PRINTF("\n");
-}
-#endif
 
 //void spi_flash_config_pin() {
 //	_da16x_io_pinmux(PIN_DMUX, DMUX_SPIm);
@@ -548,32 +394,9 @@ typedef struct _userData {
 
 	UINT32 ServerShutdownRequested;	// Set to a magic value when a terminate downlink is received
 
-#if 0
-	// Accelerometer data stored in Retention memory
-	// Array of FIFO buffers captured in retention memory
-	// for Stage5a-5d
-	int FIFO_stash_index;		// Next stash location
-	accelBufferStruct FIFOstash[USER_RTM_DATA_MAX_CNT];
-#endif
-
 
 	//JW: AXL calibration is deprecated -- no longer needed, we interpolate between two buffer read times
-#if 0
-	// *****************************************************
-	// Accelerometer sample rate calibration data
-	// *****************************************************
-	// Count of entries we've collected
-	int num_AXL_cal_entries;
 
-	// Array of calibration info from initial accelerometer operation
-	AXL_calibration_data AXL_cal_entry[AXL_CALIBRATION_CYCLES];
-
-	// The result of the calibration.  Measured period of the
-	// accelerometer's sampling period in microseconds.
-	// Note that nominal is 1,000,000/14 = 71,429 usec.
-	ULONG AXL_cal_sample_period_usec;
-	int AXL_calibration_complete;		// pdTRUE if we've completed cal
-#endif // TO BE REMOVED -- DEPRECATED
 
 	// *****************************************************
 	// Timekeeping for FIFO read cycles
@@ -651,21 +474,6 @@ typedef struct _userData {
 	unsigned int erase_retry_count;		// # of times we needed to retry the erase since power up
 	unsigned int erase_attempt_events[AB_ERASE_MAX_ATTEMPTS];	// histogram of how often we had to retry
 
-#if 0 // JW: deprecated logging in 1.10.16
-	// *****************************************************
-	// System log statistics (external flash)
-	// *****************************************************
-	unsigned int total_log_entries;		// Total log entries written since power on
-	unsigned int log_write_fault_count;		// # of times we failed to verify flash write since power up
-	unsigned int log_write_retry_count;		// # of times we needed to retry the write since power up
-	unsigned int log_write_attempt_events[AB_WRITE_MAX_ATTEMPTS];	// histogram of how often we had to retry
-
-	unsigned int log_erase_attempts;			// # of times we attempted to erase sector
-	unsigned int log_erase_fault_count;		// # of times we failed to verify flash erase since power up
-	unsigned int log_erase_retry_count;		// # of times we needed to retry the erase since power up
-	unsigned int log_erase_attempt_events[USERLOG_WRITE_MAX_ATTEMPTS];	// histogram of how often we had to retry
-#endif
-
 
 	// *****************************************************
 	// Accelerometer buffer management
@@ -688,11 +496,7 @@ typedef struct _userData {
 	AB_INDEX_TYPE next_log_entry_write_position;
 	AB_INDEX_TYPE oldest_log_entry_position;
 
-#if 0
-	// User logging holding area
-	// circular buffer with pointers as above
-	USERLOG_ENTRY	user_log_entry[USERLOG_MAX_HOLD_ENTRIES];
-#endif
+
 
 } UserDataBuffer;
 #endif
@@ -784,10 +588,7 @@ static accelDataStruct accelXmitData[MAX_SAMPLES_PER_PACKET];
  * This is the workaround that allows the AXL task to set up data
  * for MQTT so that MQTT doesn't have to read from the SPI Flash
  */
-#if 0
-static int num_trans_blocks = 0;
-static accelBufferStruct transmission_table[MAX_FIFO_BUFFERS_PER_TRANSMIT_INTERVAL];
-#endif
+
 /*
  * Area in which to compose JSON packet
  * see spreadsheet for sizing
@@ -811,14 +612,6 @@ static UserDataBuffer *pUserData = NULL;
 #define CLR_SYSTEM_STATE_BIT(bit)		(pUserData->system_state_map &= (~bit))
 #define BIT_SYSTEM_STATE_SET(bit)		((pUserData->system_state_map & bit) == bit)
 
-// JW: deprecated 10.4
-#if 0
-// Macros for setting, clearing, and checking system alerts
-#define SET_SYSTEM_ALERT_BIT(bit)		(pUserData->system_alert_map |= bit)
-#define CLEAR_SYSTEM_ALERT_BIT(bit)		(pUserData->system_alert_map &= (~bit))
-#define SYSTEM_ALERT_BIT_ACTIVE(bit)	((pUserData->system_alert_map & bit) == bit)
-#define ANY_SYSTEM_ALERT_ACTIVE()	(0 != pUserdata->system_alert_map))
-#endif
 
 
 #ifdef __TIME64__
@@ -1066,44 +859,8 @@ static void notify_user_LED()
 
 }
 
-/**
- *******************************************************************************
- * @brief Set a system state bit and change LED colors
- *******************************************************************************
- */
-#if 0
-static void set_system_state(UINT32 state_to_set)
-{
-	// Set state in retention memory so it persists through
-	// sleep cycles
-	SET_SYSTEM_STATE_BIT(state_to_set);
-
-	// Change the LED color if necessary
-	notify_user_LED();
-
-}
-#endif
 
 
-// JW: deprecated the need for this function as of 10.14
-#if 0
-/**
- *******************************************************************************
- * @brief Set a system state bit as the only state and change LED colors
- *******************************************************************************
- */
-
-static void set_sole_system_state(UINT32 state_to_set)
-{
-	// Set state in retention memory so it persists through
-	// sleep cycles
-	pUserData->system_state_map = state_to_set;
-
-	// Change the LED color if necessary
-	//notify_user_LED(); //JW: deprecated in 10.14
-
-}
-#endif
 
 /**
  *******************************************************************************
@@ -1121,41 +878,7 @@ UINT8 check_mqtt_block()
 }
 
 
-#if 0
-/**
- *******************************************************************************
- * @brief Set a system alert bit and change LED colors
- *******************************************************************************
- */
-static void set_system_alert(UINT32 alert_to_set)
-{
-	// Set state in retention memory so it persists through
-	// sleep cycles
-	SET_SYSTEM_ALERT_BIT(alert_to_set);
 
-	// Change the LED color if necessary
-	notify_user_LED();
-
-}
-#endif
-
-//JW: deprecated  1.10.11
-#if 0
-/**
- *******************************************************************************
- * @brief Clear a system alert bit and change LED colors
- *******************************************************************************
- */
-static void clear_system_alert(UINT32 alert_to_clear)
-{
-	// Set state in retention memory so it persists through
-	// sleep cycles
-	CLEAR_SYSTEM_ALERT_BIT(alert_to_clear);
-
-	// Change the LED color if necessary
-	notify_user_LED();
-}
-#endif
 
 
 /**
@@ -1245,408 +968,6 @@ void my_app_mqtt_sub_cb(void)
 }
 
 
-#if 0 //JW: logging deprecated in 1.10.16
-/**
- *******************************************************************************
- * @brief Process to transfer log messages from the holding area
- * in retention memory to flash memory
- *  Returns pdFALSE if unable to write
- *  Returns pdTRUE if able to write
- *******************************************************************************
- */
-static int user_archive_log_messages(int flush_all)
-{
-	int return_value = pdFALSE;
-	int exit_requested = pdFALSE;
-	AB_INDEX_TYPE check_location;
-	AB_INDEX_TYPE write_holding_location;
-	AB_INDEX_TYPE newest_location;
-	AB_INDEX_TYPE oldest_holding_location;
-	AB_INDEX_TYPE write_flash_location;
-	AB_INDEX_TYPE newest_flash_location;
-	AB_INDEX_TYPE oldest_flash_location;
-	int total_holding_logs_stored;
-	int total_holding_logs_free;
-	int total_flash_logs_stored;
-	int total_flash_logs_free;
-	int num_entries_to_archive;
-	AB_INDEX_TYPE last_holding_log_loc;
-	AB_INDEX_TYPE entry_pointer;
-	int archiving_finished;
-	int num_archived;
-	USERLOG_ENTRY temp_log_entry;		// one entry being sent to flash
-	UCHAR time_string[20];
-	int erase_was_done;
-	int transferring_all;		// pdTRUE if we're doing the entire holding area
-
-	__time64_t now;
-
-	if(pUserData->user_log_initialized_flag != AB_MANAGEMENT_INITIALIZED)
-	{
-		PRINTF_RED("\n USER LOG NOT INITIALIZED\n");
-		return pdFALSE;
-	}
-
-	if(pUserData->user_holding_log_initialized != AB_MANAGEMENT_INITIALIZED)
-	{
-		PRINTF_RED("\n USER LOG HOLDING NOT INITIALIZED\n");
-		return pdFALSE;
-	}
-
-	// Figure out what is stored in retention memory
-	oldest_holding_location = get_holding_log_oldest_location();
-	if (oldest_holding_location < 0)
-	{
-		Printf("\n Unable to get user log oldest holding location\n");
-		return pdFALSE;
-	}
-//	PRINTF("  Oldest holding log entry          : %d\n", oldest_holding_location);
-
-	// If there is no data at this point, we can simply exit
-	if(oldest_holding_location == INVALID_AB_ADDRESS)
-	{
-		PRINTF("\n *** user_archive_log_messages: nothing to do!\n");
-		// We return TRUE because there is no error
-		return pdTRUE;
-	}
-
-	// Figure out what is stored in the holding log in retention memory
-	write_holding_location = get_holding_log_next_write_location();
-	if (write_holding_location < 0)
-	{
-		Printf("\n Unable to get user holding log next write location\n");
-		return pdFALSE;
-	}
-
-	// If we've archived what was stored in holding, oldest will have
-	// caught up with next store location
-	if(oldest_holding_location == write_holding_location)
-	{
-		PRINTF("user_archive_log_messages: head and tail the same. nothing to do!\n");
-		// We return TRUE because there is no error
-		return pdTRUE;
-	}
-
-
-	newest_location = write_holding_location - 1;
-	if (newest_location < 0)
-	{
-		newest_location += USERLOG_MAX_HOLD_ENTRIES;
-	}
-	PRINTF("  Most recent holding log entry     : %d\n", newest_location);
-
-	total_holding_logs_stored = (newest_location - oldest_holding_location) + 1;
-	if (total_holding_logs_stored < 0)
-	{
-		// This involves a wraparound
-		total_holding_logs_stored += USERLOG_MAX_HOLD_ENTRIES;
-	}
-	PRINTF("  Total holding log entries stored  : %d\n", total_holding_logs_stored);
-
-	total_holding_logs_free = (oldest_holding_location - write_holding_location);
-	if (total_holding_logs_free < 0)
-	{
-		// This involves a wraparound
-		total_holding_logs_free += USERLOG_MAX_HOLD_ENTRIES;
-	}
-	PRINTF("  Total holding log entries free    : %d\n", total_holding_logs_free);
-
-
-	if(!flush_all)
-	{
-		num_entries_to_archive = MAX_LOG_ENTRIES_PER_ARCHIVE_INTERVAL;
-		if (num_entries_to_archive >= total_holding_logs_stored)
-		{
-			num_entries_to_archive = total_holding_logs_stored;
-			transferring_all = pdTRUE;
-		}
-		else
-		{
-			transferring_all = pdFALSE;
-		}
-	}
-	else
-	{
-		// Flushing everything in one shot
-		num_entries_to_archive = total_holding_logs_stored;
-		transferring_all = pdTRUE;
-	}
-//	PRINTF("  Holding log entries to archive    : %d\n", num_entries_to_archive);
-
-	// Figure out ending position of extent being transmitted this cycle
-	last_holding_log_loc = (oldest_holding_location + num_entries_to_archive) - 1;
-	if(last_holding_log_loc >= USERLOG_MAX_HOLD_ENTRIES)
-	{
-		// Wrap around
-		last_holding_log_loc -= USERLOG_MAX_HOLD_ENTRIES;
-	}
-
-	PRINTF("  Archiving %d entries from %d to %d\n",
-			num_entries_to_archive, oldest_holding_location, last_holding_log_loc);
-
-// xxxxxxxxxxxxxxxxxxx debug info
-	// For debugging purposes, figure out what is stored in
-	// the log flash area
-	oldest_flash_location = get_log_oldest_location();
-	if (oldest_flash_location < 0)
-	{
-		Printf("\n Unable to get flash log oldest location\n");
-//		return pdFALSE;
-	}
-	PRINTF("  Oldest flash log entry          : %d\n", oldest_flash_location);
-
-	// Figure out what is stored in the holding log in retention memory
-	write_flash_location = get_log_store_location();
-	if (write_flash_location < 0)
-	{
-		Printf("\n Unable to get user holding log next write location\n");
-//		return pdFALSE;
-	}
-	PRINTF("  Next flash write location         : %d\n", write_flash_location);
-
-	newest_flash_location = write_flash_location - 1;
-	if (newest_flash_location < 0)
-	{
-		newest_flash_location += USERLOG_FLASH_MAX_PAGES;
-	}
-	PRINTF("  Most recent flash log written     : %d\n", newest_flash_location);
-
-	total_flash_logs_stored = (newest_flash_location - oldest_flash_location) + 1;
-	if (total_flash_logs_stored < 0)
-	{
-		// This involves a wraparound
-		total_flash_logs_stored += USERLOG_FLASH_MAX_PAGES;
-	}
-	PRINTF("  Total flash log entries stored    : %d\n", total_flash_logs_stored);
-
-	total_flash_logs_free = (oldest_flash_location - write_flash_location);
-	if (total_flash_logs_free < 0)
-	{
-		// This involves a wraparound
-		total_flash_logs_free += USERLOG_FLASH_MAX_PAGES;
-	}
-	PRINTF("  Total flash log entries free      : %d\n", total_flash_logs_free);
-
-// xxxxxxxxxxxxxxxxxxx debug info
-
-
-	// OK - now we know what the plan is.
-	entry_pointer = oldest_holding_location;
-	num_archived = 0;
-	archiving_finished = pdFALSE;
-	while (!archiving_finished)
-	{
-		// Use a separate semaphore take for each archive entry
-		// (1) Obtain the retention memory entry to archive
-		if(user_log_semaphore != NULL )
-		{
-			/* See if we can obtain the semaphore.  If the semaphore is not
-				available wait 10 ticks to see if it becomes free. */
-			if( xSemaphoreTake( user_log_semaphore, ( TickType_t ) 10 ) == pdTRUE )
-			{
-				// We were able to obtain the semaphore and can now access the
-				//	shared resource.
-
-				// First grab a local copy of the log entry
-				memcpy((UCHAR *)&temp_log_entry, (UCHAR *)&pUserData->user_log_entry[entry_pointer],
-						sizeof(USERLOG_ENTRY));
-
-				time64_string (time_string, &temp_log_entry.user_log_timestamp);
-				PRINTF(">>Log entry [%d]: Type: %d Time: %s [%s]\n",
-						entry_pointer,
-						temp_log_entry.user_log_type,
-						time_string,
-						temp_log_entry.user_log_text);
-				if(temp_log_entry.user_log_signature != USERLOG_SIGNATURE)
-				{
-					PRINTF(" ** Signature incorrect: %0x (should be %0x)\n",
-							temp_log_entry.user_log_signature,
-							USERLOG_SIGNATURE);
-				}
-
-				/* We have finished accessing the shared resource.  Release the
-					semaphore. */
-				xSemaphoreGive( user_log_semaphore );
-			}
-			else
-			{
-				PRINTF("\n ***user_archive_log_messages: Unable to obtain Flash semaphore\n");
-			}
-		}
-		else
-		{
-			PRINTF("\n ***user_archive_log_messages: semaphore not initialized!\n");
-		}
-
-		// Note that this write will also erase the next sector
-		// when necessary
-		if(user_write_log_to_flash(&temp_log_entry, &erase_was_done))
-		{
-			num_archived++;
-			if(num_archived >= num_entries_to_archive)
-			{
-				archiving_finished = pdTRUE;
-			}
-			entry_pointer++;
-			if(entry_pointer >= USERLOG_MAX_HOLD_ENTRIES)
-			{
-				// Wrap around
-				entry_pointer -= USERLOG_MAX_HOLD_ENTRIES;
-			}
-			// And update the oldest holding log entry pointer now
-			// that it's been written to flash
-			if(!update_holding_log_oldest_location(entry_pointer))
-			{
-				PRINTF("\n ***user_archive_log_messages: Unable to update holding log oldest location\n");
-				archiving_finished = pdTRUE;
-			}
-
-		}
-		else
-		{
-			// Unable to write to flash for some reason
-			archiving_finished = pdTRUE;
-		}
-	} // for each holding log entry in archiving extent
-
-	return return_value;
-}
-
-
-
-
-/**
- *******************************************************************************
- * @brief Process to write one log entry to the retention memory
- * holding area
- *  Returns pdFALSE if unable to write
- *  Returns pdTRUE if able to write
- *******************************************************************************
- */
-static void user_write_log_holding_entry(const UCHAR entry_type, const UCHAR *message_text)
-{
-	AB_INDEX_TYPE check_location;
-	AB_INDEX_TYPE write_location;
-	__time64_t now;
-
-
-	if(pUserData->user_holding_log_initialized != AB_MANAGEMENT_INITIALIZED)
-	{
-		PRINTF("\n USER LOG HOLDING NOT INITIALIZED\n");
-		return;
-	}
-
-	if(user_log_semaphore != NULL )
-	{
-		/* See if we can obtain the semaphore.  If the semaphore is not
-	        available wait 10 ticks to see if it becomes free. */
-		if( xSemaphoreTake( user_log_semaphore, ( TickType_t ) 10 ) == pdTRUE )
-		{
-			/* We were able to obtain the semaphore and can now access the
-	            shared resource. */
-
-			write_location = pUserData->next_log_holding_position;
-
-//			PRINTF("\n Log entry: %d Type: %d [%s]\n",
-//					write_location, entry_type, message_text);
-			/*
-			 * Get current time since activation
-			 */
-			da16x_time64_msec(NULL, &now);
-
-			pUserData->user_log_entry[write_location].user_log_timestamp = now;
-			pUserData->user_log_entry[write_location].user_log_signature = USERLOG_SIGNATURE;
-			pUserData->user_log_entry[write_location].user_log_type = entry_type;
-			user_text_copy(pUserData->user_log_entry[write_location].user_log_text,
-					message_text, USERLOG_STRING_MAX_LEN);
-
-			// Now update pointers, checking to make sure we're
-			// not full.
-			// This method always leaves one empty entry available
-			// for the next log entry
-			// Check for holding area full
-			check_location = write_location + 1;
-			if(check_location >= USERLOG_MAX_HOLD_ENTRIES)
-			{
-				check_location = 0;
-			}
-			// If this is the first log entry, then we're not full
-			if(pUserData->oldest_log_holding_position == INVALID_AB_ADDRESS)
-			{
-				pUserData->oldest_log_holding_position = write_location;
-				PRINTF("*** Setting first log holding position %d\n", write_location);
-			}
-			else
-			{
-				if(check_location == pUserData->oldest_log_holding_position)
-				{
-					// We've filled things
-					PRINTF("\n Log holding position full - %d %d discarding oldest\n",
-							check_location, pUserData->oldest_log_holding_position);
-					pUserData->oldest_log_holding_position += 1;
-					if(pUserData->oldest_log_holding_position >= USERLOG_MAX_HOLD_ENTRIES)
-					{
-						pUserData->oldest_log_holding_position = 0;
-					}
-
-				}
-			}
-			pUserData->next_log_holding_position = check_location;
-
-//			PRINTF(" Holding oldest: %d  Next log: %d\n",
-//					pUserData->oldest_log_holding_position, check_location);
-
-			/* We have finished accessing the shared resource.  Release the
-	            semaphore. */
-			xSemaphoreGive( user_log_semaphore );
-		}
-		else
-		{
-			Printf("\n ***user_write_log_holding_entry: Unable to obtain Flash semaphore\n");
-		}
-	}
-	else
-	{
-		Printf("\n ***user_write_log_holding_entry: semaphore not initialized!\n");
-	}
-
-	return;
-
-}
-
-
-/**
- *******************************************************************************
- * @brief Log an error to nonvolatile memory
- *******************************************************************************
- */
-static void user_log_error(const UCHAR *error_message)
-{
-
-// under construction - for now just show on console
-	PRINTF_RED("\n**** System error:\n[%s]\n\n", error_message);
-	if(USERLOG_ENABLED)
-	{
-		user_write_log_holding_entry(USERLOG_TYPE_ERROR, error_message);
-	}
-}
-
-/**
- *******************************************************************************
- * @brief Log a system event to nonvolatile memory
- *******************************************************************************
- */
-static void user_log_event(const UCHAR *event_message)
-{
-
-// under construction - for now just show on console
-	PRINTF("**** System event: [%s]\n", event_message);
-	if(USERLOG_ENABLED)
-	{
-		user_write_log_holding_entry(USERLOG_TYPE_INFORMATION, event_message);
-	}
-}
-#endif
 
 
 /**
@@ -1660,19 +981,6 @@ int user_factory_reset_btn_onetouch(void)
 	return pdTRUE;
 }
 
-#if 0 //JW: deprecated in 1.10.16 -- not used ever.
-/**
- *******************************************************************************
- * @brief Send termination event to the user task
- *******************************************************************************
- */
-static void user_terminate_event(void)
-{
-	if (xTask) {
-		xTaskNotifyIndexed(xTask, 0, USER_TERMINATE_EVENT, eSetBits);
-	}
-}
-#endif
 
 /**
  *******************************************************************************
@@ -1809,84 +1117,7 @@ void user_wifi_connection_completed(void)
 	user_wifi_connection_complete_event();
 }
 
-#if 0
-/**
- *******************************************************************************
- * @brief Process after wake-up
- *******************************************************************************
- */
-static int user_process_create_rtc_timer(unsigned char tid, unsigned int sec)
-{
-	int ret = 0;
 
-	PRINTF("\n**Neuralert: %s [%d seconds]\n", __func__, sec); // FRSDEBUG
-
-	if (tid < USER_RTC_TIMER_ID_MIN) {
-		PRINTF("%s: Failed to create rtc timer\n", __func__);
-		return -1;
-	}
-
-	ret = fc80211_set_app_keepalivetime(tid, sec, user_rtc_timer_callback);
-	if (ret != tid)
-		PRINTF("%s: failed to create a rtc timer(%d)\n", __func__, ret);
-
-	return ret;
-}
-#endif
-
-//JW: We don't want to encode our MQTT implementation in the firmware
-// This will be setup at provisioning (and frankly, it is easy enough
-// to do when testing anyway).  Remove this chunk of code in a future
-// release
-#if 0
-/**
- ****************************************************************************************
- * @brief MQTT Basic Configuration Function \n
- * @subsection Parameters
- * - Broker IP Address
- * - Broker Port Number
- * - Qos
- * - Subscriber Topic
- * - Publisher Topic
- * - DPM Use
- * - SNTP Use (for TLS valid time)
- * - TLS Use
- * - TLS Root CA
- * - TLS Client Certificate
- * - TLS Client Private Key
- ****************************************************************************************
- */
-static void mqtt_user_config(void)
-{
-
-	PRINTF("\n**Neuralert: configuring MQTT client\n"); // FRSDEBUG
-
-	PRINTF("     Broker IP: %s", MQTT_SAMPLE_BROKER_IP);
-	PRINTF("     Sub topic: %s", MQTT_SAMPLE_TOPIC_SUB);
-	PRINTF("     Pub topic: %s", MQTT_SAMPLE_TOPIC_PUB);
-
-	/* MQTT Setting */
-    da16x_set_nvcache_int(DA16X_CONF_INT_MQTT_AUTO, 1);
-    da16x_set_nvcache_str(DA16X_CONF_STR_MQTT_BROKER_IP, MQTT_SAMPLE_BROKER_IP);
-    da16x_set_nvcache_int(DA16X_CONF_INT_MQTT_PORT, MQTT_SAMPLE_BROKER_PORT);
-    da16x_set_nvcache_int(DA16X_CONF_INT_MQTT_QOS, MQTT_SAMPLE_QOS);
-    da16x_set_nvcache_int(DA16X_CONF_INT_MQTT_TLS, MQTT_SAMPLE_TLS);
-    da16x_set_nvcache_str(DA16X_CONF_STR_MQTT_SUB_TOPIC, MQTT_SAMPLE_TOPIC_SUB);
-    da16x_set_nvcache_str(DA16X_CONF_STR_MQTT_PUB_TOPIC, MQTT_SAMPLE_TOPIC_PUB);
-    da16x_set_nvcache_int(DA16X_CONF_INT_MQTT_PING_PERIOD, 60);
-
-    /* DPM after Rebooting */
- //   da16x_set_nvcache_int(DA16X_CONF_INT_DPM, 1);
-
-    da16x_set_nvcache_int(DA16X_CONF_INT_SNTP_CLIENT, 1);
-    da16x_nvcache2flash();
-
-    /* Input Certificate & Private Key */
-//    cert_flash_write(SFLASH_ROOT_CA_ADDR1, (char *)cert_buffer0, strlen(cert_buffer0));
-//    cert_flash_write(SFLASH_CERTIFICATE_ADDR1, (char *)cert_buffer1, strlen(cert_buffer1));
-//    cert_flash_write(SFLASH_PRIVATE_KEY_ADDR1, (char *)cert_buffer2, strlen(cert_buffer2));
-}
-#endif // TO BE REMOVED -- DEPRECATED
 
 /*
  * Get battery voltage
@@ -2113,6 +1344,12 @@ int send_json_packet (int startAdd, packetDataStruct pData, int msg_number, int 
 	// Meta data field -- a json for whatever we want.
 	strcat(mqttMessage,"\t\t\t\"meta\":\r\n\t\t\t{\r\n");
 	/*
+	 * Meta - MAC address of device - stored in retention memory
+	 * during the bootup event
+	 */
+	sprintf(str,"\t\t\t\t\"id\": \"%s\",\r\n",pUserData->Device_ID);
+	strcat(mqttMessage,str);
+	/*
 	* Meta - Firmware Version
 	*/
 	sprintf(str,"\t\t\t\t\"ver\": \"%s\",\r\n", USER_VERSION_STRING);
@@ -2139,18 +1376,15 @@ int send_json_packet (int startAdd, packetDataStruct pData, int msg_number, int 
 	fault_count = get_fault_count();
 	sprintf(str,"\t\t\t\t\"count\": %d,\r\n", (uint16_t)fault_count);
 	strcat(mqttMessage, str);
-#if 0
+
 	/*
-	 * Meta - flash error code for packet
-	 */
-	sprintf(str,"\t\t\t\t\"errF\": %d,\r\n", pData.flash_error);
+	* Meta - time (in minutes) since boot-up
+	*/
+	__time64_t current_time;
+	user_time64_msec_since_poweron(&current_time);
+	sprintf(str,"\t\t\t\t\"mins\": %ld,\r\n", (uint32_t)(current_time/60000));
 	strcat(mqttMessage, str);
-	/*
-	 * Meta - nvram error code for packet
-	 */
-	sprintf(str,"\t\t\t\t\"errR\": %d,\r\n", pData.nvram_error);
-	strcat(mqttMessage, str);
-#endif
+
 	/*
 	 * Meta - Remaining free heap size (to monitor for significant leaks)
 	 */
@@ -2441,78 +1675,6 @@ void calculate_timestamp_for_sample(__time64_t *FIFO_ts, __time64_t *FIFO_ts_pre
 }
 
 
-//JW: This is the old way of calculating the timestamps using calibration and interpolation
-// This chunk of code can be removed in a future release.
-#if 0
-/**
- *******************************************************************************
- * @brief calculate the timestamp for a sample read from the accelerometer FIFO
- *      by using it's relative position to the sample that caused the interrupt
- *      NOTE - this function assumes a 14Hz sample rate!
- *
- *   FIFO_timestamp - is the timestamp assigned to the FIFO buffer when it was read
- *   offset         - is the relative position in the FIFO from the timestamp
- *                    For instance, the immediately preceeding sample has
- *                    offset -1
- *   my_timestamp   - is the calculated timestamp to be assigned to the sample
- *                    with this offset
- *
- * NOTE - if CPU time is a concern with this math, the offsets could be precomputed
- *        in a table since they're always just multiples of 71.428571 msec.
- *******************************************************************************
- */
-void calculate_timestamp_for_sample(__time64_t *FIFO_timestamp, int offset, __time64_t *adjusted_timestamp)
-{
-	__time64_t scaled_timestamp;	// times 1000 for more precise math
-	__time64_t scaled_offsettime;	// the time offset of this sample * 1000
-	__time64_t adjusted_scaled_timestamp;
-	__time64_t rounded_offsettime;
-	__time64_t inter_sample_period_usec;	// Amount we adjust for each sample in the block
-
-	char input_str[20];
-	char output_str[20];
-	char scaled_time_str[20];
-	char scaled_offset_str[20];
-	char offset_str[20];
-
-	scaled_timestamp = *FIFO_timestamp;
-	scaled_timestamp = scaled_timestamp * (__time64_t)1000;
-	time64_string (input_str, FIFO_timestamp);  // calling with address here
-	time64_string (scaled_time_str, &scaled_timestamp);
-//	PRINTF ("  Input time: %s  Scaled time: %s\n", input_str, scaled_time_str);
-
-	// The math here is done * 1000 so as not to have large rounding
-	// errors
-	// If we have successfully calibrated this accelerometer,
-	// use the calibrated value.  Otherwise, use the nominal 14Hz value
-	if (pUserData->AXL_calibration_complete)
-	{
-		inter_sample_period_usec = pUserData->AXL_cal_sample_period_usec;
-//		time64_string (scaled_time_str, &inter_sample_period_usec);
-//		PRINTF ("  >>Using calibrated sample period: %s usec\n", scaled_time_str);
-	}
-	else
-	{
-		inter_sample_period_usec = (__time64_t)71429;	// 1000000 usec / 14
-//		time64_string (scaled_time_str, &inter_sample_period_usec);
-//		PRINTF ("  >>Using nominal sample period: %s usec\n", scaled_time_str);
-	}
-	scaled_offsettime = inter_sample_period_usec * (__time64_t)offset;
-	// offset time * 1000
-	adjusted_scaled_timestamp = scaled_timestamp + scaled_offsettime;
-	// back to msec.  We round by adding 500 usec before dividing
-	rounded_offsettime = (adjusted_scaled_timestamp + (__time64_t)500)
-			                  / (__time64_t)1000;
-	time64_string (offset_str, &rounded_offsettime);
-//	PRINTF (" Offset index: %d  Offset time: %s\n", offset, offset_str);
-
-	*adjusted_timestamp = rounded_offsettime;
-	return;
-}
-#endif // TO BE REMOVED -- DEPRECATED
-
-
-
 /**
  *******************************************************************************
  * @brief a helper function to calculate the AB buffer gap between loc and the
@@ -2729,211 +1891,6 @@ static packetDataStruct assemble_packet_data (int start_block)
 }
 
 
-// JW: Below is the old version of assemble_packet_data that was designed for
-// the FIFO implementation
-#if 0
-/**
- *******************************************************************************
- * @brief create a table of accelerometer data for transmission in one packet
- *
- * typedef struct
-	{
-		int16_t Xvalue;					//!< X-Value * 1000
-		int16_t Yvalue;					//!< Y-Value * 1000
-		int16_t Zvalue;					//!< Z-Value * 1000
-		__time64_t accelTime;               //!< time when accelleromter data taken
-	} accelDataStruct;
- *
- *returns -1 if an error
- *returns number of samples in data array otherwise
- *******************************************************************************
- */
-static int assemble_packet_data (HANDLE SPI_handle, int start_block, int end_block)
-{
-	int blocknumber;		// 0-based block index in Flash
-	ULONG blockaddr;			// physical address in flash
-	int done = pdFALSE;
-	__time64_t block_timestamp;
-	__time64_t block_timestamp_prev;
-	__time64_t sample_timestamp;
-	ULONG sample_timestamp_offset;
-	int block_samples;
-	int timesource;
-	int timeoffset;
-	accelBufferStruct FIFOblock;
-	int num_samples;
-	int num_blocks;
-	int i;
-	int retry_count;
-	int timeoffsetindex;   	// +- position from where timestamp is assigned
-	__time64_t inter_sample_period_usec;	// Amount we adjust for each sample in the block
-
-	char scaled_time_str[20];
-
-	char block_timestamp_str[20];
-	char sample_timestamp_str[20];
-	HANDLE SPI = NULL;
-
-	PRINTF("**assembling packet data from %d to %d\n", start_block, end_block);
-
-	SPI = flash_open(SPI_MASTER_CLK, SPI_MASTER_CS);
-	if (SPI == NULL)
-	{
-		user_log_error("***MQTT transmit: MAJOR SPI ERROR: Unable to open SPI bus handle");
-		return -1;
-	}
-
-	// Note that start_block may be less than or greater than end_block
-	// depending on whether we wrap around or not
-	// If we're only sending one block, then start_block will be
-	// equal to end_block
-	blocknumber = start_block;
-	num_blocks = 0;
-	num_samples = 0;
-	while (!done)
-	{
-		// Read the block from Flash
-
-
-		// For each block, assemble the XYZ data and assign a timestamp
-		// based on the block timestamp and the samples relation to
-		// when that timestamp was taken
-		// Calculate address of next sector to write
-		blockaddr = (ULONG)AB_FLASH_BEGIN_ADDRESS +
-				((ULONG)AB_FLASH_PAGE_SIZE * (ULONG)blocknumber);
-		for (retry_count = 0; retry_count < 3; retry_count++)
-		{
-			if (!AB_read_block(SPI, blockaddr, &FIFOblock))
-			{
-				sprintf(user_log_string_temp, "assemble_packet_data: unable to read block %d addr: %x\n",
-						blocknumber, blockaddr);
-				user_log_error(user_log_string_temp);
-				flash_close(SPI);
-				return -1;
-			}
-			else
-			{
-//				PRINTF(" assemble_packet_data: block %d read [%x] # samples: %d\n",
-//						blocknumber, blockaddr, FIFOblock.num_samples);
-			}
-			if(FIFOblock.num_samples > 0)
-			{
-				break;
-			}
-
-		}
-		if (retry_count > 0)
-		{
-			PRINTF(" assemble_packet_data: retried read %d times", retry_count);
-		}
-
-		// diagnostic if we don't read a real FIFO block
-		if (FIFOblock.num_samples <= 0)
-		{
-			for(int i = 0; i < 3; i++)
-			{
-				PRINTF("  FIFO: %d     X: %d Y: %d Z: %d\n", i, FIFOblock.Xvalue[i], FIFOblock.Yvalue[i], FIFOblock.Zvalue[i]);
-			} // for each sample in FIFO compare buffer
-		}
-
-		// add the samples to the transmit array
-		num_blocks++;
-		block_timestamp = FIFOblock.accelTime;
-		block_timestamp_prev = FIFOblock.accelTime_prev;
-		block_samples = FIFOblock.num_samples;
-		time64_string (block_timestamp_str, &block_timestamp);
-		//timesource = FIFOblock.timestamp_sample; // JW: Deprecated: changed to the last AXL value (below)
-		timesource = FIFOblock.num_samples - 1; //JW: this is the last sample
-//		PRINTF("  FIFO timesource: %d  timestamp: %s\n",
-//				timesource, block_timestamp_str);
-
-
-// JW: The AXL calibration process no longer exists
-#if 0
-		if (pUserData->AXL_calibration_complete)
-		{
-			inter_sample_period_usec = pUserData->AXL_cal_sample_period_usec;
-			time64_string (scaled_time_str, &inter_sample_period_usec);
-//			PRINTF ("  >>Using calibrated sample period: %s usec\n", scaled_time_str);
-		}
-		else
-		{
-			inter_sample_period_usec = (__time64_t)71429;	// 1000000 usec / 14
-			time64_string (scaled_time_str, &inter_sample_period_usec);
-//			PRINTF ("  >>Using nominal sample period: %s usec\n", scaled_time_str);
-		}
-#endif // TO BE REMOVED -- DEPRECATED
-
-
-		for (i=0; i<FIFOblock.num_samples; i++)
-		{
-			accelXmitData[num_samples].Xvalue = FIFOblock.Xvalue[i];
-			accelXmitData[num_samples].Yvalue = FIFOblock.Yvalue[i];
-			accelXmitData[num_samples].Zvalue = FIFOblock.Zvalue[i];
-			calculate_timestamp_for_sample(&block_timestamp, &block_timestamp_prev,
-					i, block_samples, &sample_timestamp);
-			accelXmitData[num_samples].accelTime = sample_timestamp;
-			num_samples++;
-
-//JW: This was the old way of calculating timestamps below.  To interpolate required
-// figuring out the offest from when the interrupt time was assigned.  In the new version
-// we just interpolate between the last time the AXL buffer was read and the current.
-// This chunk of code can be removed in a future release.
-#if 0
-			// Calculate the approximate time of this sample.
-			// The timestamp for the FIFO block applies to "timesource" sample,
-			// which is the sample that reached the FIFO threshold set
-			// when we set up the accelerometer.  The offset will be negative
-			// for earlier samples and positive for later ones.
-			timeoffsetindex = i - timesource;
-			// offset will be how many 14Hz intervals plus/minus from timestamp
-			if (timeoffsetindex == 0)
-			{
-				// This is the sample that reached the FIFO threshold
-				// and caused the interrupt
-				sample_timestamp = block_timestamp;
-			}
-			else
-			{
-				// This is one of the other samples retrieved from the
-				// accelerometer so we have to calculate what it's timestamp
-				// should be based on it's position in the FIFO relative to
-				// the sample that caused the interrupt
-				calculate_timestamp_for_sample(&block_timestamp, &block_timestamp_prev,
-						i, block_samples, &sample_timestamp);
-			}
-
-			accelXmitData[num_samples].accelTime = sample_timestamp;
-			num_samples++;
-#endif //TO BE REMOVED -- DEPRECATED
-
-		}
-
-		// See if we're done
-		if (blocknumber == end_block)
-		{
-			done = pdTRUE;
-		}
-		else
-		{
-			// step to next block
-			blocknumber++;
-			if(blocknumber >= AB_FLASH_MAX_PAGES)
-			{
-				// wraparound
-				blocknumber = 0;
-			}
-		}
-	}
-
-	flash_close(SPI);
-	PRINTF("**Assemble packet data: %d samples assembled from %d blocks\n",
-			num_samples, num_blocks);
-
-	return num_samples;
-}
-#endif //TO BE REMOVED -- DEPRECATED
-
 
 /**
  *******************************************************************************
@@ -3115,25 +2072,6 @@ int parseDownlink(char *buf, int len)
 			pUserData->ServerShutdownRequested = MAGIC_SHUTDOWN_KEY;
 		}
 	}
-
-#if 0
-	// Commands left over from Tim's version
-	if(strcmp(&commands[0][0],"timezone") == 0)
-	{
-		tempInt = strtol(&commands[1][0], NULL, 10);
-		PRINTF("Time Zone Downlink: %d\r\n",tempInt);
-		tempInt = tempInt * 3600;
-		set_timezone_to_rtm(tempInt);	/* to rtm */
-		da16x_SetTzoff(tempInt);
-		set_time_zone(tempInt);		/* to nvram */
-		return TRUE;
-	}
-	if(strcmp(argvTmp[0],"ota_update") == 0)
-	{
-		cmd_ota_update(argc, argvTmp);
-		return TRUE;
-	}
-#endif
 
 	return TRUE;
 }
@@ -3666,33 +2604,6 @@ static void user_process_send_MQTT_data(void* arg)
 
 
 
-	// JW: This is being deprecated now.  Wifi is now started in user_start_data_tx
-	//PRINTF("\n ===== Starting WIFI =====\n\n");
-	// Start up the wifi -- this wil
-	// Start the RF section power up
-	// wifi_cs_rf_cntrl(FALSE);
-
-	//vTaskDelay(pdMS_TO_TICKS(5000)); // 5 second delay for RF to warm up
-
-// JW: This is being deprecated.  We are starting the network in user_start_data_tx now.
-//	//int	ret = 0;
-//	char value_str[128] = {0, };
-//	//ret = da16x_cli_reply("select_network 0", NULL, value_str);
-//	da16x_cli_reply("select_network 0", NULL, value_str);
-
-// JW: This is being deprecated.  We are using callbacks and a watchdog -- not polling.
-	// This should exit quickly -- potential that the callback is faster than what we want.
-//	if (!user_mqtt_chk_connection(WIFI_AND_MQTT_CONNECT_TIMEOUT_SECONDS)){
-//		PRINTF("\n ===== FAILED TO COMPLETE WIFI AND MQTT CONNECTION \n\n");
-//		goto end_of_task;
-//	}
-
-	// JW: Leaving this for now -- but I plan on deprecating it now that we are using callbacks
-	// Delay added once the network is up -- let power utilization normalize a bit
-#if 0
-	//vTaskDelay(pdMS_TO_TICKS(2000)); //JW: Deprecated
-#endif
-
 	// Mark our start time
 	user_time64_msec_since_poweron(&user_MQTT_start_msec);
 	time64_string(elapsed_sec_string, &user_MQTT_start_msec);
@@ -3743,169 +2654,6 @@ static void user_process_send_MQTT_data(void* arg)
 
 
 
-//JW: This chunk of code corresponds to how we're managing the writing/overwriting of data
-// in the new LIMO version, the "write" operation has implicit priority over the "transmit"
-// such that we will transmit until we start getting close to the write location.
-#if 0
-	da16x_sys_watchdog_notify(sys_wdog_id); // JW: don't need this anymore here.
-
-	// So, notionally, we'll be wakened every 5 minutes or so
-	// 5 minutes is 14Hz x 60 x 5 = 4200 AXL samples
-	// 4200 samples / ~30 samples per FIFO block = 140 blocks
-	//
-	// Because of our flash storage scheme, data is stored in blocks
-	// representing one read of the AXL FIFO.  (Note that we might
-	// make this more efficient by having the AXL task store data in
-	// RETMEM between interrupts and then aggregate samples to be stored.
-	// But, because the timestamp is associated with the interrupt, that
-	// would seriously complicate life.)
-	//
-
-	// Figure out total number of blocks that have been stored, based
-	// on where AXL is about to write next.  The last block written
-	// should have been just prior to this one
-	// We are going to assume that we wouldn't have been wakened if
-	// AXL hasn't already written some blocks to nonvol, so we won't
-	// get carried away double-checking.  The data should be invalid anyway.
-	next_write_position = get_AB_write_location();
-	if (	(next_write_position < 0)
-		|| 	(next_write_position >= transmit_memory_size))
-	{
-		sprintf(user_log_string_temp, "MQTT task found invalid AXL write location: %d", next_write_position);
-		user_log_error(user_log_string_temp);
-		set_sole_system_state(USER_STATE_INTERNAL_ERROR);
-		goto end_of_task;
-	}
-	last_write_position = next_write_position - 1;
-	if (last_write_position < 0)
-	{
-		// AXL just wrapped around so our last position is the last
-		// place in memory.
-		last_write_position += transmit_memory_size;
-	}
-	PRINTF("  MQTT last block written is %d\n", last_write_position);
-
-	total_blocks_stored = (last_write_position - transmit_start_loc) + 1;
-	if (total_blocks_stored < 0)
-	{
-		// This involves a wraparound
-		total_blocks_stored += transmit_memory_size;
-	}
-	PRINTF("  MQTT total blocks stored %d\n", total_blocks_stored);
-
-	total_blocks_free = (transmit_start_loc - next_write_position);
-	if (total_blocks_free < 0)
-	{
-		// This involves a wraparound
-		total_blocks_free += transmit_memory_size;
-	}
-	PRINTF("  MQTT total blocks free %d\n", total_blocks_free);
-
-	// Check to see if we're getting close to running out of
-	// accelerometer buffer storage due to being unable to transmit
-	if(total_blocks_free < AB_FLASH_WARNING_THRESHOLD)
-	{
-		set_system_alert(USER_ALERT_AB_STORAGE_LOW);
-	}
-	else
-	{
-		clear_system_alert(USER_ALERT_AB_STORAGE_LOW);
-	}
-	// Check to see if we're behind the accelerometer and it will catch up.
-	// To prevent this, we keep a sizable unused space between the next
-	// AXL store location and the MQTT next transmit location.
-	if(total_blocks_free < AB_FLASH_OVERLAP_LIMIT)
-	{
-		pUserData->MQTT_dropped_data_events++;
-
-		APRINTF_E("\n***** AB STORAGE OVERLAP LIMIT %d EXCEEDED *****\n", AB_FLASH_OVERLAP_LIMIT);
-		drop_data_skip_to_loc = transmit_start_loc + AB_FLASH_OVERLAP_LIMIT;
-		if(drop_data_skip_to_loc >= transmit_memory_size)
-		{
-			// Wrap around
-			drop_data_skip_to_loc -= transmit_memory_size;
-		}
-		APRINTF_E("***** Dropping data from page %d to %d *****\n",	transmit_start_loc, drop_data_skip_to_loc);
-		if(!update_AB_transmit_location(drop_data_skip_to_loc))
-		{
-			APRINTF_E("\n MQTT: Unable to update AB transmit location\n");
-		}
-		else
-		{
-			APRINTF_E("\n MQTT: updated AB transmit location: %d ******\n\n",drop_data_skip_to_loc);
-		}
-		sprintf(user_log_string_temp, "** AB STORAGE OVERLAP LIMIT %d EXCEEDED", AB_FLASH_OVERLAP_LIMIT);
-		user_log_error(user_log_string_temp);
-		sprintf(user_log_string_temp, "** Dropping data from page %d to %d", transmit_start_loc, drop_data_skip_to_loc);
-		user_log_error(user_log_string_temp);
-
-		transmit_start_loc = drop_data_skip_to_loc;
-
-		// Note we assume that this will be positive by correct sizing
-		// of AB memory and the overlap limit
-		total_blocks_stored = (last_write_position - transmit_start_loc) + 1;
-		if (total_blocks_stored < 0)
-		{
-			total_blocks_stored += transmit_memory_size;
-		}
-		PRINTF("  Updated MQTT total blocks stored %d\n", total_blocks_stored);
-
-		total_blocks_free = (transmit_start_loc - next_write_position);
-		if (total_blocks_free < 0)
-		{
-			total_blocks_free += transmit_memory_size;
-		}
-		PRINTF("  Updated MQTT total blocks free %d\n", total_blocks_free);
-	} // if we've caught up to the writer
-
-
-	// AB memory is sized to store a max of about 2 hours of data
-	// If we have no WIFI, the worst case is 14Hz x 60 seconds x 60 minutes x 2
-	// or about 100,800 samples to transmit.  If there are about 30 samples
-	// per FIFO block, we could have as many as 3,360 FIFO blocks to transmit
-	// As of 7/22/22 it was taking about 0.8 second to transmit one JSON packet
-	// of 10 FIFO blocks.  In this case it would take 336 JSON packets to
-	// transmit 2 hours worth of data.  At 0.8 seconds per packet, that would
-	// be 268.8 seconds or 4.48 minutes.
-	//
-	// But... we also have the cooperative task scenario to consider.
-	// As of 7/22/22, when WIFI is available and the MQTT broker
-	// is available, it takes about 5 or 10 seconds to get the WIFI up
-	// and running and the MQTT client functional.  Plus we have a post-
-	// transmission delay to allow the cloud to send us a message.
-	// So in the worst case, sending all the stored data might cut it close
-	// if we were fully backed up.
-	//
-	// So choose a chunk of data that we can transmit in, say,
-	// two minutes, which will give plenty of breathing room and, hopefully,
-	// allow the MQTT task to complete before the AXL task thinks it wants
-	// us to start again.
-
-	num_blocks_to_send = MAX_FIFO_BUFFERS_PER_TRANSMIT_INTERVAL;
-	if (num_blocks_to_send > total_blocks_stored)
-	{
-		num_blocks_to_send = total_blocks_stored;
-	}
-	PRINTF("  MQTT blocks to transmit this cycle %d\n", num_blocks_to_send);
-
-	// Figure out ending position of extent being transmitted this cycle
-	transmit_end_loc = (transmit_start_loc + num_blocks_to_send) - 1;
-	if(transmit_end_loc >= transmit_memory_size)
-	{
-		// Wrap around
-		transmit_end_loc -= transmit_memory_size;
-	}
-
-	PRINTF("  MQTT transmitting %d blocks from %d to %d\n",
-			num_blocks_to_send, transmit_start_loc, transmit_end_loc);
-
-
-	// OK - now we know what the plan is.
-
-#endif // JW: Deprecated way of handling transmission staging 10.3
-
-
-
 	// *****************************************************************
 	//  MQTT transmission
 	// *****************************************************************
@@ -3927,23 +2675,7 @@ static void user_process_send_MQTT_data(void* arg)
 	++pUserData->MQTT_message_number;  // Increment transmission #
 	pUserData->MQTT_inflight = 0; // This is a new transmission, clear any lingering inflight issues
 
-	//JW: the old FIFO way worked as if the flash was static during transmission,
-	// the new LIMO way doesn't make this assumption (and is more robust).  Thus,
-	// we are dropping the following calculation of packet sizes since we don't
-	// know how many there will be.
-#if 0
-	// See how big the last packet will be
-	whole_packets_to_send = num_blocks_to_send / FIFO_BLOCKS_PER_PACKET;
-	last_packet_size = num_blocks_to_send - (whole_packets_to_send * FIFO_BLOCKS_PER_PACKET);
-	PRINTF("\n**Neuralert: send_data: sending %d FIFO blocks in %d whole packets\n",
-			num_blocks_to_send, whole_packets_to_send); // FRSDEBUG
-	if (last_packet_size > 0)
-	{
-		PRINTF("\n**Neuralert:            with a final packet of %d FIFO blocks\n",
-			last_packet_size); // FRSDEBUG
-	}
-	// Construct data to send
-#endif // JW: deprecated
+
 
 	// Set up transmit loop parameters
 	//num_blocks_left_to_send = num_blocks_to_send; // JW: deprecated
@@ -3959,42 +2691,6 @@ static void user_process_send_MQTT_data(void* arg)
 			&& (transmit_complete == pdFALSE))
 	{
 		packet_count++;
-
-		//JW: this chunk of code is deprecate.  It assumed a continous FIFO transmission,
-		// which isn't the case in the new LIMO solution.
-#if 0
-		// how many blocks in this packet
-		if (num_blocks_left_to_send < FIFO_BLOCKS_PER_PACKET)
-		{
-			// Sending partial packet with what's left
-			this_packet_num_blocks = num_blocks_left_to_send;
-		}
-		else
-		{
-			// Sending full size packet
-			this_packet_num_blocks = FIFO_BLOCKS_PER_PACKET;
-		}
-		this_packet_end_block = (this_packet_start_block + this_packet_num_blocks) - 1;
-		if(this_packet_end_block >= transmit_memory_size)
-		{
-			// Wrap around
-			this_packet_end_block -= transmit_memory_size;
-		}
-
-		PRINTF("\n**MQTT packet %d:  Start: %d End: %d num blocks: %d\n",
-				packet_count, this_packet_start_block, this_packet_end_block,
-				this_packet_num_blocks);
-
-
-		// Assemble data to be transmitted in this packet, including
-		// calculating timestamps
-		//samples_to_send = assemble_packet_data(NULL, this_packet_start_block, this_packet_end_block); //JW: deprecated FIFO
-
-		PRINTF("\n**MQTT packet %d:  Start: %d End: %d num blocks: %d\n",
-				packet_count, this_packet_start_block, this_packet_end_block,
-				this_packet_num_blocks);
-#endif //JW: deprecated 10.3
-
 
 		// assemble the packet into the user data
 		packet_data = assemble_packet_data(packet_data.next_start_block);
@@ -4067,45 +2763,6 @@ static void user_process_send_MQTT_data(void* arg)
 	printf_with_run_time("===JSON packet sent");
 #endif
 
-// JW: Remove this code in a future release.
-#if 0
-				PRINTF("Starting post-JSON packet transmit delay (%d msec)\n", MQTT_INTER_PACKET_DELAY_MS);
-				// Because MQTT and WIFI activity seems to interfere seriously
-				// with SPI bus activity, put a delay here to allow this
-				// activity to settle down before attempting reading more
-				// data from SPI flash
-				// JW Insight: This interference observed by Inteprod was almost certainly
-				// due to power draw.  The real fix is to not blast large packets all at
-				// once. Adding this delay is a bandaid at best.
-				vTaskDelay(pdMS_TO_TICKS(MQTT_INTER_PACKET_DELAY_MS));
-#endif // TO BE REMOVED -- DEPRECATED
-
-//JW: Remove this code in a future release.  This was for the FIFO implementation.
-// This functionality is now managed through the packet_data structure and the
-// assemble_packet_data function.
-#if 0
-				// Now that we've transmitted this packet, update the
-				// MQTT transmit pointer to reflect the data transmitted
-				// Note that we believe that we'll never catch up to the
-				// Accelerometer store location because we maintain a sizable
-				// buffer of free space between the two pointers.  See elsewhere
-				// in this function for that logic.
-				next_packet_start_block = this_packet_end_block + 1;
-				if(next_packet_start_block >= transmit_memory_size)
-				{
-					// Wrap around
-					next_packet_start_block -= transmit_memory_size;
-				}
-				if(!update_AB_transmit_location(next_packet_start_block))
-				{
-					user_log_error("** MQTT: Unable to update AB transmit location");
-				}
-				else
-				{
-					PRINTF("\n MQTT: updated AB transmit location: %d ******\n\n",next_packet_start_block);
-				}
-#endif
-
 
 			}
 			else if (pUserData->MQTT_tx_attempts_remaining > 0){
@@ -4133,36 +2790,12 @@ static void user_process_send_MQTT_data(void* arg)
 			transmit_complete = pdTRUE; // there is no more data after this packet.
 		}
 
-//JW: This code is now deprecated.  This was for the FIFO implementation. Managing
-// the packet start location is now through the packet_data structure and the
-// assemble_packet_data() function.
-#if 0
-		//num_blocks_left_to_send -= this_packet_num_blocks;
-		this_packet_start_block = this_packet_end_block + 1;
-		if(this_packet_start_block >= transmit_memory_size)
-		{
-			// Wrap around
-			this_packet_start_block -= transmit_memory_size;
-		}
-#endif
 
 	} // while we have stuff to transmit
 
 
 	if(!request_stop_transmit)
 	{
-
-//JW: remove this chunk of code in a future release
-#if 0
-#if defined(__RUNTIME_CALCULATION__) && defined(XIP_CACHE_BOOT)
-		printf_with_run_time("\n===Starting post-transmit delay");
-#endif
-		// delay to allow messages to be transmitted by the MQTT client task
-		vTaskDelay(pdMS_TO_TICKS(MQTT_POST_TRANSMISSION_DELAY_MS));
-#if defined(__RUNTIME_CALCULATION__) && defined(XIP_CACHE_BOOT)
-		printf_with_run_time("\n===Done post-transmit delay");
-#endif
-#endif // TO BE REMOVED -- DEPRECATED
 
 		increment_MQTT_stat(&(pUserData->MQTT_stats_transmit_success));
 		PRINTF("\n Neuralert: [%s] MQTT transmission %d complete.  %d samples in %d JSON packets",
@@ -4174,15 +2807,7 @@ static void user_process_send_MQTT_data(void* arg)
 	// command or other message back from the cloud
 	// Turn off the RF section until next transmit interval
 
-//JW: Remove this chunk of code in a future release
-#if 0
-	// delay to allow things to settle
-	//vTaskDelay(pdMS_TO_TICKS(MQTT_POST_RF_POWER_OFF_DELAY_MS)); JW: deprecating this functionality -- not needed anymore
-#endif // TO BE REMOVED -- DEPRECTATED
 
-#if 0
-	flash_close(MQTT_SPI_handle);
-#endif
 end_of_task:
 	da16x_sys_watchdog_notify(sys_wdog_id);
 	da16x_sys_watchdog_suspend(sys_wdog_id);
@@ -4199,62 +2824,6 @@ end_of_task:
 	vTaskDelete(NULL);
 
 
-#if 0
-
-	// Stop the mqtt client
-	mqtt_client_stop();
-
-	// Power down the RF section
-	// Note as of 7/11/22 this confuses the lan clients
-	wifi_cs_rf_cntrl(TRUE);
-
-#ifdef CFG_USE_SYSTEM_CONTROL
-	// Disabling WLAN at the next boot. : This is an example.
-	system_control_wlan_enable(FALSE);
-#endif
-
-#if defined(__RUNTIME_CALCULATION__) && defined(XIP_CACHE_BOOT)
-	printf_with_run_time("===user_process_send_MQTT_data finished");
-#endif
-
-	// Clear system state so LEDs are off, unless there's an alert
-	set_sole_system_state(0);
-
-	// Check to see if we received a device terminate downlink command
-	// while we were connected to the MQTT broker
-	if (pUserData->ServerShutdownRequested == MAGIC_SHUTDOWN_KEY)
-	{
-		PRINTF("\n\n\n**************************\n");
-		PRINTF("  SHUTDOWN REQUESTED\n");
-		PRINTF("**************************\n\n\n");
-		user_log_event("** SHUTDOWN REQUESTED **");
-		if (xTask) {
-			xTaskNotifyIndexed(xTask, 0, USER_TERMINATE_EVENT, eSetBits);
-		}
-	}
-
-	CLR_BIT(processLists, USER_PROCESS_MQTT_TRANSMIT);
-	vTaskDelay(1);
-
-	// Get our end time, elapsed time, and log it
-	user_time64_msec_since_poweron(&user_MQTT_end_msec);
-
-	user_time64_msec_since_poweron(&user_MQTT_end_msec);
-	time64_string(elapsed_sec_string, &user_MQTT_end_msec);
-	PRINTF("\n ===== MQTT end milliseconds %s\n", elapsed_sec_string);
-
-	user_MQTT_task_time_msec = (ULONG)(user_MQTT_end_msec - user_MQTT_start_msec);
-	PRINTF(" ==== MQTT elapsed milliseconds %lu\n", user_MQTT_task_time_msec);
-
-	// Note the following two lines cause a hard fault.  I don't know why
-//	sprintf(user_log_string_temp, "MQTT task elapsed time: %lu", user_MQTT_task_time_msec);
-//	user_log_event(user_log_string_temp);
-
-	/* Delete task */
-	user_MQTT_task_handle = NULL;
-	vTaskDelete(NULL);
-
-#endif
 }
 
 
@@ -4424,12 +2993,6 @@ static void user_create_MQTT_task()
 	extern struct mosquitto	*mosq_sub;
 	BaseType_t create_status;
 
-#if 0
-//	UBaseType_t current_task_priority;	// priority of main task (Accelerometer task)
-	// Get our priority
-//	current_task_priority = uxTaskPriorityGet((TaskHandle_t)NULL);
-#endif
-
 
 	// Prior to starting to transmit data, we need to store the message id state
 	// so we have unique message ids for each client message
@@ -4462,24 +3025,6 @@ static void user_create_MQTT_task()
 }
 
 
-#if 0
-/**
- *******************************************************************************
- *  Dummy function during stage5a to keep timer transmit happy
- *******************************************************************************
- */
-static void user_process_send_data()
-{
-
-	PRINTF("\n\n>>>>>>>> TIMED VERSION user_process_send_data\n\n"); // FRSDEBUG
-#if defined(__RUNTIME_CALCULATION__) && defined(XIP_CACHE_BOOT)
-	printf_with_run_time("===user_process_send_data SHOULD NOT BE RUNNING");
-#endif
-//	vTaskDelay(pdMS_TO_TICKS(3000));
-
-	return;
-}
-#endif //JW: TO BE REMOVED -- DEPRECATED
 
 
 
@@ -4521,31 +3066,6 @@ static int user_process_connect_ap(void)
 }
 
 
-#if 0
-/**
- *******************************************************************************
- * @brief Process for the RTC timer event
- *******************************************************************************
- */
-static void user_process_timer_event(void)
-{
-	int ret;
-
-	PRINTF("\n**Neuralert: user_process_timer_event\n"); // FRSDEBUG
-#if 0
-	/* RF control: ON */
-	wifi_cs_rf_cntrl(FALSE);
-
-	/* Connect to the AP */
-	ret = user_process_connect_ap();
-	if (ret) {
-		PRINTF("%s: Failed to make connection to an AP\n", __func__);
-		/* Go to sleep2 mode due to connection failed. */
-		user_sleep_ready_event();
-	}
-#endif
-}
-#endif // JW: TO BE REMOVED -- DEPRECATED
 
 
 /**
@@ -4648,18 +3168,7 @@ static int user_process_initialize_user_log(void)
 	PRINTF(">>>Initializing user log in flash\n");
 	vTaskDelay(pdMS_TO_TICKS(100));
 
-#if 0 //JW: logging deprecated 1.10.16
-	pUserData->log_write_fault_count = 0;
-	pUserData->log_write_retry_count = 0;
-	pUserData->log_erase_attempts = 0;
-	pUserData->log_erase_fault_count = 0;
-	pUserData->log_erase_retry_count = 0;
-	for (int i = 0; i < USERLOG_WRITE_MAX_ATTEMPTS; i++)
-	{
-		pUserData->log_write_attempt_events[i] = 0;
-		pUserData->log_erase_attempt_events[i] = 0;
-	}
-#endif
+
 
 	/*
 	 * Initialize the SPI bus
@@ -4743,80 +3252,6 @@ static int user_process_initialize_user_log(void)
 }
 
 
-#if 0
-void AB_view_hex(char* _data, int32_t _length)
-{
-	for (int j=0; j < _length; j++)
-	{
-		PRINTF("0x%02x,", _data[j] & 0xFF);
-	}
-	PRINTF("\n");
-}
-
-
-// dump some data from flash
-// You must supply the SPI handle and be in a session
-static void AB_dump_data(HANDLE SPI, ULONG dumpaddr, int dumplength)
-{
-	int spi_status;
-	UINT8 bytes[256];
-	if (dumplength > 256)
-	{
-		PRINTF(" AB_dump_page max length 256 exceeded\n");
-		return;
-	}
-	// Read data from flash
-	spi_status = pageRead(SPI, dumpaddr, bytes, (UINT32)dumplength);
-
-	if(spi_status < 0)
-	{
-		PRINTF("  AB_dump_page read error\n");
-	}
-	else
-	{
-		AB_view_hex(bytes, dumplength);
-	}
-
-}
-#endif
-
-#if 0
-/**
- *******************************************************************************
- * @brief Dump the Winbond Flash status registers (diagnostic aid)
- *
- *******************************************************************************
- */
-static void W25Q64_display_status_registers(HANDLE handler, char *text)
-{
-	UINT8 statreg1, statreg2, statreg3;  // for reading Winbond status registers
-	int spi_status;
-
-	statreg1 = 0xFF;
-	statreg2 = 0xFF;
-	statreg3 = 0xFF;
-	spi_status = readStatReg1(handler, &statreg1);
-	if(spi_status < 0)
-	{
-			PRINTF("  Error reading status register 1\n"); //Fault error indication here
-	}
-	spi_status = readStatReg2(handler, &statreg2);
-	if(spi_status < 0)
-	{
-			PRINTF("  Error reading status register 2\n"); //Fault error indication here
-	}
-	spi_status = readStatReg3(handler, &statreg3);
-	if(spi_status < 0)
-	{
-			PRINTF("  Error reading status register 3\n"); //Fault error indication here
-	}
-
-	PRINTF(">>>>> [%s] Status registers: %02X %02X %02X\n",
-			text,
-			statreg1, statreg2, statreg3);
-
-}
-#endif
 
 /**
  *******************************************************************************
@@ -5670,87 +4105,7 @@ static int update_AB_write_location(void)
 }
 
 
-//JW: THe update_AB_write_location below is deprecated in 10.3
-#if 0
-/**
- *******************************************************************************
- * @brief Process to update the accelerometer buffer management
- * next-write location, making sure it's done with exclusive access
- *  Returns FALSE if unable to gain exclusive access
- *  returns TRUE otherwise
- *
- *******************************************************************************
- */
-static int update_AB_write_location(int new_location)
-{
-	int return_value = pdFALSE;
 
-	// NOTE! this doesn't check to see if the MQTT task is running or
-	// not.  It is expected that this function will be called under
-	// the following circumstances:
-	//   1. MQTT task is not running and we've just read from the AXL
-	//   2. MQTT task is running but is transmitting some data that
-	//      we recorded recently but not including what we've just
-	//      recorded
-	//   3. MQTT task is running but is transmitting old data that
-	//      we recorded a while ago.  This is likely when we lose
-	//      WIFI for a while
-	//    4. (TBD) MQTT task is transmitting data where we plan to
-	//       write or erase.  VERY IMPORTANT THAT WE DON"T LET THIS HAPPEWN
-
-	if(AB_semaphore != NULL )
-	{
-		/* See if we can obtain the semaphore.  If the semaphore is not
-			available wait 10 ticks to see if it becomes free. */
-		if( xSemaphoreTake( AB_semaphore, ( TickType_t ) 10 ) == pdTRUE )
-		{
-//			PRINTF("===update_AB_write_location: new value %d\n", new_location);
-			/* We were able to obtain the semaphore and can now access the
-				shared resource. */
-			pUserData->next_AB_write_position = new_location;
-
-			/* We were able to obtain the semaphore and can now access the
-			    shared resource. */
-
-			/* We have finished accessing the shared resource.  Release the
-				semaphore. */
-			xSemaphoreGive( AB_semaphore );
-			return_value = pdTRUE;
-		}
-		else
-		{
-			PRINTF("\n ***Unable to obtain AB semaphore\n");
-		}
-	}
-	else
-	{
-		PRINTF("\n ***AB semaphore not initialized!\n");
-	}
-
-	return return_value;
-
-}
-#endif
-
-#if 0
-/**
- *******************************************************************************
- * @brief Helper function to return TRUE if an array of bytes is all zeroes
- *  Returns pdFALSE any byte is non-zero
- *  Returns pdTRUE if all "len" bytes are zero
- *******************************************************************************
- */
-static int zerobytes(UCHAR *bytes, int len)
-{
-	int i;
-	for (i=0; i<len; i++)
-	{
-		if(bytes[i] != 0x00)
-			return pdFALSE;
-	}
-	return pdTRUE;
-}
-#endif
 
 /**
  *******************************************************************************
@@ -6016,17 +4371,7 @@ static int user_erase_flash_sector(HANDLE SPI, ULONG SectorEraseAddr)
 		// (during development it seemed to go awry sometimes)
 //		spi_flash_config_pin();
 
-#if 0
-		// Get our own handle to the SPI bus
-		MYSPI = flash_open(SPI_MASTER_CLK, SPI_MASTER_CS);
-		if (MYSPI == NULL)
-		{
-			Printf("\n***ERASE SECTOR MAJOR SPI ERROR: Unable to open SPI bus handle\n\n");
-			fault_happened = 1;
-		}
-//		else
-//		{
-#endif
+
 
 #if defined(__RUNTIME_CALCULATION__) && defined(XIP_CACHE_BOOT)
 			printf_with_run_time("======= about to erase sector");
@@ -6128,277 +4473,7 @@ end_of_task:
 	return erase_status;
 }
 
-#if 0 //JW logging deprecated in 1.10.16
-/**
- *******************************************************************************
- * @brief Process for writing one log entry to external data Flash
- * One log entry structure is written to the next available
- * flash location.
- * See document "Neuralert system logging design" for
- * details of this design
- *
- *******************************************************************************
- */
-static int user_write_log_to_flash(USERLOG_ENTRY *pLogData, int *did_an_erase)
-{
 
-	ULONG NextWriteAddr;
-	ULONG SectorEraseAddr;
-	int spi_status, rerunCount, faultFlag = 1;
-	UINT8 *reg;
-	int erase_status;
-	int write_status;
-	UINT32 i2c_status;
-	UINT32 write_fail_count;
-	USERLOG_ENTRY checkEntry;	// copy for readback check
-	int write_index;
-	int oldest_log_entry;
-	int next_write_location;
-	int retry_count;
-	int fault_happened;
-	HANDLE SPI = NULL;
-
-	// Our return status starts at ok until a problem occurs
-	write_status = TRUE;
-
-	// Set erase happened status for user in case we exit early
-	*did_an_erase = pdFALSE;
-
-	// Retried the index of the next place to write a
-	// block.  Starts at 0 and wraps around when we reach the end of the
-	// log region in flash
-	// Upon entry to this function it should always point to a valid
-	// write location
-	// Writes are done to 256-byte pages and so are on addresses that
-	// are multiples of 0x100
-	write_index = get_log_store_location();
-	if (write_index < 0)
-	{
-		PRINTF("\n Unable to get flash log store location\n");
-		return FALSE;
-	}
-
-
-	// Remember how many entries we wrote to flash
-	pUserData->total_log_entries++;
-
-	// Calculate address of next sector to write
-	NextWriteAddr = (ULONG)USERLOG_FLASH_BEGIN_ADDRESS +
-			((ULONG)AB_FLASH_PAGE_SIZE * (ULONG)write_index);
-//	PRINTF("----------------------------------------\n");
-//	PRINTF(" Next flash log entry to write: %d\n",write_index);
-//	PRINTF(" Flash Write ADDR                : 0x%X\r\n", NextWriteAddr);
-	PRINTF(" Writing flash log entry: %d [0x%X]\n",write_index, NextWriteAddr);
-//	PRINTF("----------------------------------------\n");
-
-	fault_happened = 1;
-	retry_count = 0;
-
-	write_fail_count = 0;
-
-	for(rerunCount = 0; rerunCount < USERLOG_WRITE_MAX_ATTEMPTS; rerunCount++)
-	{
-		retry_count++;
-
-		// Note - the logic of the SPI access is that this log function
-		// will only be called when no other user activity is happening.
-		// I.e., it is designed to be activated after the accelerometer
-		// code has wakened from sleep2, written data to flash, NOT
-		// erased flash, and NOT started the MQTT task.
-		// So we are guaranteed to be in a quiescent period
-
-		// Get a handle to the SPI bus
-		SPI = flash_open(SPI_MASTER_CLK, SPI_MASTER_CS);
-		if (SPI == NULL)
-		{
-			PRINTF("\n***MAJOR SPI ERROR: Unable to open SPI bus handle\n\n");
-			fault_happened = 1;
-		}
-		else
-		{
-//			PRINTF(" user_process_write_to_flash (1): SPI handle: %x\n", SPI);
-
-			if(!flash_write_block(SPI, NextWriteAddr, (UCHAR *)pLogData, sizeof(USERLOG_ENTRY)))
-			{
-				PRINTF("  Flash Write error %x\n", NextWriteAddr); //Fault error indication here
-			}
-			else
-			{
-//				PRINTF("  Flash Write successful\n");
-			}
-//			vTaskDelay(1);
-
-			// Now read it back and see if it's the same
-			if (pdFALSE == flash_read_page_data(SPI, NextWriteAddr, (UCHAR *)&checkEntry, sizeof(USERLOG_ENTRY)))
-			{
-				PRINTF("  Flash readback error: %x\n", NextWriteAddr); //Fault error indication here
-				write_status = FALSE;
-			}
-
-			// Read back what we just wrote and make sure it took
-			// Note - as of 8/20/22, the WIFI and MQTT activity in other
-			// tasks seems to interfere with the SPI bus.  As of this
-			// writing it seems that we catch the mistake and correct it
-			// on the first retry.
-			// Further note - as of 10/26/22 Renesas supplied some patches
-			// for SPI operation that seem to make SPI operation reliable
-			if(pLogData->user_log_timestamp != checkEntry.user_log_timestamp)
-			{
-				PRINTF("  MISMATCHED TIMESTAMPS: %d vs %d\n", pLogData->user_log_timestamp,
-						checkEntry.user_log_timestamp);
-				write_fail_count++;
-			} // for each sample in FIFO compare buffer
-
-			if(write_fail_count > 0)
-			{
-				PRINTF("SPI FLASH ERROR COUNT: %d\n\n", write_fail_count);
-				faultFlag = 1;
-				write_fail_count = 0;
-				vTaskDelay(pdMS_TO_TICKS(30));
-				if( rerunCount != (USERLOG_WRITE_MAX_ATTEMPTS - 1))
-					flash_close(SPI);
-			}
-			else
-			{
-//				PRINTF(" Log flash write & verification successful\n");
-				faultFlag = 0;
-				break;
-			}
-		} // SPI handle not null
-	} // for rerunCount < max retries
-
-	if(faultFlag != 0)
-	{
-		pUserData->log_write_fault_count++;  // total write failures since power on
-	}
-	else if(retry_count > 1)
-	{
-		pUserData->log_write_retry_count++;	 // total # of times retry worked
-	}
-	// Log how many times we succeeded on each attempt count; [0] is first try, etc.
-	pUserData->log_write_attempt_events[retry_count-1]++;
-
-
-// Note that the SPI handle is not closed after the last attempt
-// This is done later to allow more time per Nick
-//	PRINTF(" user_process_write_to_flash (2): SPI handle: %x\n", SPI);
-
-	// If we had a write failure, we skip the pointer update
-
-	if(faultFlag != 0)
-	{
-		APRINTF_E("\n***** LOG WRITE FAILURE - SKIPPING POINTER UPDATE *****\n\n");
-		goto end_of_task;
-	}
-
-	// If the oldest entry pointer is not set yet,
-	// then set it to the place we just wrote
-	// (should be first location in this case)
-	oldest_log_entry = get_log_oldest_location();
-//	PRINTF(" Oldest flash log entry       : %d\n",oldest_log_entry);
-	if (oldest_log_entry == INVALID_AB_ADDRESS)
-	{
-		if(!update_log_oldest_location(write_index))
-		{
-			PRINTF("\n Unable to set log oldest location\n");
-			goto end_of_task;
-		}
-		else
-		{
-			PRINTF(" ****** Setting oldest flash location %d ******\n",write_index);
-		}
-
-	}
-	// Just some safeguard code that should not happen
-	else if ((oldest_log_entry < 0)
-			|| (oldest_log_entry >= USERLOG_FLASH_MAX_PAGES))
-	{
-		PRINTF("\n ***** error oldest flash log location invalid %d - resetting ****\n", oldest_log_entry);
-		if(!update_log_oldest_location(write_index))
-		{
-			PRINTF("\n Unable to set log oldest location\n");
-			goto end_of_task;
-		}
-	}
-
-	// Set up for the next write
-	write_index++;
-	if(write_index >= USERLOG_FLASH_MAX_PAGES)
-	{
-		PRINTF(" Last log address reached. %d Resetting to zero\n",
-				write_index);
-		write_index = 0;
-	}
-	if(!update_log_store_location(write_index))
-	{
-		PRINTF("\n Unable to set log next write location\n");
-//			goto end_of_task;
-	}
-	else
-	{
-//		PRINTF(" === Writing to flash next write location updated: %d\n", write_index);
-	}
-
-	//	vTaskDelay(pdMS_TO_TICKS(50));
-
-	// Check to see if we've caught up with the oldest location
-	// This is not intended to happen during a typical five-day
-	// device operation.
-	if (write_index == oldest_log_entry)
-	{
-		PRINTF("\n ***** User log full!  Discarding oldest %d ***\n", oldest_log_entry);
-		oldest_log_entry++;
-		if(oldest_log_entry >= USERLOG_FLASH_MAX_PAGES)
-		{
-			oldest_log_entry = 0;
-		}
-
-		if(!update_log_oldest_location(oldest_log_entry))
-		{
-			PRINTF("\n Unable to set log oldest location\n");
-		}
-	}
-
-
-	// If the next page we're going to write to is the start of a
-	// new sector, we have to erase it to be ready
-
-	if(	((write_index % AB_PAGES_PER_SECTOR ) == 0)
-		|| (write_index == 0))
-	{
-		*did_an_erase = pdTRUE;
-		// Calculate address of next sector to write
-		SectorEraseAddr = (ULONG)USERLOG_FLASH_BEGIN_ADDRESS +
-					((ULONG)AB_FLASH_PAGE_SIZE * (ULONG)write_index);
-		PRINTF("  Log sector filled. Location: %x Erasing next sector\n",
-					SectorEraseAddr);
-
-		pUserData->log_erase_attempts++;
-
-		erase_status = user_erase_flash_sector(SPI, SectorEraseAddr);
-#if 0
-#if defined(__RUNTIME_CALCULATION__) && defined(XIP_CACHE_BOOT)
-			printf_with_run_time("======= about to erase sector");
-#endif
-
-		erase_status = eraseSector_4K(SPI, SectorEraseAddr);
-
-#if defined(__RUNTIME_CALCULATION__) && defined(XIP_CACHE_BOOT)
-			printf_with_run_time("======= done erasing sector");
-#endif
-#endif
-		if(!erase_status)
-		{
-			PRINTF("\n\n********* Sector erase error *********\n");
-			write_status = FALSE;
-		}
-	} // if need to erase next sector
-
-end_of_task:
-	flash_close(SPI);  // See comments about SPI closing above
-	return write_status;
-}
-#endif
 
 /**
  *******************************************************************************
@@ -6573,76 +4648,7 @@ static int user_process_write_to_flash(accelBufferStruct *pFIFOdata, int *did_an
 		goto end_of_task;
 	}
 
-	//JW: This next chunk of code was for a FIFO implementation of the AB transmission approach.
-	// This is no longer necessary as we will set the transmission index based on the AB write location
-	// so we have a LIFO-like implementation.
-#if 0
-	// If the MQTT transmit pointer is not set yet,
-	// then set it to the place we just wrote
-	// (should be first location in this case)
-	transmit_index = get_AB_transmit_location();
-	if (transmit_index == INVALID_AB_ADDRESS)
-	{
-		if(!update_AB_transmit_location(write_index))
-		{
-			user_log_error("Unable to set AB transmit location");
-			goto end_of_task;
-		}
-		else
-		{
-			PRINTF(" ****** Setting MQTT transmit location %d ******\n",write_index);
-		}
 
-	}
-	// Just some safeguard code that should not happen
-	else if ((transmit_index < 0)
-			|| (transmit_index >= AB_FLASH_MAX_PAGES))
-	{
-		sprintf(user_log_string_temp, " ***** Error MQTT transmit point invalid %d - resetting ****", transmit_index);
-		user_log_error(user_log_string_temp);
-		if(!update_AB_transmit_location(write_index))
-		{
-			user_log_error("Unable to set AB transmit location");
-			goto end_of_task;
-		}
-	}
-	else // valid transmit location
-	{
-		// Normally the MQTT task will do the updating when it finishes transmitting
-		// However, if we are catching up we could have a problem
-
-		// See if we're about to catch up to the MQTT task transmit pointer
-		// This will happen if we are unable to transmit for about 2 hours
-		// In this case, we have to throw away MQTT data
-
-		// NOTE - as of 8/23/22 the MQTT task does this checking and
-		// maintains a reasonably sized guard band of unused flash
-		// space to make sure the accelerometer has room to write before
-		// the next time MQTT transmits.
-		// It might make sense to have an additional check here in case
-		// everything goes off the rails
-		//xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-		//xxxxxxxxxxxxxxxxxxxxxxxxxxxTO DO xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-		//xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-
-	}
-#endif
-
-
-	//JW: This way of doing write_index was always intended for incremental updating.
-	//Instead of passing write_index++ to update_AB_write_location, we now let that function
-	// increament the user variable directly.
-#if 0
-	// Set up for the next write
-	write_index++;
-//	Printf(" === Writing to flash next write location: %d\n", write_index);
-	if(write_index >= AB_FLASH_MAX_PAGES)
-	{
-		PRINTF(" Last AB address reached. %d Resetting to zero\n",
-				write_index);
-		write_index = 0;
-	}
-#endif
 
 	//if(!update_AB_write_location(write_index)) //JW: to be deleted
 	if(!update_AB_write_location())
@@ -6674,17 +4680,7 @@ static int user_process_write_to_flash(accelBufferStruct *pFIFOdata, int *did_an
 					SectorEraseAddr);
 
 		erase_status = user_erase_flash_sector(SPI, SectorEraseAddr);
-#if 0
-#if defined(__RUNTIME_CALCULATION__) && defined(XIP_CACHE_BOOT)
-			printf_with_run_time("======= about to erase sector");
-#endif
 
-		erase_status = eraseSector_4K(SPI, SectorEraseAddr);
-
-#if defined(__RUNTIME_CALCULATION__) && defined(XIP_CACHE_BOOT)
-			printf_with_run_time("======= done erasing sector");
-#endif
-#endif
 		if(!erase_status)
 		{
 			PRINTF("\n Neuralert: [%s] SPI erase error", __func__);
@@ -6904,570 +4900,7 @@ __time64_t cur_sec;
 	return;
 }
 
-#if 0 //JW: logging deprecated in 1.10.16
-/**
- *******************************************************************************
- * @brief Periodically log operation information
- *
- *******************************************************************************
- */
-static void log_operating_info(void)
-{
-	float adcDataFloat;
 
-	// Note that local ("wall clock") time isn't available unless we have
-	// an internet connection, which typically only happens when
-	// we're doing an MQTT transmission
-	sprintf(user_log_string_temp, "Total FIFO blocks read since power on   : %d", pUserData->ACCEL_read_count);
-	user_log_event(user_log_string_temp);
-	if(pUserData->write_fault_count > 0)
-	{
-		sprintf(user_log_string_temp, "Total FIFO write failures since power on: %d", pUserData->write_fault_count);
-		user_log_event(user_log_string_temp);
-	}
-	if(pUserData->write_retry_count > 0)
-	{
-		sprintf(user_log_string_temp, "Total times a write retry was needed    : %d", pUserData->write_retry_count);
-		user_log_event(user_log_string_temp);
-	}
-	sprintf(user_log_string_temp, "Total missed accelerometer interrupts   : %d", pUserData->ACCEL_missed_interrupts);
-	user_log_event(user_log_string_temp);
-
-	sprintf(user_log_string_temp, "Total sector erase events               : %d", pUserData->erase_attempts);
-	user_log_event(user_log_string_temp);
-	if(pUserData->erase_retry_count > 0)
-	{
-		sprintf(user_log_string_temp, "Total times an erase retry was needed   : %d", pUserData->erase_retry_count);
-		user_log_event(user_log_string_temp);
-	}
-
-	if(Stats_semaphore != NULL )
-	{
-		/* See if we can obtain the semaphore.  If the semaphore is not
-	        available wait 10 ticks to see if it becomes free. */
-		if( xSemaphoreTake( Stats_semaphore, ( TickType_t ) 10 ) == pdTRUE )
-		{
-			/* We were able to obtain the semaphore and can now access the
-	            shared resource. */
-
-			sprintf(user_log_string_temp, "Total MQTT connect attempts             : %d", pUserData->MQTT_stats_connect_attempts);
-			user_log_event(user_log_string_temp);
-			sprintf(user_log_string_temp, "Total MQTT connect fails                : %d", pUserData->MQTT_stats_connect_fails);
-			user_log_event(user_log_string_temp);
-			sprintf(user_log_string_temp, "Total MQTT packets sent                 : %d", pUserData->MQTT_stats_packets_sent);
-			user_log_event(user_log_string_temp);
-			sprintf(user_log_string_temp, "Total MQTT retry attempts               : %d", pUserData->MQTT_stats_retry_attempts);
-			user_log_event(user_log_string_temp);
-			sprintf(user_log_string_temp, "Total MQTT transmit success             : %d", pUserData->MQTT_stats_transmit_success);
-			user_log_event(user_log_string_temp);
-			if(pUserData->MQTT_dropped_data_events > 0)
-			{
-				sprintf(user_log_string_temp, "Total times transmit buffer wrapped     : %d", pUserData->MQTT_dropped_data_events);
-				user_log_event(user_log_string_temp);
-			}
-
-			/* We have finished accessing the shared resource.  Release the
-	            semaphore. */
-			xSemaphoreGive( Stats_semaphore );
-		}
-		else
-		{
-			Printf("\n ***print stats: Unable to obtain Stats semaphore\n");
-		}
-	}
-	else
-	{
-		Printf("\n ***print stats: Stats semaphore not initialized!\n");
-	}
-
-	// Battery voltage
-	adcDataFloat = get_battery_voltage();
-	sprintf(user_log_string_temp, "Battery reading : %d",(uint16_t)(adcDataFloat * 100));
-	user_log_event(user_log_string_temp);
-}
-#endif
-
-
-
-
-//JW: In the following code chunk is the old way to determine the timestamp for each
-// FIFO read.  This old approach focused on identifying the instance the interrupt
-// was called, and not just the RTC time.
-#if 0
-/**
- *******************************************************************************
- * @brief Determine timestamp to use for this reading of the accelerometer FIFO
- *
- *        NOTE - this function is designed to be called exactly once
- *               each time a new FIFO is read from the accelerometer
- *               because we keep statistics on reads that we use to
- *               interpolate the interrupt time when it is otherwise
- *               impossible to determine.
- *******************************************************************************
- */
-static void determine_timestamp(__time64_t *returned_timestamp, int num_samples)
-{
-	int i;
-	int j;
-	unsigned char time_buffer[50];
-	ULONG time_since_boot_milliseconds;
-	ULONG time_since_boot_seconds;
-	ULONG time_since_boot_minutes;
-	ULONG time_since_boot_hours;
-	ULONG time_since_boot_days;
-	long long interrupt_time;  // RTC clock ticks when busy interrupt occurred
-
-	struct tm *current_time;
-	__time64_t now;
-	__time64_t nowSec;
-	__time64_t nowrawmsec;		// RTC clock tick-based current time msec
-	__time64_t latencyms;		// time from interrupt to "now"
-	__time64_t timestamp_selected;		// return value
-
-	__time64_t interrupt_time_RTC;   // Time of interrupt when awake in RTC ticks
-	__time64_t interrupt_time_msec; // same in milliseconds
-
-	__time64_t lost_time;		// difference between two early time snapshots
-
-	__time64_t time_since_last_wakeup_msec;
-//	__time64_t msec_since_time_basis;
-//	ULONG average_msec_per_FIFO_read;    // average time per FIFO read when not waking from sleep
-//	ULONG average_msec_per_AXL_sample;	// average time per sample when not waking from sleep
-
-	// The following used to calculation accelerometer calibration
-	__time64_t total_cal_time;			// total time over samples
-	__time64_t cal_interrupt_time;		// time between two interrupts
-	int	total_cal_samples;				// total # of samples
-	__time64_t average_cal_period_usec;	// average period in usec
-
-	// The following used to calculate the polled FIFO full timestamp
-#define NOMINAL_SAMPLE_PERIOD_USEC 71429
-	ULONG samples_since_timestamp;		// total samples read since we had a
-										// solid wake-from-sleep timestamp
-										// prior to this FIFO reading
-	                                    // ! be careful with the "bonus" samples
-	                                    // that collect while we're getting around
-	                                    // to reading
-	__time64_t usec_since_timestamp;	// Total calculated time since we had a solid timestamp
-	__time64_t calculated_timestamp_usec;  // Assigned calculated timestamp in microseconds
-
-	__time64_t average_timestamp_RTC;		// average of the before and after polled times
-	__time64_t average_timestamp_msec;		// average of the before and after polled times
-	__time64_t timestamp_error_msec;		// difference between extrapolated and bracketed
-
-
-	// The following are temps used to hold __time64_t string values
-	// since printf can't handle long longs
-	char time_string[20];
-	char time_string2[20];
-	/*
-	 * Get current time for reference and some statistics
-	 * NOTE - the interrupt we're trying to assign a timestamp to has
-	 *        happened a while ago, so this time is just for information
-	 *
-	 * Note also that the "system time" from the SDK is dependent on
-	 * the time received by the SNTP task that could run at boot time
-	 * and at every time the MQTT task connects to WIFI.  The SNTP time
-	 * retrieved is in seconds and is subject to internet delays, so
-	 * the clock time will be inexact for our purposes.
-	 */
-	da16x_time64_msec(NULL, &now);
-	da16x_time64_sec(NULL, &nowSec);
-
-//	PRINTF("\n*** Current da16xx time in msec: %u  sec: %u\n", now, nowSec);
-	current_time = (struct tm *)da16x_localtime64(&nowSec);
-	da16x_strftime(time_buffer, sizeof(time_buffer), "%Y.%m.%d %H:%M:%S", current_time);
-//	PRINTF("Current time is: %s\n", time_buffer);
-
-	// Get relative time since power on from the RTC time counter register
-	user_time64_msec_since_poweron(&nowrawmsec);
-//	PRINTF("\n*** Milliseconds since boot now: %u\n", nowrawmsec);
-
-	/*
-	 * There are three ways that we might find ourselves reading the accelerometer:
-	 *    1. Wakened from low-power sleep
-	 *    2. Received an interrupt while still awake (usually when doing MQTT transmission)
-	 *           (but has been seen during power-on if the network takes too long)
-	 *    3. Missed interrupt detected by event loop (usually when doing MQTT transmission)
-	 *
-	 *  We assign a timestamp differently for each event, as follows:
-	 *    1. We use the time that was captured close to wakeup/boot time
-	 *         (currently in user_init() function)
-	 *    2. We use the time captured by the rtc_ext_cb() function during the
-	 *          interrupt process.  See system_start.c.
-	 *    3. We calculate what time the interrupt must have occurred by
-	 *          extrapolating from the last hard measured time we were here.
-	 *
-	 *  As each timestamp is determined, we also check for possible missed data.
-	 *  We decide this based on the relative time since we last read the FIFO
-	 *  with a solid time basis divided by the number of FIFO reads since that
-	 *  point.
-	 */
-//	isPowerOnBoot = pdFALSE;			// pdTRUE when poewr-on boot (first time boot)
-
-	/*
-	 * Wakened from low-power sleep
-	 */
-	if (pdTRUE == isAccelerometerWakeup)
-	{
-		// *****************************************************
-		//    Wakened from sleep
-		// *****************************************************
-
-		PRINTF(">>> Timestamp basis: Accelerometer interrupt wakeup from sleep\n");
-
-		// This is the time relative to power-on taken in user_init.
-		// It's probably the most reliable number since at power on
-		// we may or may not have WIFI to get internet time via SNTP
-		// It's also a much smaller number since our active life is
-		// about 5 days, so 5 days x 24 hours x 60 minutes x 60 seconds x 1000 msec
-		//
-		// During development, time was taken in user_main() but then about
-		// 9/12/22 we were grabbed a time much earlier. (22 msec)
-		time64_string (time_string, &user_raw_rtc_wakeup_time_msec);
-//		PRINTF("\n*** Milliseconds since user_main() when wakeup happened: %s (testing)\n",
-//				time_string);
-
-
-		lost_time = user_raw_rtc_wakeup_time_msec - user_raw_launch_time_msec;
-		time64_string (time_string, &user_raw_launch_time_msec);
-//		time64_string (time_string2, &lost_time);
-//		PRINTF("*** Milliseconds since main() when wakeup happened: %s diff %s (timestamp)\n",
-//				time_string, time_string2);
-		PRINTF("*** Milliseconds since main() when wakeup happened: %s (timestamp)\n",
-				time_string);
-
-		// Note - as of 9/12/22 there was a 22 msec difference between the two times
-		// here.  So we used the earlier one as closer to the actual time that
-		// the interrupt occurred and woke the DA16200 from sleep
-		timestamp_selected = user_raw_launch_time_msec;
-
-		time_since_boot_seconds = (ULONG)(user_raw_rtc_wakeup_time_msec / (__time64_t)1000);
-		time_since_boot_milliseconds = (ULONG)(user_raw_rtc_wakeup_time_msec
-						  - ((__time64_t)time_since_boot_seconds * (__time64_t)1000));
-		time_since_boot_minutes = (ULONG)(time_since_boot_seconds / (ULONG)60);
-		time_since_boot_hours = (ULONG)(time_since_boot_minutes / (ULONG)60);
-		time_since_boot_days = (ULONG)(time_since_boot_hours / (ULONG)24);
-
-		time_since_boot_seconds = time_since_boot_seconds % (ULONG)60;
-		time_since_boot_minutes = time_since_boot_minutes % (ULONG)60;
-		time_since_boot_hours = time_since_boot_hours % (ULONG)24;
-
-		PRINTF("*** Time since boot when wakeup happened: %u Days plus %02u:%02u:%02u.%03u\n",
-				time_since_boot_days,
-				time_since_boot_hours,
-				time_since_boot_minutes,
-				time_since_boot_seconds,
-				time_since_boot_milliseconds);
-
-		latencyms = (__time64_t)(nowrawmsec - user_raw_rtc_wakeup_time_msec);
-		PRINTF("*** Processing delay since wakeup interrupt in msec: %u\n\n", latencyms);
-
-		// If we haven't completed accelerometer calibration yet,
-		// do it now.  This is intended to be the first N cycles of
-		// operation, prior to the first MQTT transmit cycle
-		if (!pUserData->AXL_calibration_complete)
-		{
-			i = pUserData->num_AXL_cal_entries;
-			pUserData->AXL_cal_entry[i].timestamp = timestamp_selected;
-			pUserData->AXL_cal_entry[i].num_samples = num_samples;
-			pUserData->num_AXL_cal_entries++;
-			if(pUserData->num_AXL_cal_entries >= AXL_CALIBRATION_CYCLES)
-			{
-				pUserData->AXL_calibration_complete = pdTRUE;
-				PRINTF("*** Accelerometer calibration complete. Samples: %d\n\n",
-						pUserData->num_AXL_cal_entries);
-				total_cal_time = (__time64_t)0;
-				total_cal_samples = 0;
-				// Use the interval between the 1st & 2nd interrupt, the 2nd & 3rd,
-				// etc.
-				for (j=1; j<AXL_CALIBRATION_CYCLES; j++)
-				{
-					cal_interrupt_time = pUserData->AXL_cal_entry[j].timestamp -
-							pUserData->AXL_cal_entry[j-1].timestamp;
-					total_cal_time += cal_interrupt_time;
-					total_cal_samples += pUserData->AXL_cal_entry[j].num_samples;
-					time64_string (time_string, &pUserData->AXL_cal_entry[j].timestamp);
-					time64_string (time_string2, &cal_interrupt_time);
-					PRINTF("   [%d] %s  %d (%s)\n", j, time_string,
-							pUserData->AXL_cal_entry[j].num_samples, time_string2);
-				}
-				time64_string (time_string, &total_cal_time);
-				PRINTF("   Total cal time   : %s \n",time_string);
-				PRINTF("   Total cal samples: %d\n", total_cal_samples);
-
-				average_cal_period_usec = total_cal_time * (__time64_t)1000; // Convert from msec to usec
-				average_cal_period_usec = average_cal_period_usec / (__time64_t)total_cal_samples;
-				time64_string (time_string, &average_cal_period_usec);
-				PRINTF("   Average cal sample period: %s \n",time_string);
-				sprintf(user_log_string_temp, "Accelerometer calibration complete. Average cal sample period: %s usec", time_string);
-				user_log_event(user_log_string_temp);
-
-				pUserData->AXL_cal_sample_period_usec = (ULONG)average_cal_period_usec;
-				pUserData->AXL_calibration_complete = pdTRUE;
-				// Do a sanity check by taking the most recent timestamp minus
-				// the first timestamp and divide
-			}
-		}
-
-
-#if 0
-		// Keep track of the last time we had a wake from sleep
-		ms_since_last_read = assigned_timestamp - pUserData->last_FIFO_read_time_ms;
-		pUserData->last_FIFO_read_time_ms = assigned_timestamp;
-		PRINTF(" >>Milliseconds since last AXL read: %u\n",
-				ms_since_last_read);
-#endif
-		if(pUserData->last_accelerometer_wakeup_time_msec != 0)
-		{
-			time_since_last_wakeup_msec = timestamp_selected - pUserData->last_accelerometer_wakeup_time_msec;
-//			PRINTF(" >>Milliseconds since last AXL wakeup: %u\n",
-//					time_since_last_wakeup_msec);
-
-		}
-		// Set our time and remember how many new FIFO reads since then
-		pUserData->last_accelerometer_wakeup_time_msec = timestamp_selected;
-		pUserData->FIFO_reads_since_last_wakeup = 0;
-		// If we had extra samples after the assigned timestamp, we need to
-		// count those towards the time to the next interrupt
-		// For instance, if the threshold is 28 and we read 30 samples
-		// on this wakeup, the extra 2 count towards the time to fill
-		// the next FIFO.  So if the polling detects the FIFO full at 28,
-		// we will set the timestamp of the 28th new sample to 30 * period.
-		if (num_samples > AXL_FIFO_INTERRUPT_THRESHOLD)
-		{
-			pUserData->FIFO_samples_since_last_wakeup =
-					num_samples - AXL_FIFO_INTERRUPT_THRESHOLD;
-		}
-		else
-		{
-			pUserData->FIFO_samples_since_last_wakeup = 0;
-		}
-
-		// And clear the timestamps used by the FIFO-at-threshold logic
-		// so they get fresh data when that happens
-		user_lower_AXL_poll_detect_RTC_clock = 0;
-		user_AXL_poll_detect_RTC_clock = 0;
-
-	}  // If wakened from sleep
-	else
-	{
-		// *****************************************************
-		//    Not wakened from sleep
-		//      - either an interrupt while running
-		//         or a FIFO full detected by polling
-		// *****************************************************
-
-		pUserData->FIFO_reads_since_last_wakeup++;
-//		PRINTF("*** FIFO reads since last time basis  : %u\n",
-//				pUserData->FIFO_reads_since_last_wakeup);
-
-		// and how many samples we've read since the last time we had a timestamp
-		pUserData->FIFO_samples_since_last_wakeup += num_samples;
-//		PRINTF("*** FIFO samples since last time basis  : %u\n",
-//				pUserData->FIFO_samples_since_last_wakeup);
-
-		// Note the following stuff was before the calibration of actual
-		// wakes from sleep was done
-//		msec_since_time_basis = (__time64_t)(nowrawmsec - pUserData->last_accelerometer_wakeup_time_msec);
-//		PRINTF("*** Milliseconds since last time basis: %u\n", msec_since_time_basis);
-
-//		average_msec_per_FIFO_read = msec_since_time_basis / pUserData->FIFO_reads_since_last_wakeup;
-//		PRINTF("*** Average milliseconds per FIFO read: %u\n", average_msec_per_FIFO_read);
-
-//		average_msec_per_AXL_sample = msec_since_time_basis / pUserData->FIFO_samples_since_last_wakeup;
-//		PRINTF("*** Average milliseconds per AXL sample: %u\n", average_msec_per_AXL_sample);
-
-		// This is when we're reading the AXL while awake
-		// so we either got an interrupt or we timed out in the event loop
-		if(pdTRUE == isAccelerometerInterrupt)
-		{
-			// *****************************************************
-			//    Interrupted while running
-			// *****************************************************
-			PRINTF(">>> Timestamp basis: Accelerometer interrupt while running\n");
-			// Get the time of the interrupt stored when interrupt occurred
-			interrupt_time_RTC = user_accelerometer_interrupt_time;  // RTC clock ticks
-			interrupt_time_msec = CLK2MS(interrupt_time_RTC); /* msec. */
-			PRINTF("\n*** Accelerometer interrupt msec since boot: %u\n\n", interrupt_time_msec);
-
-			timestamp_selected = interrupt_time_msec;
-			PRINTF("\n*** Milliseconds since boot when interrupt happened: %u (timestamp)\n",
-					timestamp_selected);
-#if 0
-		// Keep track of the last time we had a wake from sleep
-		ms_since_last_read = assigned_timestamp - pUserData->last_FIFO_read_time_ms;
-		pUserData->last_FIFO_read_time_ms = assigned_timestamp;
-		PRINTF(" >>Milliseconds since last AXL read: %u\n",
-				ms_since_last_read);
-#endif
-
-		} // Interrupt while running
-		else
-		{
-
-			if(pdTRUE == isAccelerometerTimeout)
-			{
-				// *****************************************************
-				//    FIFO full detected by polling
-				// *****************************************************
-				PRINTF(">>> Timestamp basis: Accelerometer missed interrupt detected\n");
-
-				// We have two techniques here:
-				//  1. extrapolate from the last time we had a wake from sleep
-				//     event and a solid timestamp
-				//  2. use the bracketing timestamps recorded in the
-				//     event loop to establish a range and take the average
-				//  We'll do both and compare
-				//
-
-				// First, calculate what the estimate of the time was
-				// when we noticed the FIFO full.  (see the event loop)
-
-				// If we have bracketing times, use the average of the two
-				if (user_lower_AXL_poll_detect_RTC_clock > 0)
-				{
-					average_timestamp_RTC = (user_lower_AXL_poll_detect_RTC_clock
-							+ user_AXL_poll_detect_RTC_clock) / (__time64_t)2;
-				}
-				else
-				{
-					// Use the timestamp from when we detected the FIFO full
-					average_timestamp_RTC = user_AXL_poll_detect_RTC_clock;
-
-				}
-				// And convert from RTC ticks to msec
-				PRINTF(" ---> Lower bracket time (msec) %u\n",
-						CLK2MS(user_lower_AXL_poll_detect_RTC_clock));
-				PRINTF(" ---> Upper bracket time (msec) %u\n",
-						CLK2MS(user_AXL_poll_detect_RTC_clock));
-
-				average_timestamp_msec = CLK2MS(average_timestamp_RTC);
-				PRINTF(" ---> Bracketed msec since boot when FIFO threshold was reached: %u\n",
-						average_timestamp_msec);
-
-
-				// And now, calculate an extrapolated clock value from
-				// previous timestamps
-				if(pUserData->last_accelerometer_wakeup_time_msec != 0)
-				{
-					// Extrapolate using the calibrated inter-sample period
-					// captured during the initial accelerometer calibration
-
-					// How many samples since last wake from sleep, including
-					// all the current FIFO
-					samples_since_timestamp = pUserData->FIFO_samples_since_last_wakeup;
-					PRINTF("*** Samples since last wake-from-sleep timestamp: %u \n",
-							samples_since_timestamp);
-
-					// Since we're trying to figure out how many samples to
-					// get to the current FIFO sample that was at the FIFO threshold,
-					// deduct any current samples that arrived after the threshold
-					if (num_samples > AXL_FIFO_INTERRUPT_THRESHOLD)
-					{
-						samples_since_timestamp -=
-								(num_samples - AXL_FIFO_INTERRUPT_THRESHOLD);
-						PRINTF("*** adjusted Samples since last wake-from-sleep timestamp: %u \n",
-								samples_since_timestamp);
-					}
-
-					// Now estimate how long it's been since that timestamp,
-					// based on the calibrated accelerometer sampling rate
-					// determined at power-on
-					if (pUserData->AXL_calibration_complete)
-					{
-						// Use calibrated inter-sample period to extrapolate
-						usec_since_timestamp = (__time64_t)pUserData->AXL_cal_sample_period_usec
-								* (__time64_t)samples_since_timestamp;
-					}
-					else
-					{
-						// Calibration not complete - use nominal value
-						// NOTE - this really shouldn't happen since
-						// we don't expect the polled FIFO event to happen
-						// until the MQTT task is active, long after calibration
-						// occurs
-						PRINTF("\n **** POLLED FIFO TIMESTAMP BASED ON NOMINAL VALUES ***\n");
-						usec_since_timestamp = (__time64_t)NOMINAL_SAMPLE_PERIOD_USEC
-								* (__time64_t)samples_since_timestamp;
-
-					}
-
-
-					PRINTF("*** Microseconds since timestamp: %u \n",
-							usec_since_timestamp);
-
-					// Calculate the new timestamp in microseconds
-					calculated_timestamp_usec =
-							(__time64_t)1000 * pUserData->last_accelerometer_wakeup_time_msec;
-					calculated_timestamp_usec += usec_since_timestamp;
-
-					// and finally, calculate the timestamp in milliseconds, rounded
-					timestamp_selected =
-							(calculated_timestamp_usec + (__time64_t)500) / 1000;
-
-//					time64_string (time_string, &timestamp_selected);
-					PRINTF("*** Calibrated milliseconds since boot when FIFO threshold was reached: %u (timestamp)\n",
-							timestamp_selected);
-
-					// See how different they are.
-					timestamp_error_msec = average_timestamp_msec - timestamp_selected;
-//					PRINTF("*** Difference in timestamp methods: %d \n",
-//							timestamp_error_msec);
-
-
-				} // have a previous wake-from-sleep timestamp to use
-				else
-				{
-					// *****************************************************
-					//   No previous wake-from-sleep timestamp  - this is a problem
-					// *****************************************************
-					APRINTF_E("\n***** NO PREVIOUS TIMESTAMP FOR TIMEOUT *****\n");
-
-					// So just use the detection time estimate
-					timestamp_selected = average_timestamp_msec;
-				} // No previous timestamp to use
-
-			} // FIFO threshold detected by event loop (timeout)
-			else
-			{
-				// *****************************************************
-				//    Unknown activation - this is a problem
-				// *****************************************************
-				APRINTF_E("\n***** UNABLE TO DETERMINE TIMESTAMP UNKNOWN REASON FOR WAKEUP *****\n");
-				// Use current offset from boot
-				// Get relative time since power on from the RTC time counter register
-				user_time64_msec_since_poweron(&nowrawmsec);
-				PRINTF("\n*** Current time since boot in msec: %u\n",
-						nowrawmsec);
-
-				timestamp_selected = nowrawmsec;
-			} // Unknown reason - don't know how to assign timestamp
-		} // not accelerometer interrupt while awake
-	} // not wakened from sleep
-
-#if 0
-		// Keep track of the last time we had a wake from sleep
-		ms_since_last_read = assigned_timestamp - pUserData->last_FIFO_read_time_ms;
-		pUserData->last_FIFO_read_time_ms = assigned_timestamp;
-		PRINTF(" >>Milliseconds since last AXL read: %u\n",
-				ms_since_last_read);
-#endif
-
-
-end_of_func:
-
-	// clear our reasons for activity flags
-	isPowerOnBoot = pdFALSE;
-	isAccelerometerWakeup = pdFALSE;
-	isAccelerometerInterrupt = pdFALSE;
-	isAccelerometerTimeout = pdFALSE;
-
-	*returned_timestamp = timestamp_selected;
-
-	return;
-}
-#endif // TO BE REMOVED -- DEPRECATED
 
 /**
  *******************************************************************************
@@ -7585,53 +5018,7 @@ static int user_process_read_data(void)
 	PRINTF(" >>Milliseconds since last AXL read: %u\n",
 			ms_since_last_read);
 
-#if 0
-	//JW: The following chunk of code (and comments) is for time stamping.
-	// It is a VERY odd way of time stamping.  The goal seems to have been to
-	// identify the moment the interrupt was triggered.  Instead, we're now moving from
-	// timestamping to identify when the interrupt was triggered to a timestamp corresponding
-	// when the data was read from the buffer.  Our new way will be accurate +/- 1 AXL sample.
-	// which is more than sufficient -- and a lot less convoluted.
-	//
-	// TO BE DEPRECATED.
-	//
-	// Tell MQTT which sample index is the one that we think
-	// triggered the interrupt and therefore is the one
-	// to associate with the timestamp
-	receivedFIFO.timestamp_sample = (AXL_FIFO_INTERRUPT_THRESHOLD - 1);
 
-	// Set the timestamp in milliseconds
-	//
-	//  There are two main choices here:
-	//    1. time relative to power-on boot - with a range of 0 to 5 days or so.
-	//         This time is based on the RTC time counter that runs at
-	//          msec * 32768, although we store it in msec.
-	//    2. wall clock time - based on SNTP activity.  This depends on having
-	//       an internet connection and is a much larger number.  It's basically
-	//        msec since Jan 1, 1970
-	//  So, as of 9/1/22, we choose the relative time, taken as close to
-	//  the interrupt as possible.  Note that we should
-	//  be able to translate this to wall clock time when we get to the
-	//  MQTT task, since it needs SNTP to operate and the time will be real
-	//  The DA16x SDK keeps track of RTC offset from real time.  See the
-	//  file da16x_time.c for helper functions and more information.
-	//
-	// Figure out what timestamp to use
-	determine_timestamp(&assigned_timestamp, dataptr);
-
-	receivedFIFO.accelTime = assigned_timestamp;
-
-	// Figure out how long since the last interrupt or read time
-	// If we've wakened from sleep via RTC interrupt, we check to
-	// see if we've missed data.
-	// If we've been interrupted while doing MQTT transmit, we
-	// check the timing to see how much latency or jitter we have
-//	current_time_ms = MS_since_boot_time();
-	ms_since_last_read = assigned_timestamp - pUserData->last_FIFO_read_time_ms;
-	pUserData->last_FIFO_read_time_ms = assigned_timestamp;
-	PRINTF(" >>Milliseconds since last AXL read: %u\n",
-			ms_since_last_read);
-#endif // To be removed (now deprecated)
 
 	// Display the values
 //#if defined(__RUNTIME_CALCULATION__) && defined(XIP_CACHE_BOOT)
@@ -7641,15 +5028,6 @@ static int user_process_read_data(void)
 //	PRINTF(" FIFO read sequence %d\n", pUserData->ACCEL_read_count);
 	PRINTF(" FIFO samples read: %d\n", dataptr);
 
-#if 0
-	for(i=0; i<dataptr; i++)
-	{
-		PRINTF("%d     X: %d Y: %d Z: %d\r\n", i, receivedFIFO.Xvalue[i],
-				receivedFIFO.Yvalue[i], receivedFIFO.Zvalue[i]);
-	}
-	// give time for above print to finish before next interrupt
-	vTaskDelay(5);
-#endif
 
 	// *****************************************************
 	// Store the FIFO data structure into nonvol memory
@@ -7751,63 +5129,6 @@ static int user_process_read_data(void)
 
 	PRINTF(" ----------------------------------------\n");
 
-#if 0 //JW: logging deprecated in 1.10.16
-	PRINTF(" Total log entries since power on        : %d\n", pUserData->total_log_entries);
-	if(pUserData->log_write_fault_count > 0)
-	{
-		PRINTF(" Total log write failures since power on : %d\n", pUserData->log_write_fault_count);
-	}
-	if(pUserData->log_write_retry_count > 0)
-	{
-		PRINTF(" Total times a log write retry was needed: %d\n", pUserData->log_write_retry_count);
-	}
-	max_display = USERLOG_WRITE_MAX_ATTEMPTS - 1;
-	while (max_display > 0 &&
-			 pUserData->log_write_attempt_events[max_display] == 0)
-	{
-		max_display--;
-	}
-//	for (i=0; i<USERLOG_WRITE_MAX_ATTEMPTS; i++)
-	if (max_display > 0)
-	{
-		for (i=0; i<=max_display; i++)
-		{
-			PRINTF(" Total times succeeded on try %d          : %d\n", (i+1), pUserData->log_write_attempt_events[i]);
-		}
-	}
-		PRINTF(" Total log sector erase events           : %d\n", pUserData->log_erase_attempts);
-	if(pUserData->log_erase_retry_count > 0)
-	{
-		PRINTF(" Total times a log erase retry was needed: %d\n", pUserData->log_erase_retry_count);
-	}
-		max_display = USERLOG_ERASE_MAX_ATTEMPTS - 1;
-	while (max_display > 0 &&
-			 pUserData->log_erase_attempt_events[max_display] == 0)
-	{
-		max_display--;
-	}
-//	for (i=0; i<USERLOG_ERASE_MAX_ATTEMPTS; i++)
-	if(max_display > 0)
-	{
-		for (i=0; i<=max_display; i++)
-		{
-			PRINTF(" Total times succeeded on try %d          : %d\n", (i+1), pUserData->log_erase_attempt_events[i]);
-		}
-	}
-
-	// See if it's time to log stats
-	++pUserData->ACCEL_log_stats_trigger;  // Increment FIFO stored
-
-	PRINTF(" ACCEL log stats trigger: %d of %d\n",
-			pUserData->ACCEL_log_stats_trigger, (int)AXL_LOG_STATS_TRIGGER_COUNT);
-	//mqtt_started = pdFALSE;
-	if(pUserData->ACCEL_log_stats_trigger >= AXL_LOG_STATS_TRIGGER_COUNT)
-	{
-		log_operating_info();
-		// Reset our trigger counter
-		pUserData->ACCEL_log_stats_trigger = 0;
-	}
-#endif
 
 	// See if it's time to transmit data, based on how many FIFO buffers we've
 	// accumulated since the last transmission
@@ -7850,14 +5171,7 @@ static int user_process_read_data(void)
 		pUserData->ACCEL_transmit_trigger = 0;
 	}
 #ifdef CFG_USE_SYSTEM_CONTROL
-#if 0
-	else if (pUserData->ACCEL_transmit_trigger == MQTT_TRANSMIT_TRIGGER_FIFO_BUFFERS - 1)
-	{
-		// Enable WLAN auto start at the next wake from sleep cycle
-		// so that it's ready when we start the MQTT task
-		// system_control_wlan_enable(TRUE); //JW: took this out -- not clear it is needed anymore
-	}
-#endif
+
 #endif
 
 	// Note - this is here because we had a lot of difficulty getting the
@@ -7866,22 +5180,7 @@ static int user_process_read_data(void)
 	// was moved here.
 //	flash_close(SPI);
 
-#if 0 //JW: logging deprecated in 1.10.16
-	// If we are at the end of the wake part of a wake/sleep cycle
-	// and haven't done an accelerometer buffer sector erase in this
-	// cycle and the MQTT task isn't running, then
-	// give the logging mechanism a chance to move any log entries
-	// buffered in retention memory to flash.  This should be able
-	// to occur without any other interference.
-	if(!erase_happened && !BIT_SET(processLists, USER_PROCESS_MQTT_TRANSMIT))
-	{
-		archive_status = user_archive_log_messages(pdFALSE);
-	}
 
-
-// Delay to make sure that statistics show up on the console log
-	vTaskDelay(pdMS_TO_TICKS(50));
-#endif
 	// Signal that we're finished so we can sleep
 
 	CLR_BIT(processLists, USER_PROCESS_HANDLE_RTCKEY);
@@ -8042,36 +5341,7 @@ printf_with_run_time("Starting boot event process");
 	PRINTF("\n...End stabilization delay...\n\n");
 	
 
-#if 0
-	// So at this point, any network connection activity should have
-	// completed.  If net startup was enabled, it will have attempted
-	// a connection to WIFI.  In that case, we may or may not have WIFI.
-	// If MQTT is set to auto start, it will also have attempted a
-	// connection to the MQTT broker configured
-	// So we could add some activity here that checks for network connection
-	// and alerts the user if no WIFI or MQTT connection has been made
-	// but for now, we just turn off the auto-start of the network to keep
-	// it from slowing down the accelerometer wake-from-low-power-sleep
-	if (user_process_check_wifi_conn() == pdTRUE)
-	{
-		PRINTF("\n*** WIFI is connected ***\n");
-		user_log_event("*** Successful WIFI connection ***");
-		// Add the current wall clock time to the log for a starting reference
-		log_current_time("Bootup WIFI. ");
 
-		set_sole_system_state(USER_STATE_WIFI_CONNECTED);
-	}
-	else
-	{
-		PRINTF("\n*** Activation WIFI is not connected ***\n");
-		user_log_event("*** WIFI connection not successful ***");
-		// Add the current wall clock time to the log for a starting reference
-		// Note that this will most likely be 1970, since we didn't have a
-		// successful internet time connection.
-		log_current_time("Bootup no WIFI. ");
-		set_sole_system_state(USER_STATE_WIFI_CONNECT_FAILED);
-	}
-#endif
 
 	// Turn off the wifi, we've already established we can connect or not.
 	wifi_cs_rf_cntrl(TRUE); // RF now off
@@ -8116,14 +5386,7 @@ printf_with_run_time("Starting boot event process");
 	pUserData->ACCEL_missed_interrupts = 0;
 	pUserData->ACCEL_transmit_trigger = MQTT_TRANSMIT_TRIGGER_FIFO_BUFFERS_FAST - MQTT_FIRST_TRANSMIT_TRIGGER_FIFO_BUFFERS;
 
-// JW: AXL calibration is deprecated
-#if 0
-	// Initialize the accelerometer calibration process
-	pUserData->AXL_calibration_complete = pdFALSE;
-	pUserData->num_AXL_cal_entries = 0;
-	// Set the accelerometer sample period to nominal (14Hz sample rate)
-	pUserData->AXL_cal_sample_period_usec = (ULONG)71429;
-#endif //TO BE REMOVED -- DEPRECATED
+
 
 	// Initialize the FIFO interrupt cycle statistics
 	pUserData->FIFO_reads_this_power_cycle = 0;
@@ -8274,13 +5537,7 @@ static UCHAR user_process_event(UINT32 event)
 		}
 	}
 
-#if 0 //JW: we never terminate except via POR -- deprecated in 1.10.16
-	if (event & USER_TERMINATE_EVENT) {
-		PRINTF("\n Neuralert: [%s] USER TERMINATE event", __func__);
-		/* Terminate the process*/
-		return PROCESS_EVENT_TERMINATE;
-	}
-#endif
+
 
 	/* Continue in process */
 	return PROCESS_EVENT_CONTINUE;
@@ -8426,21 +5683,7 @@ static void user_init(void)
 //			PRINTF("\n****** Flash semaphore created *****\n");
 		}
 
-#if 0 //JW: logging deprecated in 1.10.16
-		/*
-		 * Create a semaphore to make sure each task can have exclusive
-		 * access to the log holding area in retention memory
-		 */
-		user_log_semaphore = xSemaphoreCreateMutex();
-		if (user_log_semaphore == NULL)
-		{
-			user_log_error("****** Error creating log holding semaphore *****");
-		}
-		else
-		{
-//			PRINTF("\n****** Log holding semaphore created *****\n");
-		}
-#endif
+
 
 		/*
 		 * Create a semaphore to make sure each task can have exclusive access to
@@ -8507,135 +5750,7 @@ static void user_init(void)
 	}
 }
 
-#if 0 //JW: logging deprecated in 1.10.16
-void user_log_run_time(void)
-{
-	__time64_t nowrawmsec;
-	ULONG time_since_boot_milliseconds;
-	ULONG time_since_boot_seconds;
-	ULONG time_since_boot_minutes;
-	ULONG time_since_boot_hours;
-	ULONG time_since_boot_days;
 
-	// Get milliseconds since we first powered up
-	user_time64_msec_since_poweron(&nowrawmsec);
-
-	time_since_boot_seconds = (ULONG)(nowrawmsec / (__time64_t)1000);
-	time_since_boot_milliseconds = (ULONG)(nowrawmsec
-					  - ((__time64_t)time_since_boot_seconds * (__time64_t)1000));
-	time_since_boot_minutes = (ULONG)(time_since_boot_seconds / (ULONG)60);
-	time_since_boot_hours = (ULONG)(time_since_boot_minutes / (ULONG)60);
-	time_since_boot_days = (ULONG)(time_since_boot_hours / (ULONG)24);
-
-	time_since_boot_seconds = time_since_boot_seconds % (ULONG)60;
-	time_since_boot_minutes = time_since_boot_minutes % (ULONG)60;
-	time_since_boot_hours = time_since_boot_hours % (ULONG)24;
-
-
-	sprintf(user_log_string_temp,
-			"*** Time since power on: %u Days plus %02u:%02u:%02u.%03u",
-			time_since_boot_days,
-			time_since_boot_hours,
-			time_since_boot_minutes,
-			time_since_boot_seconds,
-			time_since_boot_milliseconds);
-	user_log_event(user_log_string_temp);
-
-}
-#endif
-
-#if 0 //JW: deinit is not used ever -- removed in 1.10.16
-/**
- ****************************************************************************************
- * @brief Shutdown event - either by downlink command or by
- *     battery below battery_exhausted setpoint
- ****************************************************************************************
- */
-static void user_deinit(void)
-{
-
-	__time64_t awake_time;
-	__time64_t current_msec_since_boot;
-
-	UCHAR time_string[20];
-	UCHAR value_str[256];
-	int clear_AB_status;
-	int ret;
-	int archive_status;
-	int status;
-	__time64_t nowrawmsec;		// RTC clock tick-based current time msec
-
-	/* Delete all resources */
-	PRINTF("%s\n", __func__);
-
-#if 0 //JW: logging deprecated in 1.10.16
-	// Put total run time in the log
-	user_log_run_time();
-#endif
-
-	// Disconnect from WIFI
-	ret = da16x_cli_reply("disconnect", NULL, value_str);
-	if (ret < 0 || strcmp(value_str, "FAIL") == 0) {
-		PRINTF(" [%s] Failed disconnect from AP 0x%x\n  %s\n", __func__, ret, value_str);
-	}
-
-	// Shut down the RF section
-	wifi_cs_rf_cntrl(TRUE);
-
-	/*
-	 * A downlink command was received asking that we terminate
-	 * The MQTT task should have been shut down before issuing
-	 * the terminate request, so at this point we could stop the
-	 * accelerometer interrupt, delete all the patient data
-	 * in flash, and then go to sleep.
-	 */
-
-	clear_AB_status = user_process_clear_AB();
-	if (!clear_AB_status)
-	{
-		sprintf(user_log_string_temp, "***** clear_AB returned an error *****");
-		user_log_error(user_log_string_temp);
-	}
-
-#if 0
-	user_time64_msec_since_poweron(&current_msec_since_boot);
-	awake_time = current_msec_since_boot - pUserData->last_sleep_msec;
-	time64_string (time_string, &awake_time);
-
-	PRINTF("\n\n**************************************************\n");
-//	PRINTF("Entering terminal sleep2. msec since last sleep %s \n\n", time_string);
-	// Get relative time since power on from the RTC time counter register
-	user_time64_msec_since_poweron(&nowrawmsec);
-	PRINTF("\n*** Milliseconds since boot now: %u\n", nowrawmsec);
-#endif
-
-	// Do a final log entry, including battery level
-	log_operating_info();
-
-	// Archive all pending log messages
-	archive_status = user_archive_log_messages(pdTRUE);
-
-	// Turn off LEDs
-	//set_sole_system_state(USER_STATE_CLEAR); //JW: deprecated 10.14
-
-	vTaskDelay(pdMS_TO_TICKS(2000));
-
-	// for now, enter a busy loop
-	// unfortunately, this will run down the battery
-	while (TRUE)
-	{
-//		watch_dog_kicking_example(WATCH_DOG_TIME_1ST, TRUE);	// rescale_time
-
-		// Continue to archive any log messages - just in case
-		archive_status = user_archive_log_messages(pdTRUE);
-
-		vTaskDelay(pdMS_TO_TICKS(5000));
-	}
-
-//	dpm_sleep_start_mode_2(TCP_CLIENT_SLP2_PERIOD, TRUE);
-
-}
-#endif
 
 void tcp_client_sleep2_sample(void *param)
 {
@@ -8717,9 +5832,7 @@ void tcp_client_sleep2_sample(void *param)
 			{
 				break;
 			}
-#if 0
-	//		watch_dog_kicking_example(WATCH_DOG_TIME_1ST, TRUE);	// rescale_time
-#endif // JW: TO BE REMOVED - DEPRECATED
+
 
 			da16x_sys_watchdog_notify(sys_wdog_id);
 			vTaskDelay(pdMS_TO_TICKS(100));
@@ -8758,34 +5871,7 @@ void tcp_client_sleep2_sample(void *param)
 	PRINTF(" User data size        : %u bytes\n", sizeof(UserDataBuffer));
     PRINTF(" Battery reading       : %d\n",(uint16_t)(adcDataFloat * 100));
 
-    // JW: we do not want the wrist bands to make a decision to shut down.
-    // They will die as they are exhausted, but not before. This might lead to
-    // some brown-out style behavior, but we can manage that on the backend.
-#if 0
-	if(adcDataFloat < VREF_EXHAUSTED)
-	{
-		// Battery done for - enter terminal battery state
-		clear_system_alert(USER_ALERT_BATTERY_LOW);
-		set_sole_system_state(USER_STATE_BATTERY_EXHAUSTED);
-		PRINTF(" *** Battery exhausted ***\n");
-		sprintf(user_log_string_temp, "*** Battery exhausted! Reading: %d Limit: %d",
-				(uint16_t)(adcDataFloat * 100),
-				(uint16_t)(VREF_EXHAUSTED * 100));
-		user_log_error(user_log_string_temp);
-		// Enter a shutdown state.
-		user_terminate_event();
-	}
-	else if(adcDataFloat < VREF_LOW)
-	{
-		set_system_alert(USER_ALERT_BATTERY_LOW);
-		PRINTF(" *** Battery low ***\n");
-//		user_log_event("*** Battery low ***");
-	}
-	else
-	{
-		clear_system_alert(USER_ALERT_BATTERY_LOW);
-	}
-#endif // deprecated 10.4
+
 
 	/*
 	 * Event loop - this is the main engine of the application
