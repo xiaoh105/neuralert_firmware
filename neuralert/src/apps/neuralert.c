@@ -990,7 +990,7 @@ int user_factory_reset_btn_onetouch(void)
 void user_terminate_transmission_event(void)
 {
 	if (xTask) {
-		xTaskNotifyIndexed(xTask, 0, USER_TERMINATE_TRANSMISSION_EVENT, eSetBits);
+		xTaskNotifyIndexed(xTask, 0, USER__TRANSMISSION_EVENT, eSetBits);
 	}
 }
 
@@ -1982,7 +1982,7 @@ static int user_process_connect_to_ap_and_wait(int max_wait_seconds)
  *
  *	  To shut down the device and erase all accelerometer data,
  *	  send:
- *    {message:terminate <Unique device id>}
+ *    {message: <Unique device id>}
  *    where the device id is the abbreviated MAC address used to
  *    identify this specific device.
  *******************************************************************************
@@ -2140,10 +2140,17 @@ void user_terminate_transmit(void)
 	da16x_sys_watchdog_notify(sys_wdog_id);
 
 	system_control_wlan_enable(FALSE);
-	// The following delay is necessary to prevent an LmacMain hard fault.  LmacMain is generated in a pre-compile
+	// The following delay (vTaskDelay(10)) is necessary to prevent an LmacMain hard fault.  LmacMain is generated in a pre-compile
 	// library in the sdk. It seems like the wifi disconnect returns before all the resources are shutdown, and if
 	// we proceed without delay to triggering a sleep event, a hard fault will result.
-	vTaskDelay(10); // This delay is NECESSARY -- DO NOT REMOVE (see description above)
+	// UPDATE: After adding vTaskDelay(10) we saw a hard fault after a successful transmission after about 3500 transmission on one device.
+	// No logging caught what caused the hard fault.  Our best guess is that the accelerometer task (running at a higher priority)
+	// was triggered during the vTaskDelay(10); which kept running while the accelerometer was processed.  The accelerometer might have been
+	// blocking the LmacMain tasks such that the following delay was made moot.  Then the radio was turned off prior to graceful shutdown.
+	// To solve the hypothesized problem above, we have increased the delay to 1 second -- which is more than enough time for the
+	// accelerometer task to complete and give the processor back to LmacMain to shut down before the rf is turned off.
+	//
+	vTaskDelay(pdMS_TO_TICKS(1000)); // This delay is NECESSARY -- DO NOT REMOVE (see description above)
 
 	// turn off rf
     da16x_sys_watchdog_notify(sys_wdog_id);
