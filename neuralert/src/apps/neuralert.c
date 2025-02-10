@@ -1344,6 +1344,12 @@ int send_json_packet (int startAdd, packetDataStruct pData, int msg_number, int 
 	// Meta data field -- a json for whatever we want.
 	strcat(mqttMessage,"\t\t\t\"meta\":\r\n\t\t\t{\r\n");
 	/*
+	 * Meta - MAC address of device - stored in retention memory
+	 * during the bootup event
+	 */
+	sprintf(str,"\t\t\t\t\"id\": \"%s\",\r\n",pUserData->Device_ID);
+	strcat(mqttMessage,str);
+	/*
 	* Meta - Firmware Version
 	*/
 	sprintf(str,"\t\t\t\t\"ver\": \"%s\",\r\n", USER_VERSION_STRING);
@@ -1369,6 +1375,14 @@ int send_json_packet (int startAdd, packetDataStruct pData, int msg_number, int 
 	*/
 	fault_count = get_fault_count();
 	sprintf(str,"\t\t\t\t\"count\": %d,\r\n", (uint16_t)fault_count);
+	strcat(mqttMessage, str);
+
+	/*
+	* Meta - time (in minutes) since boot-up
+	*/
+	__time64_t current_time;
+	user_time64_msec_since_poweron(&current_time);
+	sprintf(str,"\t\t\t\t\"mins\": %ld,\r\n", (uint32_t)(current_time/60000));
 	strcat(mqttMessage, str);
 
 	/*
