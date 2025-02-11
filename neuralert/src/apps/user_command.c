@@ -568,7 +568,7 @@ int flash_erase_sector(ULONG EraseAddr)
 //	spi_flash_config_pin();	// Hack to reconfigure the pin multiplexing
 
 	// Get handle for the SPI bus
-	SPI = spi_flash_open(SPI_MASTER_CLK, SPI_MASTER_CS);
+	SPI = flash_open(SPI_MASTER_CLK, SPI_MASTER_CS);
 	if (SPI == NULL)
 	{
 		PRINTF("\n**** spi_flash_open() returned NULL ****\n");
