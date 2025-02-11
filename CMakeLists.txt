@@ -9,14 +9,13 @@ else()
 endif()
 
 set(LD_PATH "${CMAKE_CURRENT_SOURCE_DIR}/da16200_sdk/core/bsp/ldscripts")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -target arm-unknown-none-eabi -nodefaultlibs -nostartfiles -fuse-ld=${TOOLCHAIN_PATH}/arm-none-eabi/bin/ld -L ${LD_PATH}")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -target arm-unknown-none-eabi")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -target arm-unknown-none-eabi -nodefaultlibs -nostartfiles -fuse-ld=${TOOLCHAIN_PATH}/arm-none-eabi/bin/ld -L ${LD_PATH} -L${TOOLCHAIN_PATH}/arm-none-eabi/lib/arm/v5te/hard -L${TOOLCHAIN_PATH}/lib/gcc/arm-none-eabi/10.3.1/arm/v5te/hard")
 include_directories(${TOOLCHAIN_PATH}/arm-none-eabi/include)
-link_directories("${TOOLCHAIN_PATH}/lib/gcc/arm-none-eabi/10.3.1")
+link_directories("${TOOLCHAIN_PATH}/lib/gcc/arm-none-eabi/10.3.1/arm/v5te/hard")
 
 set(CMAKE_SYSROOT "${TOOLCHAIN_PATH}/arm-none-eabi")
-set(CMAKE_LIBRARY_PATH "${TOOLCHAIN_PATH}/arm-none-eabi/lib")
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -L${TOOLCHAIN_PATH}/arm-none-eabi/lib")
+set(CMAKE_LIBRARY_PATH "${TOOLCHAIN_PATH}/arm-none-eabi/lib/arm/v5te/hard")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -L${TOOLCHAIN_PATH}/arm-none-eabi/lib/arm/v5te/hard -L${TOOLCHAIN_PATH}/lib/gcc/arm-none-eabi/10.3.1/arm/v5te/hard")
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/da16200_sdk/cmake)
 set(CMAKE_TOOLCHAIN_FILE da16200_sdk/cmake/da16200-toolchain.cmake)
@@ -32,4 +31,3 @@ set(MAIN_TARGET_INCLUDE ${NEURALERT_TARGET_INCLUDE})
 
 add_subdirectory(da16200_sdk)
 target_link_libraries(${MAIN_TARGET} DA16200_SDK_MAIN c m gcc nosys)
-
