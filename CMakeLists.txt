@@ -8,12 +8,15 @@ else()
 
 endif()
 
+
+set(CMAKE_C_COMPILER wllvm)
+set(CMAKE_CXX_COMPILER wllvm++)
+
 set(LD_PATH "${CMAKE_CURRENT_SOURCE_DIR}/da16200_sdk/core/bsp/ldscripts")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -target arm-unknown-none-eabi -nodefaultlibs -nostartfiles -fuse-ld=${TOOLCHAIN_PATH}/arm-none-eabi/bin/ld -L ${LD_PATH} -L${TOOLCHAIN_PATH}/arm-none-eabi/lib/arm/v5te/hard -L${TOOLCHAIN_PATH}/lib/gcc/arm-none-eabi/10.3.1/arm/v5te/hard")
 include_directories(${TOOLCHAIN_PATH}/arm-none-eabi/include)
 link_directories("${TOOLCHAIN_PATH}/lib/gcc/arm-none-eabi/10.3.1/arm/v5te/hard")
 
-set(CMAKE_SYSROOT "${TOOLCHAIN_PATH}/arm-none-eabi")
 set(CMAKE_LIBRARY_PATH "${TOOLCHAIN_PATH}/arm-none-eabi/lib/arm/v5te/hard")
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -L${TOOLCHAIN_PATH}/arm-none-eabi/lib/arm/v5te/hard -L${TOOLCHAIN_PATH}/lib/gcc/arm-none-eabi/10.3.1/arm/v5te/hard")
 
