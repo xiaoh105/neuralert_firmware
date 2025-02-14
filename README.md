@@ -40,7 +40,7 @@ Run the CMake command (you need to manually specify the CC compiler):
 ```sh
 mkdir build && cd build
 cmake ..
-cmake
+make 
 ```
 
 ## Step 4: Extract .bc from the .elf Executable File
