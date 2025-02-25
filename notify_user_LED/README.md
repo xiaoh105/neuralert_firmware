@@ -1,4 +1,4 @@
-# Reproduction of #17
+# Reproduction of Case #17
 
 ## Description
 
@@ -39,3 +39,7 @@ If you want to manually extract the LLVM IR/Bytecode, you can checkout to the ve
 extract-bc neuralert.elf
 llvm-extract --glob=processLists --glob=pUserData --glob=ledColor --func=notify_user_LED --func=setLEDState -o before_fix.bc --recursive neuralert.elf.bc
 ```
+
+Here is the reproduction result:
+![WechatIMG1373](https://github.com/user-attachments/assets/44d8b679-ad81-44ed-854c-b620e3053286)
+
