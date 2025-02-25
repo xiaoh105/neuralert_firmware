@@ -4,6 +4,10 @@
 
 See [LED functionality improvements](https://github.com/IoMT-Lab/neuralert_firmware/issues/17) with corresponding [pull request](https://github.com/IoMT-Lab/neuralert_firmware/pull/18).
 
+## Symptom
+
+The buggy behavior can be triggered under the user process booting up, where it is expected to blink yellow. But it doesn't do anything. To reproduce this error, we add an assertion to check the LED is working as expected as long as the user process boots up.
+
 ## Usage
 
 You can use the extracted LLVM IR in this directory to reproduce the issue.
